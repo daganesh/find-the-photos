@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import { config } from './config.js';
@@ -25,6 +27,14 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
   app.use('/api/routes', routesRouter(ctx));
   app.use('/api/photos', photosRouter(ctx));
   app.use('/api/hunt', huntRouter(ctx));
+
+  // In production, serve the pre-built React app and handle client-side routing.
+  if (config.production && fs.existsSync(config.paths.webDist)) {
+    app.use(express.static(config.paths.webDist));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(config.paths.webDist, 'index.html'));
+    });
+  }
 
   // Central error handler — never leak stack traces to families.
   const onError: ErrorRequestHandler = (err, _req, res, _next) => {

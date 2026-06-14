@@ -31,7 +31,12 @@ export const config = {
   paths: {
     dataDir: path.join(packageRoot, 'data'),
     uploadsDir: path.join(packageRoot, 'uploads'),
+    /** Built web app — served in production when this directory exists. */
+    webDist: path.join(packageRoot, '..', 'web', 'dist'),
   },
+
+  /** True when running in a deployed environment (not local dev). */
+  production: optional('NODE_ENV') === 'production',
 } as const;
 
 /** True when real Google sign-in is configured; otherwise we use a dev stub. */
