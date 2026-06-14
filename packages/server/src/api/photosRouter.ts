@@ -1,0 +1,31 @@
+import { Router } from 'express';
+import multer from 'multer';
+import type { UploadedPhotoResponse } from '@ftp/shared';
+import type { AppContext } from '../context.js';
+import { requireAuth } from '../auth/middleware.js';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB per photo/clip
+});
+
+/** `/api/photos` — upload item photos and audio hints. */
+export function photosRouter(ctx: AppContext): Router {
+  const router = Router();
+
+  router.post('/', requireAuth, upload.single('file'), async (req, res, next) => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: 'No file uploaded' });
+        return;
+      }
+      const stored = await ctx.photos.save(req.file.buffer, req.file.mimetype);
+      const body: UploadedPhotoResponse = stored;
+      res.status(201).json(body);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  return router;
+}
