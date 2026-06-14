@@ -1,0 +1,24 @@
+{
+  "name": "find-the-photos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A photo-based family treasure hunt game (web first).",
+  "license": "MIT",
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @ftp/shared && npm run build --workspace @ftp/server && npm run build --workspace @ftp/web",
+    "dev": "npm run build --workspace @ftp/shared && concurrently -n server,web -c blue,magenta \"npm run dev --workspace @ftp/server\" \"npm run dev --workspace @ftp/web\"",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
