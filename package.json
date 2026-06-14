@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspace @ftp/shared && npm run build --workspace @ftp/server && npm run build --workspace @ftp/web",
+    "start": "NODE_ENV=production node packages/server/dist/index.js",
     "dev": "npm run build --workspace @ftp/shared && concurrently -n server,web -c blue,magenta \"npm run dev --workspace @ftp/server\" \"npm run dev --workspace @ftp/web\"",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
