@@ -36,6 +36,10 @@ export function Results() {
 
   const items = route.data.items;
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? 'Item';
+  const stepSeconds = (s: HuntSession['steps'][number]): number | undefined =>
+    s.startedAt && s.finishedAt
+      ? (new Date(s.finishedAt).getTime() - new Date(s.startedAt).getTime()) / 1000
+      : undefined;
 
   async function submitRating() {
     setRating(true);
@@ -67,6 +71,7 @@ export function Results() {
                 <strong>{i + 1}. {itemName(step.itemId)}</strong>
                 <div className="muted">
                   {step.status === 'skipped' ? 'Skipped' : `${'⭐'.repeat(stepStars(step)) || '—'}`}
+                  {stepSeconds(step) !== undefined && ` · ⏱ ${formatDuration(stepSeconds(step)!)}`}
                   {step.disputed && ' · you overruled the AI 🙋'}
                 </div>
               </div>
