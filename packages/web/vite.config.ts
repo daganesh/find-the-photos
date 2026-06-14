@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       // Proxy uploaded media so the browser can load photos from the API.
       proxy: {
+        '/api': apiBase,
         '/uploads': apiBase,
       },
     },
