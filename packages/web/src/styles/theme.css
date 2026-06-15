@@ -14,19 +14,44 @@
   --color-muted: #f1ebf7;
   --color-line: #ece4f3;
 
+  /* pressed/darker shades for active states */
+  --color-primary-strong: #f4623d;
+  --color-accent-ink: #ffffff;
+  --color-happy-ink: #2b2440;
+
+  /* soft tints — banners, chips, fills */
+  --tint-success: #e2f4ec;
+  --tint-danger:  #fce3e6;
+  --tint-accent:  #e0f5f4;
+  --tint-happy:   #fff3cc;
+  --tint-coral:   #ffe6dd;
+
+  /* avatar palette — cheerful, one per family member */
+  --avatar-1: #ff7a59;
+  --avatar-2: #4ec5c1;
+  --avatar-3: #ffd23f;
+  --avatar-4: #9b7ede;
+  --avatar-5: #5bb6f0;
+  --avatar-6: #f78fb3;
+
   --radius: 18px;
   --radius-lg: 28px;
   --shadow: 0 8px 24px rgba(78, 50, 110, 0.12);
   --shadow-lg: 0 16px 40px rgba(78, 50, 110, 0.18);
+
+  --radius-sm: 12px;
+  --radius-pill: 999px;
 
   --space-1: 6px;
   --space-2: 12px;
   --space-3: 18px;
   --space-4: 26px;
   --space-5: 40px;
+  --space-6: 64px;
 
   --font: 'Baloo 2', 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
-  --tap: 56px; /* minimum comfortable tap target */
+  --tap: 56px;
+  --tap-lg: 64px;
 }
 
 * { box-sizing: border-box; }

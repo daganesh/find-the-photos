@@ -1,4 +1,7 @@
 // The reusable UI kit. Screens compose these; none contain business rules.
+export { Avatar, AvatarStack } from './Avatar.js';
+export type { AvatarPerson } from './Avatar.js';
+export { Badge } from './Badge.js';
 export { Button } from './Button.js';
 export { Card } from './Card.js';
 export { Page } from './Page.js';
@@ -9,6 +12,7 @@ export { Timer, formatDuration } from './Timer.js';
 export { PhotoCapture } from './PhotoCapture.js';
 export { PhotoGallery } from './PhotoGallery.js';
 export { HintView } from './HintView.js';
+export { Input } from './Input.js';
 export { AudioRecorder } from './AudioRecorder.js';
 export { MapView } from './MapView.js';
 export { Banner } from './Banner.js';
