@@ -1,7 +1,10 @@
 import { JsonRouteRepository, type RouteRepository } from './storage/routeRepository.js';
 import { JsonHuntRepository, type HuntRepository } from './storage/huntRepository.js';
+import { PgRouteRepository } from './storage/pgRouteRepository.js';
+import { PgHuntRepository } from './storage/pgHuntRepository.js';
 import { PhotoStore } from './photos/photoStore.js';
 import { createImageMatchService, type ImageMatchService } from './gemini/imageMatch.js';
+import { config } from './config.js';
 
 /**
  * The app's wired-up dependencies. Built once and passed to routers, which keeps
@@ -15,9 +18,10 @@ export interface AppContext {
 }
 
 export function createAppContext(): AppContext {
+  const usePostgres = config.databaseUrl !== '';
   return {
-    routes: new JsonRouteRepository(),
-    hunts: new JsonHuntRepository(),
+    routes: usePostgres ? new PgRouteRepository() : new JsonRouteRepository(),
+    hunts: usePostgres ? new PgHuntRepository() : new JsonHuntRepository(),
     photos: new PhotoStore(),
     imageMatch: createImageMatchService(),
   };
