@@ -20,6 +20,8 @@ export const config = {
   webOrigin: optional('WEB_ORIGIN', 'http://localhost:5173'),
   sessionSecret: optional('SESSION_SECRET', 'dev-insecure-secret-change-me'),
 
+  databaseUrl: optional('DATABASE_URL'),
+
   google: {
     clientId: optional('GOOGLE_CLIENT_ID'),
   },
