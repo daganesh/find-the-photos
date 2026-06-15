@@ -16,5 +16,10 @@ export default defineConfig(({ mode }) => {
         '/uploads': apiBase,
       },
     },
+    test: {
+      environment: 'node',
+      // Load VITE_* vars from the root .env so env.ts sees the same values as in dev.
+      envDir: '../../',
+    },
   };
 });
