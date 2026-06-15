@@ -17,8 +17,14 @@ export function SignIn() {
   useEffect(() => {
     if (!hasGoogleSignIn() || !googleSlot.current) return;
     renderGoogleButton(googleSlot.current, (credential) => {
-      signIn(credential).catch(() => setError('Sign-in failed, please try again.'));
-    }).catch(() => setError('Could not load Google sign-in.'));
+      signIn(credential).catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(`Sign-in failed: ${msg}`);
+      });
+    }).catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`Could not load Google sign-in: ${msg}`);
+    });
   }, [signIn]);
 
   async function devSignIn() {
@@ -26,8 +32,9 @@ export function SignIn() {
     const email = `${display.toLowerCase().replace(/\s+/g, '.')}@example.com`;
     try {
       await signIn(makeDevCredential(display, email));
-    } catch {
-      setError('Sign-in failed, please try again.');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`Sign-in failed: ${msg}`);
     }
   }
 
@@ -56,7 +63,7 @@ export function SignIn() {
             </div>
           )}
 
-          {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--color-danger)', wordBreak: 'break-word' }}>{error}</p>}
         </div>
       </Card>
     </div>

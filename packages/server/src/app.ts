@@ -18,6 +18,15 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
   app.use(cors({ origin: config.webOrigin }));
   app.use(express.json({ limit: '1mb' }));
 
+  // Log every API request so Railway logs show the full request/response picture.
+  app.use('/api', (req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      console.log(`[api] ${req.method} ${req.path} → ${res.statusCode} (${Date.now() - start}ms)`);
+    });
+    next();
+  });
+
   // Uploaded photos and audio clips are served statically.
   app.use('/uploads', express.static(config.paths.uploadsDir));
 
@@ -36,10 +45,11 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
     });
   }
 
-  // Central error handler — never leak stack traces to families.
-  const onError: ErrorRequestHandler = (err, _req, res, _next) => {
-    console.error('[api error]', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  // Central error handler — log the full error so Railway logs capture it.
+  const onError: ErrorRequestHandler = (err, req, res, _next) => {
+    console.error(`[api error] ${req.method} ${req.path}`, err);
+    const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+    res.status(500).json({ error: message });
   };
   app.use(onError);
 

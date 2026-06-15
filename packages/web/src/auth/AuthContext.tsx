@@ -34,9 +34,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signIn(credential) {
         setLoading(true);
         try {
+          console.log('[auth] sending credential to server...');
           const { token, user: signed } = await api.signInWithGoogle(credential);
+          console.log('[auth] sign-in ok, user:', signed.email);
           api.setToken(token);
           setUser(signed);
+        } catch (err) {
+          console.error('[auth] sign-in failed:', err);
+          throw err; // re-throw so SignIn.tsx can show the real message
         } finally {
           setLoading(false);
         }
