@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { Item, Route } from '@ftp/shared';
 import { isRoutePlayable } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
+import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { Button, Card, Page, Spinner } from '../ui/index.js';
+import { Button, Card, Page, PhotoCapture, Spinner } from '../ui/index.js';
 import { ItemEditor } from './ItemEditor.js';
 
 /** The hider flow: build a route by adding items, then finalise it. */
@@ -16,6 +17,7 @@ export function RouteBuilder() {
   const [route, setRoute] = useState<Route | null>(null);
   const [editing, setEditing] = useState<Item | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   useEffect(() => {
     if (data) setRoute(data);
@@ -29,8 +31,19 @@ export function RouteBuilder() {
     await api.updateRoute(next.id, {
       title: next.title,
       description: next.description,
+      coverPhotoUrl: next.coverPhotoUrl,
       items: next.items,
     });
+  }
+
+  async function addCoverPhoto(file: File) {
+    setUploadingCover(true);
+    try {
+      const { url } = await api.uploadFile(file, file.name);
+      await persist({ ...route!, coverPhotoUrl: url });
+    } finally {
+      setUploadingCover(false);
+    }
   }
 
   async function saveItem(item: Item) {
@@ -57,7 +70,7 @@ export function RouteBuilder() {
   async function finalize() {
     setSaving(true);
     try {
-      await api.updateRoute(route!.id, { title: route!.title, description: route!.description, items: route!.items });
+      await api.updateRoute(route!.id, { title: route!.title, description: route!.description, coverPhotoUrl: route!.coverPhotoUrl, items: route!.items });
       await api.finalizeRoute(route!.id);
       navigate(`/play/${route!.id}`);
     } finally {
@@ -82,6 +95,32 @@ export function RouteBuilder() {
       <div className="stack">
         <Card>
           <div className="stack">
+            {/* Cover photo */}
+            <div>
+              <span className="field-label">Cover photo (optional)</span>
+              {route.coverPhotoUrl ? (
+                <div style={{ position: 'relative' }}>
+                  <img
+                    src={mediaUrl(route.coverPhotoUrl)}
+                    alt="Cover"
+                    style={{ width: '100%', borderRadius: 'var(--radius)', display: 'block', maxHeight: 200, objectFit: 'cover' }}
+                  />
+                  <PhotoCapture
+                    onCapture={addCoverPhoto}
+                    variant="ghost"
+                    disabled={uploadingCover}
+                    style={{ marginTop: 'var(--space-2)' }}
+                  >
+                    🔄 {uploadingCover ? 'Uploading…' : 'Change photo'}
+                  </PhotoCapture>
+                </div>
+              ) : (
+                <PhotoCapture onCapture={addCoverPhoto} variant="accent" disabled={uploadingCover}>
+                  🖼 {uploadingCover ? 'Uploading…' : 'Add a cover photo'}
+                </PhotoCapture>
+              )}
+            </div>
+
             <div>
               <label className="field-label" htmlFor="title">Hunt title</label>
               <input
@@ -137,7 +176,7 @@ export function RouteBuilder() {
           onClick={finalize}
           disabled={!isRoutePlayable(route) || saving}
         >
-          ✅ {saving ? 'Finishing…' : route.status === 'ready' ? 'Update & play' : 'Finish & make ready'}
+          ✅ {saving ? 'Saving…' : route.status === 'ready' ? 'Save & play' : 'Finish & make ready'}
         </Button>
         {!isRoutePlayable(route) && <p className="muted center">Add a title and at least one item to finish.</p>}
       </div>

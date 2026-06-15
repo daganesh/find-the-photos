@@ -12,7 +12,13 @@ interface PageProps {
 /** App layout shell: a sticky friendly top bar plus a centered body. */
 export function Page({ title, onBack, right, children }: PageProps) {
   const navigate = useNavigate();
-  const back = onBack === true ? () => navigate(-1) : typeof onBack === 'function' ? onBack : undefined;
+  // If the caller passes `true`, go back in history if possible, otherwise home.
+  const back =
+    onBack === true
+      ? () => (window.history.length > 1 ? navigate(-1) : navigate('/'))
+      : typeof onBack === 'function'
+        ? onBack
+        : undefined;
 
   return (
     <div className="page">

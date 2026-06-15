@@ -50,6 +50,8 @@ export interface Route {
   id: string;
   title: string;
   description?: string;
+  /** Optional hero image shown on the route card and play screen. */
+  coverPhotoUrl?: string;
   authorId: string;
   items: Item[];
   status: RouteStatus;

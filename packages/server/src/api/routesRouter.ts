@@ -17,6 +17,7 @@ function toSummary(route: Route): RouteSummary {
     id: route.id,
     title: route.title,
     description: route.description,
+    coverPhotoUrl: route.coverPhotoUrl,
     authorId: route.authorId,
     itemCount: route.items.length,
     status: route.status,
@@ -95,6 +96,7 @@ export function routesRouter(ctx: AppContext): Router {
       const patch: Partial<Route> = {};
       if (body.title !== undefined) patch.title = body.title.trim();
       if (body.description !== undefined) patch.description = body.description.trim() || undefined;
+      if (body.coverPhotoUrl !== undefined) patch.coverPhotoUrl = body.coverPhotoUrl || undefined;
       if (body.items !== undefined) patch.items = body.items;
       res.json(await ctx.routes.update(route.id, patch));
     } catch (err) {
