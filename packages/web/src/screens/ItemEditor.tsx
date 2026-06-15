@@ -5,7 +5,6 @@ import { getCurrentLocation } from '../services/geolocation.js';
 import { Button, Card, PhotoCapture, PhotoGallery, AudioRecorder } from '../ui/index.js';
 
 interface ItemEditorProps {
-  /** Existing item to edit, or undefined to create a new one. */
   initial?: Item;
   onSave: (item: Item) => void;
   onCancel: () => void;
@@ -16,16 +15,16 @@ const blankItem = (): Item => ({
   name: '',
   description: '',
   hint: { kind: 'text', text: '' },
+  extraHints: [],
   photos: [],
   difficult: false,
 });
 
-/** Capture or edit a single hidden item: photos, name, hint, description, GPS. */
+/** Capture or edit a single hidden item: photos, name, hints, description, GPS. */
 export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
   const [item, setItem] = useState<Item>(initial ?? blankItem());
   const [busy, setBusy] = useState(false);
   const update = (patch: Partial<Item>) => setItem((prev) => ({ ...prev, ...patch }));
-  const setHint = (patch: Partial<Hint>) => update({ hint: { ...item.hint, ...patch } });
 
   async function addPhoto(file: File) {
     setBusy(true);
@@ -50,6 +49,32 @@ export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
     } finally {
       setBusy(false);
     }
+  }
+
+  function addExtraHint() {
+    update({ extraHints: [...(item.extraHints ?? []), { kind: 'text', text: '' }] });
+  }
+
+  function updateExtraHint(index: number, patch: Partial<Hint>) {
+    const next = [...(item.extraHints ?? [])];
+    next[index] = { ...next[index]!, ...patch };
+    update({ extraHints: next });
+  }
+
+  async function recordExtraHint(index: number, clip: Blob, durationS: number) {
+    setBusy(true);
+    try {
+      const { url } = await api.uploadFile(clip, 'hint.webm');
+      updateExtraHint(index, { kind: 'audio', audioUrl: url, audioDurationS: durationS });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function removeExtraHint(index: number) {
+    const next = [...(item.extraHints ?? [])];
+    next.splice(index, 1);
+    update({ extraHints: next });
   }
 
   async function useMyLocation() {
@@ -89,36 +114,31 @@ export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
           />
         </div>
 
-        <div>
-          <span className="field-label">Clue</span>
-          <div className="row" style={{ marginBottom: 'var(--space-2)' }}>
-            <Button
-              variant={item.hint.kind === 'text' ? 'primary' : 'ghost'}
-              onClick={() => setHint({ kind: 'text' })}
-            >
-              💬 Text
-            </Button>
-            <Button
-              variant={item.hint.kind === 'audio' ? 'primary' : 'ghost'}
-              onClick={() => setHint({ kind: 'audio' })}
-            >
-              🔊 Audio
-            </Button>
-          </div>
-          {item.hint.kind === 'text' ? (
-            <textarea
-              rows={2}
-              value={item.hint.text ?? ''}
-              placeholder="Give a fun hint…"
-              onChange={(e) => setHint({ text: e.target.value })}
-            />
-          ) : (
-            <div className="stack">
-              {item.hint.audioUrl && <p className="muted">🎧 Clue recorded ({item.hint.audioDurationS}s)</p>}
-              <AudioRecorder onRecorded={recordHint} />
-            </div>
-          )}
-        </div>
+        {/* Primary clue */}
+        <HintEditor
+          label="Clue"
+          hint={item.hint}
+          onChange={(patch) => update({ hint: { ...item.hint, ...patch } })}
+          onRecord={recordHint}
+          busy={busy}
+        />
+
+        {/* Extra clues */}
+        {(item.extraHints ?? []).map((h, i) => (
+          <HintEditor
+            key={i}
+            label={`Extra clue ${i + 1}`}
+            hint={h}
+            onChange={(patch) => updateExtraHint(i, patch)}
+            onRecord={(clip, dur) => recordExtraHint(i, clip, dur)}
+            onRemove={() => removeExtraHint(i)}
+            busy={busy}
+          />
+        ))}
+
+        <Button variant="ghost" onClick={addExtraHint} disabled={busy}>
+          ➕ Add another clue
+        </Button>
 
         <div>
           <label className="field-label" htmlFor="item-desc">Description (extra help)</label>
@@ -154,5 +174,56 @@ export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
         {!canSave && <p className="muted center">Add a name and at least one photo.</p>}
       </div>
     </Card>
+  );
+}
+
+interface HintEditorProps {
+  label: string;
+  hint: Hint;
+  onChange: (patch: Partial<Hint>) => void;
+  onRecord: (clip: Blob, durationS: number) => Promise<void>;
+  onRemove?: () => void;
+  busy: boolean;
+}
+
+function HintEditor({ label, hint, onChange, onRecord, onRemove, busy }: HintEditorProps) {
+  return (
+    <div>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-1)' }}>
+        <span className="field-label" style={{ margin: 0 }}>{label}</span>
+        {onRemove && (
+          <Button variant="ghost" onClick={onRemove} disabled={busy}>
+            🗑 Remove
+          </Button>
+        )}
+      </div>
+      <div className="row" style={{ marginBottom: 'var(--space-2)' }}>
+        <Button
+          variant={hint.kind === 'text' ? 'primary' : 'ghost'}
+          onClick={() => onChange({ kind: 'text' })}
+        >
+          💬 Text
+        </Button>
+        <Button
+          variant={hint.kind === 'audio' ? 'primary' : 'ghost'}
+          onClick={() => onChange({ kind: 'audio' })}
+        >
+          🔊 Audio
+        </Button>
+      </div>
+      {hint.kind === 'text' ? (
+        <textarea
+          rows={2}
+          value={hint.text ?? ''}
+          placeholder="Give a fun hint…"
+          onChange={(e) => onChange({ text: e.target.value })}
+        />
+      ) : (
+        <div className="stack">
+          {hint.audioUrl && <p className="muted">🎧 Clue recorded ({hint.audioDurationS}s)</p>}
+          <AudioRecorder onRecorded={onRecord} />
+        </div>
+      )}
+    </div>
   );
 }

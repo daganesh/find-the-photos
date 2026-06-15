@@ -12,6 +12,7 @@ export function Home() {
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
   const [creating, setCreating] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function createRoute() {
     setCreating(true);
@@ -20,6 +21,18 @@ export function Home() {
       navigate(`/build/${route.id}`);
     } finally {
       setCreating(false);
+    }
+  }
+
+  function shareRoute(routeId: string) {
+    const url = `${window.location.origin}/play/${routeId}`;
+    if (navigator.share) {
+      navigator.share({ title: 'Find the Photos', url }).catch(() => undefined);
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedId(routeId);
+        setTimeout(() => setCopiedId(null), 2000);
+      });
     }
   }
 
@@ -51,7 +64,14 @@ export function Home() {
           <section className="stack">
             <h2>Your hunts</h2>
             {mine.map((r) => (
-              <RouteCard key={r.id} route={r} onClick={() => navigate(r.status === 'ready' ? `/play/${r.id}` : `/build/${r.id}`)} mine />
+              <RouteCard
+                key={r.id}
+                route={r}
+                mine
+                copied={copiedId === r.id}
+                onClick={() => navigate(r.status === 'ready' ? `/play/${r.id}` : `/build/${r.id}`)}
+                onShare={r.status === 'ready' ? () => shareRoute(r.id) : undefined}
+              />
             ))}
           </section>
         )}
@@ -64,7 +84,13 @@ export function Home() {
             </Card>
           )}
           {ready.map((r) => (
-            <RouteCard key={r.id} route={r} onClick={() => navigate(`/play/${r.id}`)} />
+            <RouteCard
+              key={r.id}
+              route={r}
+              copied={copiedId === r.id}
+              onClick={() => navigate(`/play/${r.id}`)}
+              onShare={() => shareRoute(r.id)}
+            />
           ))}
         </section>
 
@@ -78,11 +104,27 @@ export function Home() {
   );
 }
 
-function RouteCard({ route, onClick, mine }: { route: RouteSummary; onClick: () => void; mine?: boolean }) {
+function RouteCard({
+  route,
+  onClick,
+  onShare,
+  mine,
+  copied,
+}: {
+  route: RouteSummary;
+  onClick: () => void;
+  onShare?: () => void;
+  mine?: boolean;
+  copied?: boolean;
+}) {
   return (
-    <Card clickable onClick={onClick}>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div>
+    <Card>
+      <div
+        className="row"
+        style={{ justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer' }}
+        onClick={onClick}
+      >
+        <div style={{ flex: 1 }}>
           <h3 style={{ marginBottom: 4 }}>{route.title}</h3>
           <p className="muted" style={{ margin: 0 }}>
             {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
@@ -94,6 +136,16 @@ function RouteCard({ route, onClick, mine }: { route: RouteSummary; onClick: () 
           <span style={{ fontSize: '1.6rem' }}>{route.status === 'ready' ? '▶️' : '✏️'}</span>
         </div>
       </div>
+      {onShare && (
+        <div style={{ marginTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-2)' }}>
+          <Button
+            variant="ghost"
+            onClick={(e) => { e.stopPropagation(); onShare(); }}
+          >
+            {copied ? '✅ Link copied!' : '🔗 Share play link'}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

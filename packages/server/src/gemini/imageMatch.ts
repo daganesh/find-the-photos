@@ -28,7 +28,11 @@ photo taken by a player. Decide if the candidate shows the SAME physical object
 Be generous about angle and lighting, but strict about it being the same object,
 not merely a similar-looking one.
 Reply with STRICT JSON only: {"match": boolean, "confidence": number (0..1),
-"reason": "one short kid-friendly sentence"}.`;
+"reason": "one short kid-friendly sentence"}.
+IMPORTANT: when match is false the reason must describe what is wrong with the
+candidate photo (e.g. "too blurry", "try getting closer", "this looks like a
+different object") WITHOUT naming or describing the target object — keep the
+hunt challenge fair.`;
 
 /** Real Gemini-backed matcher. */
 export class GeminiImageMatchService implements ImageMatchService {

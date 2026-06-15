@@ -25,6 +25,8 @@ export interface Item {
   name: string;
   description?: string;
   hint: Hint;
+  /** Optional additional clues shown alongside the primary hint. */
+  extraHints?: Hint[];
   /** Reference photos used both as clues and for AI matching. */
   photos: Photo[];
   /** Where it is. Optional: the device may have no/disabled GPS. */

@@ -12,3 +12,4 @@ export { HintView } from './HintView.js';
 export { AudioRecorder } from './AudioRecorder.js';
 export { MapView } from './MapView.js';
 export { Banner } from './Banner.js';
+export { Fireworks } from './Fireworks.js';

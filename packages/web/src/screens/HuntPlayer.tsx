@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { GeoPoint, Item } from '@ftp/shared';
 import { HelpLevel, canSkip, isHuntComplete, scoreStep } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
+import { playSuccessSound } from '../services/sounds.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { useHunt } from '../hooks/useHunt.js';
 import { getCurrentLocation } from '../services/geolocation.js';
@@ -10,6 +11,7 @@ import {
   Banner,
   Button,
   Card,
+  Fireworks,
   HintView,
   MapView,
   Page,
@@ -30,13 +32,14 @@ export function HuntPlayer() {
   const [hunterLoc, setHunterLoc] = useState<GeoPoint | undefined>();
   const prevFound = useRef(0);
 
-  // Celebrate whenever a new item gets solved.
+  // Celebrate + play sound whenever a new item gets solved.
   useEffect(() => {
     if (!hunt.session) return;
     const found = hunt.session.steps.filter((s) => s.status === 'found');
     if (found.length > prevFound.current) {
       const latest = [...found].sort((a, b) => (a.finishedAt ?? '').localeCompare(b.finishedAt ?? '')).at(-1);
       setCelebrateId(latest?.itemId ?? null);
+      playSuccessSound();
     }
     prevFound.current = found.length;
   }, [hunt.session]);
@@ -52,16 +55,29 @@ export function HuntPlayer() {
   if (route.loading || hunt.loading) return <Page onBack title="Play"><Spinner label="Setting up your hunt…" /></Page>;
   if (route.error || !route.data) return <Page onBack title="Play"><p style={{ color: 'var(--color-danger)' }}>{route.error ?? 'Route not found'}</p></Page>;
 
+  // Fix #1: show a proper error when the hunt session could not be started.
+  if (!hunt.session) {
+    return (
+      <Page onBack title="Play">
+        <div className="stack">
+          <Banner tone="no">{hunt.error ?? 'Could not start the hunt — please try again.'}</Banner>
+          <Button block onClick={() => navigate('/')}>Back to home</Button>
+        </div>
+      </Page>
+    );
+  }
+
   const items = route.data.items;
   const session = hunt.session;
-  const complete = session ? isHuntComplete(session.steps) : false;
+  const complete = isHuntComplete(session.steps);
 
-  // Whole hunt finished → summary.
+  // Whole hunt finished → fireworks + summary card.
   if (complete && !celebrateId) {
     return (
       <Page title="Done!">
+        <Fireworks />
         <FinishedCard
-          total={session!.totalScore}
+          total={session.totalScore}
           onSeeResults={() => navigate(`/results/${routeId}`, { state: { session } })}
         />
       </Page>
@@ -71,7 +87,7 @@ export function HuntPlayer() {
   // Celebrating a freshly found item.
   if (celebrateId) {
     const item = items.find((i) => i.id === celebrateId);
-    const step = session?.steps.find((s) => s.itemId === celebrateId);
+    const step = session.steps.find((s) => s.itemId === celebrateId);
     const last = complete;
     return (
       <Page title="Great find!">
@@ -99,13 +115,14 @@ export function HuntPlayer() {
     <Page
       onBack
       title={`Clue ${stepNumber} / ${items.length}`}
-      right={<Timer startedAt={session?.startedAt} />}
+      right={<Timer startedAt={session.startedAt} />}
     >
       <div className="stack">
         <Card>
           <div className="stack">
             <span className="field-label">Your clue</span>
-            <HintView hint={item.hint} />
+            {/* Fix #5: show all hints (primary + extra) */}
+            <HintView hint={item.hint} extraHints={item.extraHints} />
           </div>
         </Card>
 
