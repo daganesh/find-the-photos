@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { RouteSummary } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
+import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
 
@@ -69,7 +70,8 @@ export function Home() {
                 route={r}
                 mine
                 copied={copiedId === r.id}
-                onClick={() => navigate(r.status === 'ready' ? `/play/${r.id}` : `/build/${r.id}`)}
+                onPlay={() => navigate(`/play/${r.id}`)}
+                onEdit={() => navigate(`/build/${r.id}`)}
                 onShare={r.status === 'ready' ? () => shareRoute(r.id) : undefined}
               />
             ))}
@@ -88,7 +90,7 @@ export function Home() {
               key={r.id}
               route={r}
               copied={copiedId === r.id}
-              onClick={() => navigate(`/play/${r.id}`)}
+              onPlay={() => navigate(`/play/${r.id}`)}
               onShare={() => shareRoute(r.id)}
             />
           ))}
@@ -106,23 +108,46 @@ export function Home() {
 
 function RouteCard({
   route,
-  onClick,
+  onPlay,
+  onEdit,
   onShare,
   mine,
   copied,
 }: {
   route: RouteSummary;
-  onClick: () => void;
+  onPlay: () => void;
+  onEdit?: () => void;
   onShare?: () => void;
   mine?: boolean;
   copied?: boolean;
 }) {
+  const hasCover = Boolean(route.coverPhotoUrl);
+
   return (
     <Card>
+      {/* Cover photo */}
+      {hasCover && (
+        <img
+          src={mediaUrl(route.coverPhotoUrl!)}
+          alt={route.title}
+          style={{
+            width: 'calc(100% + var(--space-4) * 2)',
+            marginLeft: 'calc(var(--space-4) * -1)',
+            marginTop: 'calc(var(--space-4) * -1)',
+            marginBottom: 'var(--space-3)',
+            height: 160,
+            objectFit: 'cover',
+            borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+            display: 'block',
+          }}
+        />
+      )}
+
+      {/* Main info row — tappable to play */}
       <div
         className="row"
-        style={{ justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer' }}
-        onClick={onClick}
+        style={{ justifyContent: 'space-between', cursor: 'pointer' }}
+        onClick={onPlay}
       >
         <div style={{ flex: 1 }}>
           <h3 style={{ marginBottom: 4 }}>{route.title}</h3>
@@ -133,17 +158,26 @@ function RouteCard({
         </div>
         <div className="stack" style={{ alignItems: 'flex-end', gap: 4 }}>
           {route.avgRating !== undefined && <StarRating value={Math.round(route.avgRating)} />}
-          <span style={{ fontSize: '1.6rem' }}>{route.status === 'ready' ? '▶️' : '✏️'}</span>
+          <span style={{ fontSize: '1.6rem' }}>▶️</span>
         </div>
       </div>
-      {onShare && (
-        <div style={{ marginTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-2)' }}>
-          <Button
-            variant="ghost"
-            onClick={(e) => { e.stopPropagation(); onShare(); }}
-          >
-            {copied ? '✅ Link copied!' : '🔗 Share play link'}
-          </Button>
+
+      {/* Actions */}
+      {(onEdit ?? onShare) && (
+        <div
+          className="row"
+          style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}
+        >
+          {onEdit && (
+            <Button variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              ✏️ Edit
+            </Button>
+          )}
+          {onShare && (
+            <Button variant="ghost" onClick={(e) => { e.stopPropagation(); onShare(); }}>
+              {copied ? '✅ Copied!' : '🔗 Share'}
+            </Button>
+          )}
         </div>
       )}
     </Card>

@@ -36,6 +36,7 @@ export interface ItemInput {
 export interface UpdateRouteRequest {
   title?: string;
   description?: string;
+  coverPhotoUrl?: string;
   /** Replace the full ordered item list (handles add/edit/reorder/remove). */
   items?: Item[];
 }
@@ -44,6 +45,7 @@ export interface RouteSummary {
   id: string;
   title: string;
   description?: string;
+  coverPhotoUrl?: string;
   authorId: string;
   itemCount: number;
   status: Route['status'];

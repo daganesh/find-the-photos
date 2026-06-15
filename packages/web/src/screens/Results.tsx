@@ -3,10 +3,11 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { HuntSession } from '@ftp/shared';
 import { scoreStep, stepStars } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
+import { shareScore } from '../services/scoreCard.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { Button, Card, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
 
-/** End-of-hunt: per-item scores, total time, and rate-the-route. */
+/** End-of-hunt: per-item scores, total time, share, and rate-the-route. */
 export function Results() {
   const { routeId = '' } = useParams();
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export function Results() {
   const [comment, setComment] = useState('');
   const [rated, setRated] = useState(false);
   const [rating, setRating] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const totalSeconds = useMemo(() => {
     if (!session?.finishedAt) return undefined;
@@ -51,6 +53,19 @@ export function Results() {
     }
   }
 
+  async function handleShare() {
+    setSharing(true);
+    try {
+      const nameMap = new Map(items.map((i) => [i.id, i.name]));
+      const playUrl = `${window.location.origin}/play/${routeId}`;
+      await shareScore(route.data!.title, session!, nameMap, playUrl);
+    } catch {
+      // Share cancelled or not supported — fail silently.
+    } finally {
+      setSharing(false);
+    }
+  }
+
   return (
     <Page title="Your results">
       <div className="stack">
@@ -60,6 +75,9 @@ export function Results() {
             <h2>{route.data.title}</h2>
             <ScorePill score={session.totalScore} />
             {totalSeconds !== undefined && <p className="muted">Total time: {formatDuration(totalSeconds)}</p>}
+            <Button variant="accent" block disabled={sharing} onClick={handleShare}>
+              {sharing ? 'Creating image…' : '📤 Share my score'}
+            </Button>
           </div>
         </Card>
 
