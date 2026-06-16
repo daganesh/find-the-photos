@@ -20,4 +20,6 @@ npm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+
+# Claude Code local session data
 .claude/
