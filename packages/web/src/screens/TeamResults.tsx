@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import type { HuntSession, TeamResult } from '@ftp/shared';
+import type { HuntSession, Team, TeamResult } from '@ftp/shared';
 import { computeTeamResult } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
+import { shareScore } from '../services/scoreCard.js';
+import { useAsync } from '../hooks/useAsync.js';
 import { Banner, Button, Card, Page, ScorePill, Spinner, formatDuration } from '../ui/index.js';
 
 /** Team results screen: per-member leaderboard, MVP badge, total score + time. */
@@ -13,17 +15,28 @@ export function TeamResults() {
   const passedSession = (location.state as { session?: HuntSession } | null)?.session;
 
   const [result, setResult] = useState<TeamResult>();
-  const [loading, setLoading] = useState(!passedSession);
+  const [team, setTeam] = useState<Team>();
+  const [session, setSession] = useState<HuntSession>();
+  const [routeId, setRouteId] = useState<string>();
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [sharing, setSharing] = useState(false);
+
+  const route = useAsync(() => routeId ? api.getRoute(routeId) : Promise.resolve(undefined), [routeId]);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const team = await api.getTeam(teamId);
-        if (!team.sessionId) throw new Error('No session found for this team');
-        const { session } = await api.getHunt(team.sessionId);
-        if (!cancelled) setResult(computeTeamResult(team, session));
+        const t = await api.getTeam(teamId);
+        if (!t.sessionId) throw new Error('No session found for this team');
+        const { session: s } = await api.getHunt(t.sessionId);
+        if (!cancelled) {
+          setTeam(t);
+          setSession(s);
+          setRouteId(s.routeId);
+          setResult(computeTeamResult(t, s));
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load results');
       } finally {
@@ -33,6 +46,20 @@ export function TeamResults() {
     load();
     return () => { cancelled = true; };
   }, [teamId]);
+
+  async function handleShare() {
+    if (!result || !session || !route.data) return;
+    setSharing(true);
+    try {
+      const nameMap = new Map(route.data.items.map((i) => [i.id, i.name]));
+      const playUrl = `${window.location.origin}/play/${session.routeId}`;
+      await shareScore(route.data.title, session, nameMap, playUrl, team, result);
+    } catch {
+      // Share cancelled or not supported — silently ignore.
+    } finally {
+      setSharing(false);
+    }
+  }
 
   if (loading) return <Page title="Team Results"><Spinner /></Page>;
   if (error || !result) {
@@ -64,6 +91,9 @@ export function TeamResults() {
             {result.totalSeconds !== undefined && (
               <p className="muted">Total time: {formatDuration(result.totalSeconds)}</p>
             )}
+            <Button variant="accent" block disabled={sharing || route.loading} onClick={handleShare}>
+              {sharing ? 'Creating polaroid…' : '📤 Share polaroid'}
+            </Button>
           </div>
         </Card>
 
