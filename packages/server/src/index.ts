@@ -9,7 +9,8 @@ function storageStatus(): string {
 
 function photoStatus(): string {
   if (config.s3.bucket) return `S3 bucket "${config.s3.bucket}" ✓`;
-  return 'local disk  ⚠️  (set S3_BUCKET + S3_* vars for persistence)';
+  if (config.databaseUrl) return 'PostgreSQL bytea ✓';
+  return 'local disk  ⚠️  (ephemeral — set DATABASE_URL for persistence)';
 }
 
 async function start() {

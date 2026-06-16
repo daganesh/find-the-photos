@@ -28,8 +28,21 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
     next();
   });
 
-  // Uploaded photos and audio clips are served statically.
-  app.use('/uploads', express.static(config.paths.uploadsDir));
+  // Serve uploaded media — dynamically from PostgreSQL when using DB storage,
+  // or statically from disk for local dev / S3 (S3 URLs are absolute, no route needed).
+  if (ctx.photos.needsDynamicServing) {
+    app.get('/uploads/:key', async (req, res, next) => {
+      try {
+        const photo = await ctx.photos.getForServing(req.params.key);
+        if (!photo) return void res.status(404).json({ error: 'Photo not found' });
+        res.setHeader('Content-Type', photo.mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.send(photo.data);
+      } catch (err) { next(err); }
+    });
+  } else {
+    app.use('/uploads', express.static(config.paths.uploadsDir));
+  }
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
