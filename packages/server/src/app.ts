@@ -9,6 +9,7 @@ import { routesRouter } from './api/routesRouter.js';
 import { photosRouter } from './api/photosRouter.js';
 import { huntRouter } from './api/huntRouter.js';
 import { teamsRouter } from './api/teamsRouter.js';
+import { adminRouter } from './api/adminRouter.js';
 
 /**
  * Build the Express app. Takes an optional context so tests can inject fakes.
@@ -51,6 +52,7 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
   app.use('/api/photos', photosRouter(ctx));
   app.use('/api/hunt', huntRouter(ctx));
   app.use('/api/teams', teamsRouter(ctx));
+  app.use('/api/admin', adminRouter(ctx));
 
   // In production, serve the pre-built React app and handle client-side routing.
   if (config.production && fs.existsSync(config.paths.webDist)) {

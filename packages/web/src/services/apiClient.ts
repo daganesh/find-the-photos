@@ -1,4 +1,5 @@
 import type {
+  CleanupResult,
   CreateRouteRequest,
   EscalateHelpRequest,
   GeoPoint,
@@ -8,6 +9,7 @@ import type {
   Route,
   RouteSummary,
   SessionResponse,
+  StorageStats,
   SubmitPhotoResponse,
   Team,
   TeamResult,
@@ -149,6 +151,17 @@ export class ApiClient {
   }
   getTeamLeaderboard(routeId: string): Promise<TeamResult[]> {
     return this.request(`/api/teams/route/${routeId}/leaderboard`);
+  }
+
+  // --- Admin ---
+  getStorageStats(): Promise<StorageStats> {
+    return this.request('/api/admin/storage');
+  }
+  cleanupOrphanedPhotos(): Promise<CleanupResult> {
+    return this.request('/api/admin/cleanup/orphaned-photos', { method: 'DELETE' });
+  }
+  cleanupOldSessions(days = 30): Promise<CleanupResult> {
+    return this.request(`/api/admin/cleanup/old-sessions?days=${days}`, { method: 'DELETE' });
   }
 }
 
