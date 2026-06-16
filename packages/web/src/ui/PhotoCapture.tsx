@@ -21,7 +21,6 @@ export function PhotoCapture({ onCapture, children, variant = 'primary', disable
       <input
         type="file"
         accept="image/*"
-        capture="environment"
         disabled={disabled}
         onChange={(e) => {
           const file = e.target.files?.[0];

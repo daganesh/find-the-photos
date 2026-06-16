@@ -12,7 +12,11 @@ async function start() {
     console.log(`📸 Find the Photos API on http://localhost:${config.port}`);
     console.log(`   Google sign-in: ${isGoogleAuthConfigured() ? 'configured' : 'DEV stub'}`);
     console.log(`   Gemini matching: ${isGeminiConfigured() ? 'configured' : 'DEV stub'}`);
-    console.log(`   Storage: ${config.databaseUrl ? 'PostgreSQL' : 'JSON files (dev)'}`);
+    if (config.databaseUrl) {
+      console.log('   Storage: PostgreSQL ✓');
+    } else {
+      console.warn('   ⚠️  Storage: JSON files (ephemeral — set DATABASE_URL for persistence)');
+    }
   });
 }
 

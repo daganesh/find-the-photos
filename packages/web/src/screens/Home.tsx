@@ -9,7 +9,7 @@ import { Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
 
 /** The hub: greet the player, list playable routes, and start building. */
 export function Home() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
   const [creating, setCreating] = useState(false);
@@ -41,13 +41,7 @@ export function Home() {
   const mine = routes?.filter((r) => r.authorId === user?.id) ?? [];
 
   return (
-    <Page
-      right={
-        <Button variant="ghost" onClick={signOut}>
-          Sign out
-        </Button>
-      }
-    >
+    <Page>
       <div className="stack">
         <header className="stack">
           <h1>Hi {user?.name?.split(' ')[0]} 👋</h1>

@@ -1,14 +1,14 @@
 /* Design tokens — one friendly, high-contrast, big-tap-target system used by
    every component. Tweak colours/spacing here, not in components. */
 :root {
-  --color-bg: #fff7f0;
+  --color-bg: #f0fdfc;
   --color-surface: #ffffff;
   --color-ink: #2b2440;
   --color-ink-soft: #6b6480;
   --color-primary: #ff7a59;       /* warm coral — main actions */
   --color-primary-ink: #ffffff;
   --color-accent: #4ec5c1;        /* teal — highlights */
-  --color-happy: #ffd23f;         /* sunny yellow — rewards */
+  --color-happy: #5cc8c4;         /* pastel turquoise — rewards */
   --color-success: #3fb27f;
   --color-danger: #ef5d6c;
   --color-muted: #f1ebf7;
@@ -17,19 +17,19 @@
   /* pressed/darker shades for active states */
   --color-primary-strong: #f4623d;
   --color-accent-ink: #ffffff;
-  --color-happy-ink: #2b2440;
+  --color-happy-ink: #ffffff;
 
   /* soft tints — banners, chips, fills */
   --tint-success: #e2f4ec;
   --tint-danger:  #fce3e6;
   --tint-accent:  #e0f5f4;
-  --tint-happy:   #fff3cc;
+  --tint-happy:   #d9f4f3;
   --tint-coral:   #ffe6dd;
 
   /* avatar palette — cheerful, one per family member */
   --avatar-1: #ff7a59;
   --avatar-2: #4ec5c1;
-  --avatar-3: #ffd23f;
+  --avatar-3: #5cc8c4;
   --avatar-4: #9b7ede;
   --avatar-5: #5bb6f0;
   --avatar-6: #f78fb3;
@@ -63,8 +63,8 @@ body {
   font-family: var(--font);
   color: var(--color-ink);
   background:
-    radial-gradient(1200px 600px at 80% -10%, #ffe6d6 0%, transparent 60%),
-    radial-gradient(900px 500px at -10% 10%, #e6f8f7 0%, transparent 55%),
+    radial-gradient(1200px 600px at 80% -10%, #d5f4f2 0%, transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, #e0f9f7 0%, transparent 55%),
     var(--color-bg);
   -webkit-font-smoothing: antialiased;
 }

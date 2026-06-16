@@ -44,6 +44,7 @@ export {
   escalateHelp,
   canSkip,
   skipStep,
+  returnSkippedStep,
   disputeStep,
   isHuntComplete,
 } from './logic/huntMachine.js';

@@ -21,7 +21,7 @@ import {
   Timer,
 } from '../ui/index.js';
 
-/** The hunter flow: read the clue, take a photo, get help, advance. */
+/** The hunter flow: lobby → play → celebrate → results. */
 export function HuntPlayer() {
   const { routeId = '' } = useParams();
   const navigate = useNavigate();
@@ -52,10 +52,40 @@ export function HuntPlayer() {
     }
   }, [helpLevel, hunterLoc]);
 
-  if (route.loading || hunt.loading) return <Page onBack title="Play"><Spinner label="Setting up your hunt…" /></Page>;
+  if (route.loading) return <Page onBack title="Play"><Spinner label="Loading route…" /></Page>;
   if (route.error || !route.data) return <Page onBack title="Play"><p style={{ color: 'var(--color-danger)' }}>{route.error ?? 'Route not found'}</p></Page>;
 
-  // Fix #1: show a proper error when the hunt session could not be started.
+  const { data: routeData } = route;
+
+  // ── Lobby: let the player start when ready ──────────────────────────────
+  if (hunt.notStarted) {
+    return (
+      <Page onBack title="Ready?">
+        <div className="stack">
+          {routeData.coverPhotoUrl && (
+            <img
+              src={routeData.coverPhotoUrl}
+              alt=""
+              style={{ width: '100%', borderRadius: 'var(--radius-lg)', objectFit: 'cover', maxHeight: 220 }}
+            />
+          )}
+          <Card>
+            <div className="stack center">
+              <div style={{ fontSize: '3rem' }}>🗺️</div>
+              <h2>{routeData.title}</h2>
+              {routeData.description && <p className="muted">{routeData.description}</p>}
+              <p className="muted">{routeData.items.length} item{routeData.items.length !== 1 ? 's' : ''} to find</p>
+              {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
+              <Button size="lg" block variant="happy" onClick={hunt.start} disabled={hunt.loading}>
+                {hunt.loading ? 'Starting…' : '▶ Start Hunt'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </Page>
+    );
+  }
+
   if (!hunt.session) {
     return (
       <Page onBack title="Play">
@@ -67,11 +97,12 @@ export function HuntPlayer() {
     );
   }
 
-  const items = route.data.items;
+  const items = routeData.items;
   const session = hunt.session;
+  const skippedSteps = session.steps.filter((s) => s.status === 'skipped');
   const complete = isHuntComplete(session.steps);
 
-  // Whole hunt finished → fireworks + summary card.
+  // ── Hunt finished ───────────────────────────────────────────────────────
   if (complete && !celebrateId) {
     return (
       <Page title="Done!">
@@ -84,11 +115,10 @@ export function HuntPlayer() {
     );
   }
 
-  // Celebrating a freshly found item.
+  // ── Celebration screen after finding an item ───────────────────────────
   if (celebrateId) {
     const item = items.find((i) => i.id === celebrateId);
     const step = session.steps.find((s) => s.itemId === celebrateId);
-    const last = complete;
     return (
       <Page title="Great find!">
         <Card>
@@ -97,7 +127,25 @@ export function HuntPlayer() {
             <h2>You found {item?.name}!</h2>
             {step && <ScorePill score={scoreStep(step)} max={100} />}
             <Button size="lg" block variant="happy" onClick={() => setCelebrateId(null)}>
-              {last ? '🏁 See your results' : '➡️ Next clue'}
+              {complete ? '🏁 See your results' : '➡️ Next clue'}
+            </Button>
+          </div>
+        </Card>
+      </Page>
+    );
+  }
+
+  // ── Pause screen ────────────────────────────────────────────────────────
+  if (hunt.paused) {
+    return (
+      <Page title="Paused ⏸">
+        <Card>
+          <div className="stack center">
+            <div style={{ fontSize: '3rem' }}>⏸️</div>
+            <h2>Hunt paused</h2>
+            <p className="muted">Take a break — your progress is saved.</p>
+            <Button size="lg" block variant="happy" onClick={hunt.resume}>
+              ▶ Resume Hunt
             </Button>
           </div>
         </Card>
@@ -115,13 +163,24 @@ export function HuntPlayer() {
     <Page
       onBack
       title={`Clue ${stepNumber} / ${items.length}`}
-      right={<Timer startedAt={session.startedAt} />}
+      right={
+        <div className="row" style={{ gap: 8 }}>
+          <Timer startedAt={session.startedAt} paused={hunt.paused} />
+          <button
+            className="btn btn--ghost"
+            style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
+            onClick={hunt.pause}
+            aria-label="Pause hunt"
+          >
+            ⏸
+          </button>
+        </div>
+      }
     >
       <div className="stack">
         <Card>
           <div className="stack">
             <span className="field-label">Your clue</span>
-            {/* Fix #5: show all hints (primary + extra) */}
             <HintView hint={item.hint} extraHints={item.extraHints} />
           </div>
         </Card>
@@ -137,7 +196,7 @@ export function HuntPlayer() {
           {hunt.busy ? '🔎 Checking…' : '📸 I found it — take a photo'}
         </PhotoCapture>
 
-        <div className="row" style={{ justifyContent: 'space-between' }}>
+        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <Button variant="accent" onClick={hunt.useHelp} disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}>
             💡 Help me
           </Button>
@@ -152,6 +211,34 @@ export function HuntPlayer() {
             </Button>
           )}
         </div>
+
+        {/* Skipped items — offer to retry them */}
+        {skippedSteps.length > 0 && (
+          <Card>
+            <div className="stack">
+              <span className="field-label">⏭ Skipped items</span>
+              <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
+                Returning to a skipped item scores fewer points.
+              </p>
+              {skippedSteps.map((s) => {
+                const skippedItem = items.find((i) => i.id === s.itemId);
+                if (!skippedItem) return null;
+                return (
+                  <div key={s.itemId} className="row" style={{ justifyContent: 'space-between' }}>
+                    <span>{skippedItem.name}</span>
+                    <Button
+                      variant="ghost"
+                      disabled={hunt.busy}
+                      onClick={() => hunt.returnToSkipped(s.itemId)}
+                    >
+                      ↩ Try again
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
       </div>
     </Page>
   );
@@ -202,3 +289,4 @@ function FinishedCard({ total, onSeeResults }: { total: number; onSeeResults: ()
     </Card>
   );
 }
+
