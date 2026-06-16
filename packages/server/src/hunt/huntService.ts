@@ -31,7 +31,7 @@ const MIME_BY_EXT: Record<string, string> = {
 
 const now = (): string => new Date().toISOString();
 
-/** Build a fresh session: first item active, the rest locked (sequential play). */
+/** Build a fresh solo session: first item active, the rest locked (sequential play). */
 export function buildSession(route: Route, hunterId: string): HuntSession {
   const steps: StepProgress[] = route.items.map((item, index) => {
     const step = createStep(item.id, now());
@@ -41,25 +41,52 @@ export function buildSession(route: Route, hunterId: string): HuntSession {
     id: nanoid(12),
     routeId: route.id,
     hunterId,
+    teamSize: 1,
     steps,
     startedAt: now(),
     totalScore: 0,
   };
 }
 
-/** Unlock the next locked step once nothing is active. Mutates in place. */
-function advance(steps: StepProgress[]): void {
-  if (steps.some((s) => s.status === 'active')) return;
-  const next = steps.findIndex((s) => s.status === 'locked');
-  if (next !== -1) {
+/** Build a team session: first N items active in parallel (N = team member count). */
+export function buildTeamSession(
+  route: Route,
+  hunterId: string,
+  teamId: string,
+  teamSize: number,
+): HuntSession {
+  const n = Math.max(1, Math.min(teamSize, route.items.length));
+  const steps: StepProgress[] = route.items.map((item, index) => {
+    const step = createStep(item.id, now());
+    return index < n ? step : { ...step, status: 'locked', startedAt: undefined };
+  });
+  return {
+    id: nanoid(12),
+    routeId: route.id,
+    hunterId,
+    teamId,
+    teamSize,
+    steps,
+    startedAt: now(),
+    totalScore: 0,
+  };
+}
+
+/** Unlock locked steps until `teamSize` items are active simultaneously. Mutates in place. */
+function advance(steps: StepProgress[], teamSize: number): void {
+  let active = steps.filter((s) => s.status === 'active').length;
+  while (active < teamSize) {
+    const next = steps.findIndex((s) => s.status === 'locked');
+    if (next === -1) break;
     steps[next] = { ...steps[next]!, status: 'active', startedAt: now() };
+    active++;
   }
 }
 
 /** Replace a step by item id and keep the running total fresh. */
 function withStep(session: HuntSession, itemId: string, next: StepProgress): HuntSession {
   const steps = session.steps.map((s) => (s.itemId === itemId ? next : s));
-  advance(steps);
+  advance(steps, session.teamSize);
   const updated: HuntSession = { ...session, steps };
   updated.totalScore = scoreSession(updated);
   if (steps.every((s) => s.status === 'found' || s.status === 'skipped')) {
@@ -135,12 +162,13 @@ export async function submitPhoto(
   ctx: AppContext,
   found: StepLookup,
   candidate: InlineImage,
+  submittedBy?: string,
 ): Promise<HuntSession> {
   const references = await loadReferences(ctx, found.item);
   const verdict = await ctx.imageMatch.compare(candidate, references, found.item.name);
   // The candidate is stored so the attempt has a viewable photo.
   const stored = await ctx.photos.save(Buffer.from(candidate.base64, 'base64'), candidate.mimeType);
-  const nextStep = recordAttempt(found.step, verdict, stored.url, now());
+  const nextStep = recordAttempt(found.step, verdict, stored.url, now(), submittedBy);
   await maybeFlagDifficult(ctx, found.route, nextStep);
   const session = withStep(found.session, found.item.id, nextStep);
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;

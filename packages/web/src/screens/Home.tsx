@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
+import { Banner, Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
 
 /** The hub: greet the player, list playable routes, and start building. */
 export function Home() {
@@ -14,6 +14,8 @@ export function Home() {
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [teamingRouteId, setTeamingRouteId] = useState<string | null>(null);
+  const [teamError, setTeamError] = useState<string>();
 
   async function createRoute() {
     setCreating(true);
@@ -22,6 +24,19 @@ export function Home() {
       navigate(`/build/${route.id}`);
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function startTeam(routeId: string) {
+    setTeamingRouteId(routeId);
+    setTeamError(undefined);
+    try {
+      const team = await api.createTeam(routeId, user?.name ?? undefined);
+      navigate(`/team/${team.id}`);
+    } catch (e) {
+      setTeamError(e instanceof Error ? e.message : 'Could not create team');
+    } finally {
+      setTeamingRouteId(null);
     }
   }
 
@@ -54,6 +69,7 @@ export function Home() {
 
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
+        {teamError && <Banner tone="no">{teamError}</Banner>}
 
         {mine.length > 0 && (
           <section className="stack">
@@ -64,7 +80,9 @@ export function Home() {
                 route={r}
                 mine
                 copied={copiedId === r.id}
+                teaming={teamingRouteId === r.id}
                 onPlay={() => navigate(`/play/${r.id}`)}
+                onTeamPlay={r.status === 'ready' ? () => startTeam(r.id) : undefined}
                 onEdit={() => navigate(`/build/${r.id}`)}
                 onShare={r.status === 'ready' ? () => shareRoute(r.id) : undefined}
               />
@@ -84,7 +102,9 @@ export function Home() {
               key={r.id}
               route={r}
               copied={copiedId === r.id}
+              teaming={teamingRouteId === r.id}
               onPlay={() => navigate(`/play/${r.id}`)}
+              onTeamPlay={() => startTeam(r.id)}
               onShare={() => shareRoute(r.id)}
             />
           ))}
@@ -103,17 +123,21 @@ export function Home() {
 function RouteCard({
   route,
   onPlay,
+  onTeamPlay,
   onEdit,
   onShare,
   mine,
   copied,
+  teaming,
 }: {
   route: RouteSummary;
   onPlay: () => void;
+  onTeamPlay?: () => void;
   onEdit?: () => void;
   onShare?: () => void;
   mine?: boolean;
   copied?: boolean;
+  teaming?: boolean;
 }) {
   const hasCover = Boolean(route.coverPhotoUrl);
 
@@ -157,11 +181,16 @@ function RouteCard({
       </div>
 
       {/* Actions */}
-      {(onEdit ?? onShare) && (
+      {(onEdit ?? onShare ?? onTeamPlay) && (
         <div
           className="row"
-          style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}
+          style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)', flexWrap: 'wrap', gap: 4 }}
         >
+          {onTeamPlay && (
+            <Button variant="accent" disabled={teaming} onClick={(e) => { e.stopPropagation(); onTeamPlay(); }}>
+              {teaming ? '⏳' : '👥 Play as team'}
+            </Button>
+          )}
           {onEdit && (
             <Button variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
               ✏️ Edit

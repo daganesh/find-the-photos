@@ -56,7 +56,7 @@ export function huntRouter(ctx: AppContext): Router {
     '/:sessionId/steps/:itemId/photo',
     requireAuth,
     upload.single('file'),
-    async (req, res, next) => {
+    async (req: AuthedRequest, res, next) => {
       try {
         if (!req.file) return void res.status(400).json({ error: 'No photo uploaded' });
         const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
@@ -65,7 +65,7 @@ export function huntRouter(ctx: AppContext): Router {
         const session = await submitPhoto(ctx, found, {
           base64: req.file.buffer.toString('base64'),
           mimeType: req.file.mimetype,
-        });
+        }, req.user!.id);
         const step = lastStep(session.steps, req.params.itemId);
         const body: SubmitPhotoResponse = {
           verdict: step.photoAttempts[step.photoAttempts.length - 1]!.verdict,

@@ -60,7 +60,7 @@ export function Results() {
       const playUrl = `${window.location.origin}/play/${routeId}`;
       await shareScore(route.data!.title, session!, nameMap, playUrl);
     } catch {
-      // Share cancelled or not supported — fail silently.
+      // Share cancelled or not supported — silently ignore.
     } finally {
       setSharing(false);
     }
