@@ -70,6 +70,11 @@
 .center { text-align: center; }
 .field-label { display: block; font-weight: 700; margin-bottom: var(--space-1); }
 
+/* Typography scale — headings clearly larger than body */
+h1 { font-size: 2rem; font-weight: 900; line-height: 1.15; margin: 0 0 var(--space-2); }
+h2 { font-size: 1.5rem; font-weight: 800; line-height: 1.2; margin: 0 0 var(--space-1); }
+h3 { font-size: 1.15rem; font-weight: 700; line-height: 1.3; margin: 0 0 var(--space-1); }
+
 /* Spinner */
 .spinner {
   width: 28px; height: 28px;

@@ -47,7 +47,8 @@ export function useHunt(routeId: string): HuntController {
     setLoading(true);
     setError(undefined);
     try {
-      const { session: s } = await api.startHunt(routeId);
+      const location = await getCurrentLocation().catch(() => undefined);
+      const { session: s } = await api.startHunt(routeId, location);
       if (!cancelRef.current) {
         setSession(s);
         setNotStarted(false);

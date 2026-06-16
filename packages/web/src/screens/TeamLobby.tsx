@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { Team } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
+import { getCurrentLocation } from '../services/geolocation.js';
 import { Banner, Button, Card, Page, Spinner } from '../ui/index.js';
 
 const POLL_MS = 2500;
@@ -64,9 +65,10 @@ export function TeamLobby() {
     setStarting(true);
     setError(undefined);
     try {
-      const { team: t, session: s } = await api.startTeamHunt(teamId);
+      const location = await getCurrentLocation().catch(() => undefined);
+      const { team: t } = await api.startTeamHunt(teamId, location);
       setTeam(t);
-      if (t.status === 'playing' && s.id) {
+      if (t.status === 'playing') {
         navigate(`/team/${teamId}/play`, { replace: true });
       }
     } catch (e) {

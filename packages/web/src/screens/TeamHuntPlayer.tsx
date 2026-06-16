@@ -67,6 +67,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const [celebrateItemId, setCelebrateItemId] = useState<string | null>(null);
   const prevFoundCount = useRef(0);
+  const [countdown, setCountdown] = useState(0);
+  const [disputeConfirm, setDisputeConfirm] = useState(false);
 
   // Celebrate when the current user's photo matches.
   useEffect(() => {
@@ -84,6 +86,26 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
     prevFoundCount.current = found;
   }, [hunt.session]);
 
+  useEffect(() => {
+    if (!hunt.team?.startedAt) return;
+    function calc() {
+      const elapsed = Date.now() - new Date(hunt.team!.startedAt!).getTime();
+      return Math.max(0, Math.ceil((5000 - elapsed) / 1000));
+    }
+    const initial = calc();
+    if (initial <= 0) return;
+    setCountdown(initial);
+    const tick = setInterval(() => {
+      const rem = calc();
+      setCountdown(rem);
+      if (rem <= 0) clearInterval(tick);
+    }, 200);
+    return () => clearInterval(tick);
+  }, [hunt.team?.startedAt]);
+
+  // Reset dispute confirm when verdict or focused item changes.
+  useEffect(() => { setDisputeConfirm(false); }, [hunt.lastVerdict, focusedItemId]);
+
   if (!hunt.session || !route.data) {
     return <Page title="Hunt"><Spinner label="Loading…" /></Page>;
   }
@@ -92,6 +114,24 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const items = route.data.items;
   const complete = isHuntComplete(session.steps);
   const paused = team?.status === 'paused';
+
+  if (countdown > 0) {
+    return (
+      <Page title="Get ready!">
+        <div className="stack center" style={{ paddingTop: 60 }}>
+          <div style={{
+            fontSize: '7rem', fontWeight: 900,
+            color: 'var(--color-happy)',
+            animation: 'pop-in 0.3s ease',
+            lineHeight: 1,
+          }}>
+            {countdown}
+          </div>
+          <p className="muted" style={{ fontSize: '1.2rem' }}>Hunt starts in…</p>
+        </div>
+      </Page>
+    );
+  }
 
   // Navigate to results when done (after user dismisses celebration).
   if (complete && !celebrateItemId) {
@@ -186,6 +226,29 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           )}
           {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
 
+          {disputeConfirm && (
+            <Card>
+              <div className="stack">
+                <strong>Confirm: I found this!</strong>
+                {item.description
+                  ? <p style={{ margin: 0 }}>{item.description}</p>
+                  : <p className="muted" style={{ margin: 0 }}>No description available.</p>
+                }
+                <div className="row">
+                  <Button variant="happy" disabled={hunt.busy} onClick={async () => {
+                    setDisputeConfirm(false);
+                    await hunt.dispute(focusedItemId);
+                  }}>
+                    ✅ Yes, I found it
+                  </Button>
+                  <Button variant="ghost" onClick={() => setDisputeConfirm(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
           <PhotoCapture onCapture={(f) => hunt.submitPhoto(focusedItemId, f)} variant="happy" disabled={hunt.busy}>
             {hunt.busy ? '🔎 Checking…' : '📸 I found it — take a photo'}
           </PhotoCapture>
@@ -194,7 +257,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             <Button variant="accent" disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}
               onClick={() => hunt.useHelp(focusedItemId)}>💡 Help me</Button>
             {verdict && !verdict.match && (
-              <Button variant="ghost" disabled={hunt.busy} onClick={() => hunt.dispute(focusedItemId)}>
+              <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
                 🙋 I really found it!
               </Button>
             )}
@@ -264,16 +327,11 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
               <Card key={step.itemId}>
                 <div className="stack" style={{ gap: 8 }}>
                   <div className="row" style={{ justifyContent: 'space-between' }}>
-                    <strong>{stepNum}. {item.name}</strong>
+                    <strong>Clue {stepNum}</strong>
                     {step.cluesUsed > 0 && (
                       <span className="muted" style={{ fontSize: '0.8rem' }}>{step.cluesUsed} clue{step.cluesUsed > 1 ? 's' : ''} used</span>
                     )}
                   </div>
-                  {item.hint.kind === 'text' && item.hint.text && (
-                    <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-                      {item.hint.text}
-                    </p>
-                  )}
                   <Button block variant="happy" onClick={() => setFocusedItemId(step.itemId)}>
                     🔍 Hunt this one →
                   </Button>
