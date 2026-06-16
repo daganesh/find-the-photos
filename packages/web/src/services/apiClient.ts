@@ -9,6 +9,8 @@ import type {
   RouteSummary,
   SessionResponse,
   SubmitPhotoResponse,
+  Team,
+  TeamResult,
   UpdateRouteRequest,
   UploadedPhotoResponse,
 } from '@ftp/shared';
@@ -127,6 +129,26 @@ export class ApiClient {
   }
   returnToSkipped(sessionId: string, itemId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}/steps/${itemId}/return`, { method: 'POST' });
+  }
+
+  // --- Teams ---
+  createTeam(routeId: string, name?: string): Promise<Team> {
+    return this.request('/api/teams', { method: 'POST', body: JSON.stringify({ routeId, name }) });
+  }
+  getTeam(teamId: string): Promise<Team> {
+    return this.request(`/api/teams/${teamId}`);
+  }
+  joinTeamByCode(code: string): Promise<Team> {
+    return this.request(`/api/teams/join/${code}`, { method: 'POST' });
+  }
+  startTeamHunt(teamId: string): Promise<{ team: Team; session: HuntSession }> {
+    return this.request(`/api/teams/${teamId}/start`, { method: 'POST' });
+  }
+  pauseOrResumeTeam(teamId: string): Promise<Team> {
+    return this.request(`/api/teams/${teamId}/pause`, { method: 'POST' });
+  }
+  getTeamLeaderboard(routeId: string): Promise<TeamResult[]> {
+    return this.request(`/api/teams/route/${routeId}/leaderboard`);
   }
 }
 

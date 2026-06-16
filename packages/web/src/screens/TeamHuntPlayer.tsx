@@ -1,0 +1,350 @@
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import type { HuntSession, Item, StepProgress } from '@ftp/shared';
+import { HelpLevel, canSkip, isHuntComplete, scoreStep } from '@ftp/shared';
+import { useAuth } from '../auth/AuthContext.js';
+import { api } from '../services/apiClient.js';
+import { playSuccessSound } from '../services/sounds.js';
+import { useAsync } from '../hooks/useAsync.js';
+import { useTeamHunt } from '../hooks/useTeamHunt.js';
+import {
+  Banner,
+  Button,
+  Card,
+  Fireworks,
+  HintView,
+  MapView,
+  Page,
+  PhotoCapture,
+  ScorePill,
+  Spinner,
+  Timer,
+} from '../ui/index.js';
+
+/**
+ * Team hunt play screen.
+ *
+ * URL: /team/:teamId/play
+ *
+ * Shows all N active items so any team member can pick one to hunt.
+ * Polls the shared session every 3 s to reflect other players' progress.
+ */
+export function TeamHuntPlayer() {
+  const { teamId = '' } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Load the team first to get the sessionId.
+  const [sessionId, setSessionId] = useState<string>();
+  const [teamLoadError, setTeamLoadError] = useState<string>();
+
+  useEffect(() => {
+    api.getTeam(teamId)
+      .then((t) => {
+        if (t.sessionId) setSessionId(t.sessionId);
+        else navigate(`/team/${teamId}`, { replace: true });
+      })
+      .catch(() => setTeamLoadError('Could not load team. Please try again.'));
+  }, [teamId, navigate]);
+
+  if (teamLoadError) {
+    return <Page onBack title="Hunt"><Banner tone="no">{teamLoadError}</Banner></Page>;
+  }
+  if (!sessionId) {
+    return <Page title="Loading…"><Spinner label="Loading team hunt…" /></Page>;
+  }
+
+  return <TeamHuntInner teamId={teamId} sessionId={sessionId} />;
+}
+
+/** Inner component rendered once sessionId is known. */
+function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: string }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const hunt = useTeamHunt(teamId, sessionId);
+  const route = useAsync(() => hunt.session ? api.getRoute(hunt.session.routeId) : Promise.resolve(undefined), [hunt.session?.routeId]);
+
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
+  const [celebrateItemId, setCelebrateItemId] = useState<string | null>(null);
+  const prevFoundCount = useRef(0);
+
+  // Celebrate when the current user's photo matches.
+  useEffect(() => {
+    if (hunt.lastVerdict?.verdict.match) {
+      setCelebrateItemId(hunt.lastVerdict.itemId);
+      setFocusedItemId(null);
+      playSuccessSound();
+    }
+  }, [hunt.lastVerdict]);
+
+  // Track new items found by teammates (silent progress update).
+  useEffect(() => {
+    if (!hunt.session) return;
+    const found = hunt.session.steps.filter((s) => s.status === 'found').length;
+    prevFoundCount.current = found;
+  }, [hunt.session]);
+
+  if (!hunt.session || !route.data) {
+    return <Page title="Hunt"><Spinner label="Loading…" /></Page>;
+  }
+
+  const { session, team } = hunt;
+  const items = route.data.items;
+  const complete = isHuntComplete(session.steps);
+  const paused = team?.status === 'paused';
+
+  // Navigate to results when done (after user dismisses celebration).
+  if (complete && !celebrateItemId) {
+    return (
+      <Page title="Done!">
+        <Fireworks />
+        <Card>
+          <div className="stack center pop-in">
+            <div style={{ fontSize: '3.5rem' }}>🏆</div>
+            <h2>Hunt complete!</h2>
+            <ScorePill score={session.totalScore} />
+            <Button size="lg" block variant="happy"
+              onClick={() => navigate(`/team/${teamId}/results`, { state: { session, teamId } })}>
+              See team results
+            </Button>
+          </div>
+        </Card>
+      </Page>
+    );
+  }
+
+  if (celebrateItemId) {
+    const item = items.find((i) => i.id === celebrateItemId);
+    const step = session.steps.find((s) => s.itemId === celebrateItemId);
+    return (
+      <Page title="Great find!">
+        <Card>
+          <div className="stack center pop-in">
+            <div style={{ fontSize: '3.5rem' }}>🎉</div>
+            <h2>You found {item?.name}!</h2>
+            {step && <ScorePill score={scoreStep(step)} max={100} />}
+            <Button size="lg" block variant="happy" onClick={() => setCelebrateItemId(null)}>
+              {complete ? '🏁 See team results' : '➡️ Next item'}
+            </Button>
+          </div>
+        </Card>
+      </Page>
+    );
+  }
+
+  if (paused) {
+    return (
+      <Page title="Paused ⏸">
+        <Card>
+          <div className="stack center">
+            <div style={{ fontSize: '3rem' }}>⏸️</div>
+            <h2>Hunt paused</h2>
+            <p className="muted">Anyone can resume.</p>
+            <Button size="lg" block variant="happy" onClick={hunt.pauseOrResume}>▶ Resume</Button>
+          </div>
+        </Card>
+      </Page>
+    );
+  }
+
+  // ── Single-item hunt view ─────────────────────────────────────────────────
+  if (focusedItemId) {
+    const step = session.steps.find((s) => s.itemId === focusedItemId);
+    const item = items.find((i) => i.id === focusedItemId);
+
+    if (!step || !item || step.status !== 'active') {
+      setFocusedItemId(null);
+      return null;
+    }
+
+    const verdict = hunt.lastVerdict?.itemId === focusedItemId ? hunt.lastVerdict.verdict : undefined;
+
+    return (
+      <Page
+        onBack={() => setFocusedItemId(null)}
+        title={item.name}
+        right={
+          <div className="row" style={{ gap: 8 }}>
+            {team?.startedAt && <Timer startedAt={team.startedAt} paused={paused} />}
+            <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
+              onClick={hunt.pauseOrResume} aria-label="Pause hunt">⏸</button>
+          </div>
+        }
+      >
+        <div className="stack">
+          <Card>
+            <div className="stack">
+              <span className="field-label">Your clue</span>
+              <HintView hint={item.hint} extraHints={item.extraHints} />
+            </div>
+          </Card>
+
+          <HelpPanel item={item} step={step} />
+
+          {verdict && !verdict.match && (
+            <Banner tone="no">🤔 {verdict.reason} Try another angle, or get help!</Banner>
+          )}
+          {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
+
+          <PhotoCapture onCapture={(f) => hunt.submitPhoto(focusedItemId, f)} variant="happy" disabled={hunt.busy}>
+            {hunt.busy ? '🔎 Checking…' : '📸 I found it — take a photo'}
+          </PhotoCapture>
+
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <Button variant="accent" disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}
+              onClick={() => hunt.useHelp(focusedItemId)}>💡 Help me</Button>
+            {verdict && !verdict.match && (
+              <Button variant="ghost" disabled={hunt.busy} onClick={() => hunt.dispute(focusedItemId)}>
+                🙋 I really found it!
+              </Button>
+            )}
+            {canSkip(step) && (
+              <Button variant="ghost" disabled={hunt.busy} onClick={() => hunt.skip(focusedItemId)}>
+                ⏭ Skip
+              </Button>
+            )}
+          </div>
+        </div>
+      </Page>
+    );
+  }
+
+  // ── Active items grid ─────────────────────────────────────────────────────
+  const activeSteps = session.steps.filter((s) => s.status === 'active');
+  const skippedSteps = session.steps.filter((s) => s.status === 'skipped');
+  const foundSteps = session.steps.filter((s) => s.status === 'found');
+  const totalItems = session.steps.length;
+
+  return (
+    <Page
+      title={team?.name ?? 'Team Hunt'}
+      right={
+        <div className="row" style={{ gap: 8 }}>
+          {team?.startedAt && <Timer startedAt={team.startedAt} paused={paused} />}
+          <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
+            onClick={hunt.pauseOrResume} aria-label="Pause hunt">⏸</button>
+        </div>
+      }
+    >
+      <div className="stack">
+        {/* Team progress summary */}
+        <Card>
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <span>🎯 {foundSteps.length} / {totalItems} found</span>
+            <ScorePill score={session.totalScore} />
+          </div>
+          {/* Member scores */}
+          {team && (
+            <div className="row" style={{ marginTop: 10, gap: 12, flexWrap: 'wrap' }}>
+              {team.members.map((m) => {
+                const myFound = foundSteps.filter((s) => s.foundBy === m.userId).length;
+                return (
+                  <div key={m.userId} className="row" style={{ gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: '1.1rem' }}>{m.avatarEmoji ?? '🧑'}</span>
+                    <span className="muted" style={{ fontSize: '0.85rem' }}>{m.name.split(' ')[0]}: {myFound}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
+        {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
+
+        {/* Active items */}
+        <h3 style={{ margin: 0 }}>Active clues</h3>
+        {activeSteps.length === 0 ? (
+          <Card><p className="center muted">No active clues right now — check back soon!</p></Card>
+        ) : (
+          activeSteps.map((step) => {
+            const item = items.find((i) => i.id === step.itemId);
+            if (!item) return null;
+            const stepNum = items.findIndex((i) => i.id === step.itemId) + 1;
+            return (
+              <Card key={step.itemId}>
+                <div className="stack" style={{ gap: 8 }}>
+                  <div className="row" style={{ justifyContent: 'space-between' }}>
+                    <strong>{stepNum}. {item.name}</strong>
+                    {step.cluesUsed > 0 && (
+                      <span className="muted" style={{ fontSize: '0.8rem' }}>{step.cluesUsed} clue{step.cluesUsed > 1 ? 's' : ''} used</span>
+                    )}
+                  </div>
+                  {item.hint.kind === 'text' && item.hint.text && (
+                    <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
+                      {item.hint.text}
+                    </p>
+                  )}
+                  <Button block variant="happy" onClick={() => setFocusedItemId(step.itemId)}>
+                    🔍 Hunt this one →
+                  </Button>
+                </div>
+              </Card>
+            );
+          })
+        )}
+
+        {/* Skipped items */}
+        {skippedSteps.length > 0 && (
+          <>
+            <h3 style={{ margin: 0 }}>⏭ Skipped</h3>
+            {skippedSteps.map((step) => {
+              const item = items.find((i) => i.id === step.itemId);
+              if (!item) return null;
+              return (
+                <div key={step.itemId} className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="muted">{item.name}</span>
+                  <Button variant="ghost" disabled={hunt.busy} onClick={() => hunt.returnToSkipped(step.itemId)}>
+                    ↩ Try again
+                  </Button>
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* Found items */}
+        {foundSteps.length > 0 && (
+          <>
+            <h3 style={{ margin: 0 }}>✅ Found</h3>
+            {foundSteps.map((step) => {
+              const item = items.find((i) => i.id === step.itemId);
+              const finder = team?.members.find((m) => m.userId === step.foundBy);
+              return (
+                <div key={step.itemId} className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{item?.name ?? step.itemId}</span>
+                  <span className="muted" style={{ fontSize: '0.85rem' }}>
+                    {finder ? `${finder.avatarEmoji ?? '🧑'} ${finder.name.split(' ')[0]} · ` : ''}
+                    ⭐ {scoreStep(step)}
+                  </span>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    </Page>
+  );
+}
+
+function HelpPanel({ item, step }: { item: Item; step: StepProgress }) {
+  if (step.helpLevel === HelpLevel.None) return null;
+  return (
+    <Card>
+      <div className="stack">
+        <span className="field-label">💡 Help</span>
+        {step.helpLevel >= HelpLevel.MapDot && item.location && (
+          <MapView target={item.location} showRoute={step.helpLevel >= HelpLevel.RouteLine} />
+        )}
+        {step.helpLevel >= HelpLevel.MapDot && !item.location && (
+          <Banner tone="info">This item has no map location — read the clues!</Banner>
+        )}
+        {step.helpLevel >= HelpLevel.Describe && item.description && (
+          <p style={{ margin: 0 }}>📝 {item.description}</p>
+        )}
+        {step.helpLevel >= HelpLevel.Surroundings && (
+          <p className="muted" style={{ margin: 0 }}>You're very close! Look high and low.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
