@@ -111,3 +111,19 @@ export interface CleanupResult {
   deleted: number;
   freedMb: number;
 }
+
+// --- Dispute ---
+export interface DisputeRequest {
+  description: string;
+}
+
+// --- Moderation ---
+export interface ModerationIssue {
+  field: string;   // e.g. "item[2].name", "route.title"
+  text: string;
+  reason: string;
+}
+export interface ModerationResult {
+  flagged: boolean;
+  issues: ModerationIssue[];
+}

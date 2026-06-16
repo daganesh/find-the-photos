@@ -19,6 +19,10 @@ export interface ImageMatchService {
     references: InlineImage[],
     itemName: string,
   ): Promise<MatchVerdict>;
+  /** Verify that the hunter's description matches the item they were looking for. */
+  verifyDispute(description: string, itemName: string): Promise<MatchVerdict>;
+  /** Score a task-action photo against the task instruction (0..100 score returned as confidence). */
+  scoreTask(candidate: InlineImage, instruction: string): Promise<MatchVerdict>;
 }
 
 const SYSTEM_PROMPT = `You are the friendly judge in a family photo treasure hunt.
@@ -64,6 +68,34 @@ export class GeminiImageMatchService implements ImageMatchService {
 
     return parseVerdict(response.text ?? '');
   }
+
+  async verifyDispute(description: string, itemName: string): Promise<MatchVerdict> {
+    const prompt = `You are verifying a treasure hunt dispute. The player says they found: "${description}". The actual target is: "${itemName}". Do they refer to the same real-world object? Be generous — synonyms, partial descriptions, and different languages count if clearly the same thing. Reply with STRICT JSON: {"match": boolean, "confidence": number (0..1), "reason": "one short sentence"}`;
+
+    const response = await this.ai.models.generateContent({
+      model: config.gemini.model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { responseMimeType: 'application/json' },
+    });
+
+    return parseVerdict(response.text ?? '');
+  }
+
+  async scoreTask(candidate: InlineImage, instruction: string): Promise<MatchVerdict> {
+    const parts = [
+      { text: `${SYSTEM_PROMPT}` },
+      { text: `You are scoring a fun family activity challenge. The player was given this task: "${instruction}". Look at their photo and score how well they performed it from 0 to 100. Be generous and encouraging — effort counts! Reply with STRICT JSON: {"match": boolean (true if score ≥ 50), "confidence": number (0..1, where 1 = perfect performance), "reason": "one short encouraging kid-friendly sentence about what they did"}` },
+      { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
+    ];
+
+    const response = await this.ai.models.generateContent({
+      model: config.gemini.model,
+      contents: [{ role: 'user', parts }],
+      config: { responseMimeType: 'application/json' },
+    });
+
+    return parseVerdict(response.text ?? '');
+  }
 }
 
 /**
@@ -77,6 +109,14 @@ export class StubImageMatchService implements ImageMatchService {
       confidence: 0,
       reason: 'AI matching is off in this environment — tap "I found it!" to confirm.',
     };
+  }
+
+  async verifyDispute(): Promise<MatchVerdict> {
+    return { match: true, confidence: 0.5, reason: 'AI verification is off — accepted on your word!' };
+  }
+
+  async scoreTask(): Promise<MatchVerdict> {
+    return { match: true, confidence: 0.75, reason: 'Looks great! AI scoring is off in this environment.' };
   }
 }
 

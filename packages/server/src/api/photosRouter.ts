@@ -19,6 +19,15 @@ export function photosRouter(ctx: AppContext): Router {
         res.status(400).json({ error: 'No file uploaded' });
         return;
       }
+      if (req.file.mimetype.startsWith('image/')) {
+        const issues = await ctx.moderation.checkImage({
+          base64: req.file.buffer.toString('base64'),
+          mimeType: req.file.mimetype,
+        });
+        if (issues.length > 0) {
+          return void res.status(422).json({ error: 'This image cannot be uploaded: ' + issues[0]!.reason });
+        }
+      }
       const stored = await ctx.photos.save(req.file.buffer, req.file.mimetype);
       const body: UploadedPhotoResponse = stored;
       res.status(201).json(body);
