@@ -23,6 +23,13 @@ export type {
   HuntSession,
 } from './models/hunt.js';
 export type { User } from './models/user.js';
+export type {
+  TeamStatus,
+  TeamMember,
+  Team,
+  MemberScore,
+  TeamResult,
+} from './models/team.js';
 
 // Logic
 export { distanceMeters, proximityTo, PROXIMITY_THRESHOLDS } from './logic/geo.js';
@@ -49,6 +56,7 @@ export {
   isHuntComplete,
 } from './logic/huntMachine.js';
 export { isRoutePlayable, averageRating } from './logic/route.js';
+export { computeTeamResult, findBestBlooper } from './logic/teamScoring.js';
 
 // Contracts
 export type * from './contracts/api.js';

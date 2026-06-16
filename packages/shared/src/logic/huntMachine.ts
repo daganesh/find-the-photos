@@ -34,12 +34,13 @@ export function recordAttempt(
   verdict: MatchVerdict,
   photoUrl: string,
   now: string,
+  submittedBy?: string,
 ): StepProgress {
-  const attempt: PhotoAttempt = { photoUrl, verdict, at: now };
+  const attempt: PhotoAttempt = { photoUrl, verdict, at: now, submittedBy };
   const photoAttempts = [...step.photoAttempts, attempt];
 
   if (verdict.match) {
-    return { ...step, photoAttempts, status: 'found', finishedAt: now };
+    return { ...step, photoAttempts, status: 'found', finishedAt: now, foundBy: submittedBy };
   }
   return { ...step, photoAttempts };
 }

@@ -31,6 +31,8 @@ export interface PhotoAttempt {
   photoUrl: string;
   verdict: MatchVerdict;
   at: string; // ISO timestamp
+  /** In team play: which member submitted this photo. */
+  submittedBy?: string;
 }
 
 /** The hunter's progress on a single item. */
@@ -45,13 +47,20 @@ export interface StepProgress {
   finishedAt?: string;
   /** True when the hunter overrode a "no match" verdict. */
   disputed: boolean;
+  /** In team play: userId of the member who found this item. */
+  foundBy?: string;
 }
 
-/** A single play-through of a route by one hunter. */
+/** A single play-through of a route — solo or shared by a team. */
 export interface HuntSession {
   id: string;
   routeId: string;
+  /** Solo: the player's userId. Team: the owner's userId. */
   hunterId: string;
+  /** Set when this session belongs to a team. */
+  teamId?: string;
+  /** Number of items unlocked in parallel (1 = sequential solo play). */
+  teamSize: number;
   steps: StepProgress[];
   startedAt: string;
   finishedAt?: string;
