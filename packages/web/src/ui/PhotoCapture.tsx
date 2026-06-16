@@ -1,7 +1,41 @@
 import type { CSSProperties, ReactNode } from 'react';
 
+const MAX_DIM = 1024;
+const JPEG_QUALITY = 0.82;
+
+/**
+ * Downscale an image to MAX_DIM on its longest side and re-encode as JPEG.
+ * Images already within the limit pass through unchanged (no re-encode cost).
+ */
+async function resizeImage(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const { naturalWidth: w, naturalHeight: h } = img;
+      if (w <= MAX_DIM && h <= MAX_DIM) {
+        resolve(file);
+        return;
+      }
+      const scale = MAX_DIM / Math.max(w, h);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], 'photo.jpg', { type: 'image/jpeg' }) : file),
+        'image/jpeg',
+        JPEG_QUALITY,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
+    img.src = objectUrl;
+  });
+}
+
 interface PhotoCaptureProps {
-  /** Called with the chosen image file. */
+  /** Called with the chosen (and resized) image file. */
   onCapture: (file: File) => void;
   /** Label for the primary camera button. */
   children: ReactNode;
@@ -13,6 +47,8 @@ interface PhotoCaptureProps {
 /**
  * Two-button photo picker: a primary button that opens the camera directly,
  * and a secondary "Gallery" button that opens the device photo library.
+ * Both resize the chosen image to at most 1024 px on the longest side before
+ * calling onCapture, keeping uploads small for storage and AI costs.
  * On desktop both fall back to the system file picker.
  */
 export function PhotoCapture({ onCapture, children, variant = 'primary', disabled, style }: PhotoCaptureProps) {
@@ -20,8 +56,8 @@ export function PhotoCapture({ onCapture, children, variant = 'primary', disable
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) onCapture(file);
-    e.target.value = ''; // allow re-picking the same file
+    e.target.value = ''; // reset so re-picking the same file fires onChange
+    if (file) resizeImage(file).then(onCapture);
   }
 
   return (
