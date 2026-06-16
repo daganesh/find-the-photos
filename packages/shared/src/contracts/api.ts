@@ -87,3 +87,27 @@ export interface ApiError {
   error: string;
   details?: unknown;
 }
+
+// --- Admin ---
+export interface TableStats {
+  rows: number;
+  sizeMb: number;
+}
+
+export interface StorageStats {
+  mode: 'postgres' | 's3' | 'local';
+  db?: {
+    totalMb: number;
+    tables: Record<string, TableStats>;
+  };
+  photos: {
+    count: number;
+    totalMb: number;
+  };
+  warnings: string[];
+}
+
+export interface CleanupResult {
+  deleted: number;
+  freedMb: number;
+}
