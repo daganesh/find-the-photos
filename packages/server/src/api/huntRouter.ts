@@ -28,13 +28,13 @@ export function huntRouter(ctx: AppContext): Router {
   // Begin playing a route.
   router.post('/start', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const { routeId } = req.body as { routeId?: string };
+      const { routeId, location } = req.body as { routeId?: string; location?: import('@ftp/shared').GeoPoint };
       const route = routeId ? await ctx.routes.get(routeId) : undefined;
       if (!route) return void res.status(404).json({ error: 'Route not found' });
       if (route.status !== 'ready') {
         return void res.status(400).json({ error: 'This route is not ready to play' });
       }
-      const session = await ctx.hunts.create(buildSession(route, req.user!.id));
+      const session = await ctx.hunts.create(buildSession(route, req.user!.id, location));
       res.status(201).json({ session });
     } catch (err) {
       next(err);

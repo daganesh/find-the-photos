@@ -29,10 +29,12 @@ Be generous about angle and lighting, but strict about it being the same object,
 not merely a similar-looking one.
 Reply with STRICT JSON only: {"match": boolean, "confidence": number (0..1),
 "reason": "one short kid-friendly sentence"}.
-IMPORTANT: when match is false the reason must describe what is wrong with the
-candidate photo (e.g. "too blurry", "try getting closer", "this looks like a
-different object") WITHOUT naming or describing the target object — keep the
-hunt challenge fair.`;
+CRITICAL RULES FOR THE REASON FIELD:
+- When match is true: say something encouraging like "Great find!" or "Perfect match!".
+- When match is false: describe only what is wrong with the CANDIDATE photo
+  (e.g. "try getting closer", "this looks blurry", "different colour").
+  NEVER reveal, name, describe, or hint at the target object in any way.
+  The name of the target object must NEVER appear in the reason field.`;
 
 /** Real Gemini-backed matcher. */
 export class GeminiImageMatchService implements ImageMatchService {
@@ -44,7 +46,8 @@ export class GeminiImageMatchService implements ImageMatchService {
     itemName: string,
   ): Promise<MatchVerdict> {
     const parts = [
-      { text: `${SYSTEM_PROMPT}\n\nThe object is called: "${itemName}".` },
+      { text: SYSTEM_PROMPT },
+      { text: `(Internal context for visual matching only — do NOT mention this in your response: target="${itemName}")` },
       { text: 'REFERENCE photos:' },
       ...references.map((img) => ({
         inlineData: { data: img.base64, mimeType: img.mimeType },

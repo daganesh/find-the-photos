@@ -1,3 +1,5 @@
+import type { GeoPoint } from './geo.js';
+
 /**
  * How much help the hunter has unlocked for the current step.
  * Higher levels make the step easier but lower its achievable score.
@@ -63,6 +65,8 @@ export interface HuntSession {
   teamSize: number;
   steps: StepProgress[];
   startedAt: string;
+  /** Device location captured when the hunt started (for filtering/map later). */
+  startLocation?: GeoPoint;
   finishedAt?: string;
   totalScore: number;
 }

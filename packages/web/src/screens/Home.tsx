@@ -31,7 +31,8 @@ export function Home() {
     setTeamingRouteId(routeId);
     setTeamError(undefined);
     try {
-      const team = await api.createTeam(routeId, user?.name ?? undefined);
+      const avatarEmoji = user?.id ? (localStorage.getItem(`ftp.avatar.${user.id}`) ?? undefined) : undefined;
+      const team = await api.createTeam(routeId, user?.name ?? undefined, avatarEmoji);
       navigate(`/team/${team.id}`);
     } catch (e) {
       setTeamError(e instanceof Error ? e.message : 'Could not create team');

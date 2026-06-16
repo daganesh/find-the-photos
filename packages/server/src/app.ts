@@ -9,6 +9,7 @@ import { routesRouter } from './api/routesRouter.js';
 import { photosRouter } from './api/photosRouter.js';
 import { huntRouter } from './api/huntRouter.js';
 import { teamsRouter } from './api/teamsRouter.js';
+import { adminRouter } from './api/adminRouter.js';
 
 /**
  * Build the Express app. Takes an optional context so tests can inject fakes.
@@ -28,8 +29,21 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
     next();
   });
 
-  // Uploaded photos and audio clips are served statically.
-  app.use('/uploads', express.static(config.paths.uploadsDir));
+  // Serve uploaded media — dynamically from PostgreSQL when using DB storage,
+  // or statically from disk for local dev / S3 (S3 URLs are absolute, no route needed).
+  if (ctx.photos.needsDynamicServing) {
+    app.get('/uploads/:key', async (req, res, next) => {
+      try {
+        const photo = await ctx.photos.getForServing(req.params.key);
+        if (!photo) return void res.status(404).json({ error: 'Photo not found' });
+        res.setHeader('Content-Type', photo.mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.send(photo.data);
+      } catch (err) { next(err); }
+    });
+  } else {
+    app.use('/uploads', express.static(config.paths.uploadsDir));
+  }
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
@@ -38,6 +52,7 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
   app.use('/api/photos', photosRouter(ctx));
   app.use('/api/hunt', huntRouter(ctx));
   app.use('/api/teams', teamsRouter(ctx));
+  app.use('/api/admin', adminRouter(ctx));
 
   // In production, serve the pre-built React app and handle client-side routing.
   if (config.production && fs.existsSync(config.paths.webDist)) {

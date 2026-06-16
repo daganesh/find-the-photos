@@ -104,16 +104,6 @@ export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
           </div>
         </div>
 
-        <div>
-          <label className="field-label" htmlFor="item-name">Name</label>
-          <input
-            id="item-name"
-            value={item.name}
-            placeholder="e.g. The red mailbox"
-            onChange={(e) => update({ name: e.target.value })}
-          />
-        </div>
-
         {/* Primary clue */}
         <HintEditor
           label="Clue"
@@ -139,6 +129,16 @@ export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
         <Button variant="ghost" onClick={addExtraHint} disabled={busy}>
           ➕ Add another clue
         </Button>
+
+        <div>
+          <label className="field-label" htmlFor="item-name">Answer</label>
+          <input
+            id="item-name"
+            value={item.name}
+            placeholder="e.g. The red mailbox"
+            onChange={(e) => update({ name: e.target.value })}
+          />
+        </div>
 
         <div>
           <label className="field-label" htmlFor="item-desc">Description (extra help)</label>
@@ -171,7 +171,7 @@ export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
             Save item
           </Button>
         </div>
-        {!canSave && <p className="muted center">Add a name and at least one photo.</p>}
+        {!canSave && <p className="muted center">Add an answer and at least one photo.</p>}
       </div>
     </Card>
   );

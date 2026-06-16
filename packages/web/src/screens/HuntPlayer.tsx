@@ -31,6 +31,9 @@ export function HuntPlayer() {
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [hunterLoc, setHunterLoc] = useState<GeoPoint | undefined>();
   const prevFound = useRef(0);
+  const [countdown, setCountdown] = useState(0);
+  const countdownStartedRef = useRef(false);
+  const [disputeConfirm, setDisputeConfirm] = useState(false);
 
   // Celebrate + play sound whenever a new item gets solved.
   useEffect(() => {
@@ -44,6 +47,21 @@ export function HuntPlayer() {
     prevFound.current = found.length;
   }, [hunt.session]);
 
+  // Start 5-second countdown when session first appears.
+  useEffect(() => {
+    if (hunt.session && !countdownStartedRef.current) {
+      countdownStartedRef.current = true;
+      setCountdown(5);
+      const tick = setInterval(() => {
+        setCountdown((c) => {
+          if (c <= 1) { clearInterval(tick); return 0; }
+          return c - 1;
+        });
+      }, 1000);
+      return () => clearInterval(tick);
+    }
+  }, [hunt.session]);
+
   // Fetch the device location once we reach a map-help level.
   const helpLevel = hunt.activeStep?.helpLevel ?? HelpLevel.None;
   useEffect(() => {
@@ -51,6 +69,9 @@ export function HuntPlayer() {
       getCurrentLocation().then(setHunterLoc);
     }
   }, [helpLevel, hunterLoc]);
+
+  // Reset dispute confirm when verdict changes.
+  useEffect(() => { setDisputeConfirm(false); }, [hunt.lastVerdict]);
 
   if (route.loading) return <Page onBack title="Play"><Spinner label="Loading route…" /></Page>;
   if (route.error || !route.data) return <Page onBack title="Play"><p style={{ color: 'var(--color-danger)' }}>{route.error ?? 'Route not found'}</p></Page>;
@@ -81,6 +102,24 @@ export function HuntPlayer() {
               </Button>
             </div>
           </Card>
+        </div>
+      </Page>
+    );
+  }
+
+  if (hunt.session && countdown > 0) {
+    return (
+      <Page title="Get ready!">
+        <div className="stack center" style={{ paddingTop: 60 }}>
+          <div style={{
+            fontSize: '7rem', fontWeight: 900,
+            color: 'var(--color-happy)',
+            animation: 'pop-in 0.3s ease',
+            lineHeight: 1,
+          }}>
+            {countdown}
+          </div>
+          <p className="muted" style={{ fontSize: '1.2rem' }}>Hunt starts in…</p>
         </div>
       </Page>
     );
@@ -192,6 +231,29 @@ export function HuntPlayer() {
         )}
         {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
 
+        {disputeConfirm && (
+          <Card>
+            <div className="stack">
+              <strong>Confirm: I found this!</strong>
+              {item.description
+                ? <p style={{ margin: 0 }}>{item.description}</p>
+                : <p className="muted" style={{ margin: 0 }}>No description available.</p>
+              }
+              <div className="row">
+                <Button variant="happy" disabled={hunt.busy} onClick={async () => {
+                  setDisputeConfirm(false);
+                  await hunt.dispute();
+                }}>
+                  ✅ Yes, I found it
+                </Button>
+                <Button variant="ghost" onClick={() => setDisputeConfirm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="happy" disabled={hunt.busy}>
           {hunt.busy ? '🔎 Checking…' : '📸 I found it — take a photo'}
         </PhotoCapture>
@@ -201,7 +263,7 @@ export function HuntPlayer() {
             💡 Help me
           </Button>
           {hunt.lastVerdict && !hunt.lastVerdict.match && (
-            <Button variant="ghost" onClick={hunt.dispute} disabled={hunt.busy}>
+            <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
               🙋 I really found it!
             </Button>
           )}
@@ -225,7 +287,7 @@ export function HuntPlayer() {
                 if (!skippedItem) return null;
                 return (
                   <div key={s.itemId} className="row" style={{ justifyContent: 'space-between' }}>
-                    <span>{skippedItem.name}</span>
+                    <span>{`Item ${items.findIndex((i) => i.id === s.itemId) + 1}`}</span>
                     <Button
                       variant="ghost"
                       disabled={hunt.busy}
@@ -289,4 +351,3 @@ function FinishedCard({ total, onSeeResults }: { total: number; onSeeResults: ()
     </Card>
   );
 }
-

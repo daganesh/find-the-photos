@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import type { GoogleSignInRequest, SessionResponse } from '@ftp/shared';
+import type { User } from '@ftp/shared';
 import { issueSession, verifyGoogleCredential } from '../auth/auth.js';
-import { isGoogleAuthConfigured } from '../config.js';
+import { isGoogleAuthConfigured, config } from '../config.js';
 
 /** `/api/auth` — exchange a Google credential for a session token. */
 export function authRouter(): Router {
@@ -20,7 +21,8 @@ export function authRouter(): Router {
         res.status(400).json({ error: 'Missing credential' });
         return;
       }
-      const user = await verifyGoogleCredential(credential);
+      const userBase = await verifyGoogleCredential(credential);
+      const user: User = { ...userBase, isAdmin: config.adminEmails.includes(userBase.email) };
       const body: SessionResponse = { token: issueSession(user), user };
       res.json(body);
     } catch (err) {

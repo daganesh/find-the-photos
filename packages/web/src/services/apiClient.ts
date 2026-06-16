@@ -1,4 +1,5 @@
 import type {
+  CleanupResult,
   CreateRouteRequest,
   EscalateHelpRequest,
   GeoPoint,
@@ -8,6 +9,7 @@ import type {
   Route,
   RouteSummary,
   SessionResponse,
+  StorageStats,
   SubmitPhotoResponse,
   Team,
   TeamResult,
@@ -96,8 +98,8 @@ export class ApiClient {
   }
 
   // --- Hunt ---
-  startHunt(routeId: string): Promise<{ session: HuntSession }> {
-    return this.request('/api/hunt/start', { method: 'POST', body: JSON.stringify({ routeId }) });
+  startHunt(routeId: string, location?: GeoPoint): Promise<{ session: HuntSession }> {
+    return this.request('/api/hunt/start', { method: 'POST', body: JSON.stringify({ routeId, location }) });
   }
   getHunt(sessionId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}`);
@@ -132,23 +134,34 @@ export class ApiClient {
   }
 
   // --- Teams ---
-  createTeam(routeId: string, name?: string): Promise<Team> {
-    return this.request('/api/teams', { method: 'POST', body: JSON.stringify({ routeId, name }) });
+  createTeam(routeId: string, name?: string, avatarEmoji?: string): Promise<Team> {
+    return this.request('/api/teams', { method: 'POST', body: JSON.stringify({ routeId, name, avatarEmoji }) });
   }
   getTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}`);
   }
-  joinTeamByCode(code: string): Promise<Team> {
-    return this.request(`/api/teams/join/${code}`, { method: 'POST' });
+  joinTeamByCode(code: string, avatarEmoji?: string): Promise<Team> {
+    return this.request(`/api/teams/join/${code}`, { method: 'POST', body: JSON.stringify({ avatarEmoji }) });
   }
-  startTeamHunt(teamId: string): Promise<{ team: Team; session: HuntSession }> {
-    return this.request(`/api/teams/${teamId}/start`, { method: 'POST' });
+  startTeamHunt(teamId: string, location?: GeoPoint): Promise<{ team: Team; session: HuntSession }> {
+    return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location }) });
   }
   pauseOrResumeTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}/pause`, { method: 'POST' });
   }
   getTeamLeaderboard(routeId: string): Promise<TeamResult[]> {
     return this.request(`/api/teams/route/${routeId}/leaderboard`);
+  }
+
+  // --- Admin ---
+  getStorageStats(): Promise<StorageStats> {
+    return this.request('/api/admin/storage');
+  }
+  cleanupOrphanedPhotos(): Promise<CleanupResult> {
+    return this.request('/api/admin/cleanup/orphaned-photos', { method: 'DELETE' });
+  }
+  cleanupOldSessions(days = 30): Promise<CleanupResult> {
+    return this.request(`/api/admin/cleanup/old-sessions?days=${days}`, { method: 'DELETE' });
   }
 }
 

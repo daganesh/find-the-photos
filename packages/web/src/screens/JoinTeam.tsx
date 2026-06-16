@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { Banner, Page, Spinner } from '../ui/index.js';
 
@@ -7,14 +8,16 @@ import { Banner, Page, Spinner } from '../ui/index.js';
 export function JoinTeam() {
   const { code = '' } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [error, setError] = useState<string>();
 
   useEffect(() => {
     if (!code) { navigate('/'); return; }
-    api.joinTeamByCode(code)
+    const avatarEmoji = user?.id ? (localStorage.getItem(`ftp.avatar.${user.id}`) ?? undefined) : undefined;
+    api.joinTeamByCode(code, avatarEmoji)
       .then((team) => navigate(`/team/${team.id}`, { replace: true }))
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not join the team — check the code and try again.'));
-  }, [code, navigate]);
+  }, [code, navigate, user]);
 
   if (error) {
     return (

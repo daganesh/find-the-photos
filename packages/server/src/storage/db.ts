@@ -40,6 +40,12 @@ export async function initDb(): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS teams_route_id_idx ON teams (route_id);
     CREATE INDEX IF NOT EXISTS teams_join_code_idx ON teams (join_code);
+
+    CREATE TABLE IF NOT EXISTS photos (
+      id TEXT PRIMARY KEY,
+      mime_type TEXT NOT NULL,
+      data BYTEA NOT NULL
+    );
   `);
   console.log('[db] tables ready');
 }

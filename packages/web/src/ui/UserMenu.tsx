@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.js';
 
 const AVATAR_KEY = (id: string) => `ftp.avatar.${id}`;
@@ -16,6 +17,7 @@ function saveAvatar(userId: string, emoji: string) {
 /** Small circular user button that opens a dropdown with account options. */
 export function UserMenu() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [avatar, setAvatar] = useState(() => (user ? getStoredAvatar(user.id) : ''));
   const [pickingEmoji, setPickingEmoji] = useState(false);
@@ -78,6 +80,12 @@ export function UserMenu() {
           ) : (
             <button className="usermenu__item" onClick={() => setPickingEmoji(true)}>
               🎨 Choose avatar
+            </button>
+          )}
+
+          {user.isAdmin && (
+            <button className="usermenu__item" onClick={() => { setOpen(false); navigate('/admin'); }}>
+              ⚙️ Admin
             </button>
           )}
 

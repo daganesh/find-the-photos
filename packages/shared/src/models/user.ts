@@ -4,4 +4,6 @@ export interface User {
   name: string;
   email: string;
   pictureUrl?: string;
+  /** True when this user's email is in the server's admin list. */
+  isAdmin?: boolean;
 }
