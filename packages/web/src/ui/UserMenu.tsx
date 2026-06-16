@@ -34,7 +34,7 @@ export function UserMenu() {
   if (!user) return null;
 
   const initials = user.name
-    ? user.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+    ? user.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
 
   function chooseEmoji(emoji: string) {
