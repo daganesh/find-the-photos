@@ -4,6 +4,7 @@ import type {
   EscalateHelpRequest,
   GeoPoint,
   HuntSession,
+  ModerationResult,
   Rating,
   RateRouteRequest,
   Route,
@@ -83,6 +84,9 @@ export class ApiClient {
   finalizeRoute(id: string): Promise<Route> {
     return this.request(`/api/routes/${id}/finalize`, { method: 'POST' });
   }
+  moderateRoute(routeId: string): Promise<ModerationResult> {
+    return this.request(`/api/routes/${routeId}/moderate`, { method: 'POST' });
+  }
   deleteRoute(id: string): Promise<void> {
     return this.request(`/api/routes/${id}`, { method: 'DELETE' });
   }
@@ -126,8 +130,11 @@ export class ApiClient {
   skipStep(sessionId: string, itemId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}/steps/${itemId}/skip`, { method: 'POST' });
   }
-  disputeStep(sessionId: string, itemId: string): Promise<{ session: HuntSession }> {
-    return this.request(`/api/hunt/${sessionId}/steps/${itemId}/dispute`, { method: 'POST' });
+  disputeStep(sessionId: string, itemId: string, description: string): Promise<{ session: HuntSession }> {
+    return this.request(`/api/hunt/${sessionId}/steps/${itemId}/dispute`, {
+      method: 'POST',
+      body: JSON.stringify({ description }),
+    });
   }
   returnToSkipped(sessionId: string, itemId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}/steps/${itemId}/return`, { method: 'POST' });

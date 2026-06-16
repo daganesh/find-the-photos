@@ -34,6 +34,8 @@ export function HuntPlayer() {
   const [countdown, setCountdown] = useState(0);
   const countdownStartedRef = useRef(false);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
+  const [disputeDesc, setDisputeDesc] = useState('');
+  const [disputeError, setDisputeError] = useState('');
 
   // Celebrate + play sound whenever a new item gets solved.
   useEffect(() => {
@@ -71,7 +73,18 @@ export function HuntPlayer() {
   }, [helpLevel, hunterLoc]);
 
   // Reset dispute confirm when verdict changes.
-  useEffect(() => { setDisputeConfirm(false); }, [hunt.lastVerdict]);
+  useEffect(() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }, [hunt.lastVerdict]);
+
+  async function handleDispute() {
+    setDisputeError('');
+    try {
+      await hunt.dispute(disputeDesc.trim());
+      setDisputeConfirm(false);
+      setDisputeDesc('');
+    } catch (e) {
+      setDisputeError(e instanceof Error ? e.message : 'Could not verify — please try again.');
+    }
+  }
 
   if (route.loading) return <Page onBack title="Play"><Spinner label="Loading route…" /></Page>;
   if (route.error || !route.data) return <Page onBack title="Play"><p style={{ color: 'var(--color-danger)' }}>{route.error ?? 'Route not found'}</p></Page>;
@@ -217,12 +230,21 @@ export function HuntPlayer() {
       }
     >
       <div className="stack">
-        <Card>
-          <div className="stack">
-            <span className="field-label">Your clue</span>
-            <HintView hint={item.hint} extraHints={item.extraHints} />
-          </div>
-        </Card>
+        {item.kind === 'task' ? (
+          <Card>
+            <div className="stack">
+              <span className="field-label">🎯 Your task</span>
+              <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{item.taskInstruction ?? item.name}</p>
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <div className="stack">
+              <span className="field-label">Your clue</span>
+              <HintView hint={item.hint} extraHints={item.extraHints} />
+            </div>
+          </Card>
+        )}
 
         <HelpPanel item={item} step={step} hunterLoc={hunterLoc} />
 
@@ -234,19 +256,21 @@ export function HuntPlayer() {
         {disputeConfirm && (
           <Card>
             <div className="stack">
-              <strong>Confirm: I found this!</strong>
-              {item.description
-                ? <p style={{ margin: 0 }}>{item.description}</p>
-                : <p className="muted" style={{ margin: 0 }}>No description available.</p>
-              }
+              <strong>What did you find?</strong>
+              <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
+                Name or describe what you're looking at to prove you found it.
+              </p>
+              <input
+                value={disputeDesc}
+                onChange={(e) => setDisputeDesc(e.target.value)}
+                placeholder="e.g. the red mailbox, a blue door…"
+              />
+              {disputeError && <Banner tone="no">{disputeError}</Banner>}
               <div className="row">
-                <Button variant="happy" disabled={hunt.busy} onClick={async () => {
-                  setDisputeConfirm(false);
-                  await hunt.dispute();
-                }}>
-                  ✅ Yes, I found it
+                <Button variant="happy" disabled={hunt.busy || !disputeDesc.trim()} onClick={handleDispute}>
+                  ✅ That's it!
                 </Button>
-                <Button variant="ghost" onClick={() => setDisputeConfirm(false)}>
+                <Button variant="ghost" onClick={() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }}>
                   Cancel
                 </Button>
               </div>
@@ -262,7 +286,7 @@ export function HuntPlayer() {
           <Button variant="accent" onClick={hunt.useHelp} disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}>
             💡 Help me
           </Button>
-          {hunt.lastVerdict && !hunt.lastVerdict.match && (
+          {item.kind !== 'task' && hunt.lastVerdict && !hunt.lastVerdict.match && (
             <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
               🙋 I really found it!
             </Button>

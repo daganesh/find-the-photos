@@ -173,17 +173,17 @@ function drawPolaroidCard(
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
- * Render a polaroid-style score card and share/download it.
+ * Render a polaroid-style score card and return the result as a Blob.
  * Works for both solo and team sessions.
  */
-export async function shareScore(
+export async function renderScoreCard(
   routeTitle: string,
   session: HuntSession,
   itemNames: Map<string, string>,
   playUrl: string,
   team?: Team,
   teamResult?: TeamResult,
-): Promise<void> {
+): Promise<Blob> {
   await document.fonts.ready;
 
   const OUTER_PAD = 24; // padding around the polaroid card
@@ -371,8 +371,22 @@ export async function shareScore(
   ctx.textBaseline = 'bottom';
   ctx.fillText(`Play at: ${playUrl}`, cardX + INNER_PAD, cardY + CARD_H - 14);
 
-  // ── Share or download ─────────────────────────────────────────────────────
-  const blob = await toBlob(canvas);
+  return toBlob(canvas);
+}
+
+/**
+ * Render a polaroid-style score card and share/download it.
+ * Works for both solo and team sessions.
+ */
+export async function shareScore(
+  routeTitle: string,
+  session: HuntSession,
+  itemNames: Map<string, string>,
+  playUrl: string,
+  team?: Team,
+  teamResult?: TeamResult,
+): Promise<void> {
+  const blob = await renderScoreCard(routeTitle, session, itemNames, playUrl, team, teamResult);
   const file = new File([blob], 'hunt-score.png', { type: 'image/png' });
   const shareTitle = teamResult
     ? `${teamResult.teamName} scored ${session.totalScore} pts on "${routeTitle}"!`

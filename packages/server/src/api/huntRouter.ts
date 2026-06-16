@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import type { EscalateHelpRequest, StepProgress, SubmitPhotoResponse } from '@ftp/shared';
+import type { DisputeRequest, EscalateHelpRequest, StepProgress, SubmitPhotoResponse } from '@ftp/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import {
@@ -109,8 +109,13 @@ export function huntRouter(ctx: AppContext): Router {
     try {
       const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
       if ('error' in found) return void res.status(found.status).json({ error: found.error });
-      const session = await dispute(ctx, found);
-      res.json({ session, step: lastStep(session.steps, req.params.itemId) });
+      const { description } = req.body as DisputeRequest;
+      if (!description?.trim()) {
+        return void res.status(400).json({ error: 'A description is required to dispute' });
+      }
+      const result = await dispute(ctx, found, description);
+      if ('error' in result) return void res.status(result.status).json({ error: result.error });
+      res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });
     } catch (err) {
       next(err);
     }

@@ -167,12 +167,19 @@ export async function submitPhoto(
   candidate: InlineImage,
   submittedBy?: string,
 ): Promise<HuntSession> {
-  const references = await loadReferences(ctx, found.item);
-  const verdict = await ctx.imageMatch.compare(candidate, references, found.item.name);
+  let verdict;
+  if (found.item.kind === 'task') {
+    verdict = await ctx.imageMatch.scoreTask(candidate, found.item.taskInstruction ?? found.item.name);
+  } else {
+    const references = await loadReferences(ctx, found.item);
+    verdict = await ctx.imageMatch.compare(candidate, references, found.item.name);
+  }
   // The candidate is stored so the attempt has a viewable photo.
   const stored = await ctx.photos.save(Buffer.from(candidate.base64, 'base64'), candidate.mimeType);
   const nextStep = recordAttempt(found.step, verdict, stored.url, now(), submittedBy);
-  await maybeFlagDifficult(ctx, found.route, nextStep);
+  if (found.item.kind !== 'task') {
+    await maybeFlagDifficult(ctx, found.route, nextStep);
+  }
   const session = withStep(found.session, found.item.id, nextStep);
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
 }
@@ -197,8 +204,16 @@ export async function skip(ctx: AppContext, found: StepLookup): Promise<HuntSess
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
 }
 
-/** Hunter overrides the AI: count the item as found. */
-export async function dispute(ctx: AppContext, found: StepLookup): Promise<HuntSession> {
+/** Hunter overrides the AI: verify description and count the item as found. */
+export async function dispute(
+  ctx: AppContext,
+  found: StepLookup,
+  description: string,
+): Promise<HuntSession | { error: string; status: number }> {
+  const verification = await ctx.imageMatch.verifyDispute(description, found.item.name);
+  if (!verification.match) {
+    return { error: verification.reason, status: 409 };
+  }
   const nextStep = disputeStep(found.step, now());
   const session = withStep(found.session, found.item.id, nextStep);
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;

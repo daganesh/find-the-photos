@@ -22,6 +22,8 @@ export interface Photo {
 /** A single thing to find on a route. */
 export interface Item {
   id: string;
+  /** 'photo' (default) = photo-match hunt item. 'task' = player performs an action and is AI-scored. */
+  kind?: 'photo' | 'task';
   name: string;
   description?: string;
   hint: Hint;
@@ -33,6 +35,8 @@ export interface Item {
   location?: GeoPoint;
   /** Flagged internally when hunters struggle (skips / many clues). */
   difficult: boolean;
+  /** For task items: the full instruction shown to the player ("Jump as high as you can!"). */
+  taskInstruction?: string;
 }
 
 export type RouteStatus = 'draft' | 'ready';

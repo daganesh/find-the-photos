@@ -6,6 +6,7 @@ import { PgHuntRepository } from './storage/pgHuntRepository.js';
 import { PgTeamRepository } from './storage/pgTeamRepository.js';
 import { PhotoStore } from './photos/photoStore.js';
 import { createImageMatchService, type ImageMatchService } from './gemini/imageMatch.js';
+import { createModerationService, type ModerationService } from './gemini/moderationService.js';
 import { config } from './config.js';
 import type { Team } from '@ftp/shared';
 
@@ -23,6 +24,7 @@ export interface AppContext {
   teams: TeamRepository;
   photos: PhotoStore;
   imageMatch: ImageMatchService;
+  moderation: ModerationService;
 }
 
 export function createAppContext(): AppContext {
@@ -33,5 +35,6 @@ export function createAppContext(): AppContext {
     teams: usePostgres ? new PgTeamRepository() : new JsonTeamRepository(),
     photos: new PhotoStore(),
     imageMatch: createImageMatchService(),
+    moderation: createModerationService(),
   };
 }

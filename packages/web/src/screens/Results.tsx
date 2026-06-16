@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { HuntSession } from '@ftp/shared';
 import { scoreStep, stepStars } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
-import { shareScore } from '../services/scoreCard.js';
+import { renderScoreCard, shareScore } from '../services/scoreCard.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { Button, Card, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
 
@@ -20,6 +20,8 @@ export function Results() {
   const [rated, setRated] = useState(false);
   const [rating, setRating] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [summaryUrl, setSummaryUrl] = useState<string | null>(null);
+  const [renderingCard, setRenderingCard] = useState(false);
 
   const totalSeconds = useMemo(() => {
     if (!session?.finishedAt) return undefined;
@@ -53,6 +55,19 @@ export function Results() {
     }
   }
 
+  async function handleShowSummary() {
+    setRenderingCard(true);
+    try {
+      const nameMap = new Map(items.map((i) => [i.id, i.name]));
+      const playUrl = `${window.location.origin}/play/${routeId}`;
+      const blob = await renderScoreCard(route.data!.title, session!, nameMap, playUrl);
+      if (summaryUrl) URL.revokeObjectURL(summaryUrl);
+      setSummaryUrl(URL.createObjectURL(blob));
+    } finally {
+      setRenderingCard(false);
+    }
+  }
+
   async function handleShare() {
     setSharing(true);
     try {
@@ -75,9 +90,26 @@ export function Results() {
             <h2>{route.data.title}</h2>
             <ScorePill score={session.totalScore} />
             {totalSeconds !== undefined && <p className="muted">Total time: {formatDuration(totalSeconds)}</p>}
-            <Button variant="accent" block disabled={sharing} onClick={handleShare}>
-              {sharing ? 'Creating image…' : '📤 Share my score'}
-            </Button>
+            {summaryUrl ? (
+              <div className="stack">
+                <img src={summaryUrl} alt="Score card" style={{ width: '100%', borderRadius: 'var(--radius)', border: '1px solid var(--color-line)' }} />
+                <Button variant="accent" block disabled={sharing} onClick={handleShare}>
+                  {sharing ? 'Sharing…' : '📤 Share this'}
+                </Button>
+                <Button variant="ghost" block onClick={() => { URL.revokeObjectURL(summaryUrl); setSummaryUrl(null); }}>
+                  Hide summary
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button variant="accent" block disabled={renderingCard} onClick={handleShowSummary}>
+                  {renderingCard ? 'Creating…' : '🖼 Show Summary'}
+                </Button>
+                <Button variant="ghost" block disabled={sharing} onClick={handleShare}>
+                  {sharing ? 'Creating image…' : '📤 Share score'}
+                </Button>
+              </>
+            )}
           </div>
         </Card>
 
@@ -93,7 +125,7 @@ export function Results() {
                   {step.disputed && ' · you overruled the AI 🙋'}
                 </div>
               </div>
-              <ScorePill score={scoreStep(step)} max={100} />
+              <span className="muted" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>⭐ {scoreStep(step)}</span>
             </div>
           </Card>
         ))}

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { nanoid } from 'nanoid';
 import type {
   CreateRouteRequest,
+  ModerationResult,
   RateRouteRequest,
   Rating,
   Route,
@@ -99,6 +100,34 @@ export function routesRouter(ctx: AppContext): Router {
       if (body.coverPhotoUrl !== undefined) patch.coverPhotoUrl = body.coverPhotoUrl || undefined;
       if (body.items !== undefined) patch.items = body.items;
       res.json(await ctx.routes.update(route.id, patch));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Moderate: check all route texts for inappropriate content.
+  router.post('/:id/moderate', requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const route = await ctx.routes.get(req.params.id);
+      if (!route) return void res.status(404).json({ error: 'Route not found' });
+      if (route.authorId !== req.user!.id) {
+        return void res.status(403).json({ error: 'Not your route' });
+      }
+      const checks: Array<{ field: string; text: string }> = [];
+      if (route.title) checks.push({ field: 'route.title', text: route.title });
+      if (route.description) checks.push({ field: 'route.description', text: route.description });
+      route.items.forEach((item, i) => {
+        if (item.name) checks.push({ field: `item[${i}].name`, text: item.name });
+        if (item.description) checks.push({ field: `item[${i}].description`, text: item.description });
+        if (item.hint.text) checks.push({ field: `item[${i}].hint.text`, text: item.hint.text });
+        item.extraHints?.forEach((h, j) => {
+          if (h.text) checks.push({ field: `item[${i}].extraHints[${j}].text`, text: h.text });
+        });
+        if (item.taskInstruction) checks.push({ field: `item[${i}].taskInstruction`, text: item.taskInstruction });
+      });
+      const issues = await ctx.moderation.checkTexts(checks);
+      const result: ModerationResult = { flagged: issues.length > 0, issues };
+      res.json(result);
     } catch (err) {
       next(err);
     }
