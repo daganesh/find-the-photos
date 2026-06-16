@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { Item, Route } from '@ftp/shared';
+import type { Item, ModerationIssue, Route } from '@ftp/shared';
 import { isRoutePlayable } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { Button, Card, Page, PhotoCapture, Spinner } from '../ui/index.js';
+import { Banner, Button, Card, Page, PhotoCapture, Spinner } from '../ui/index.js';
 import { ItemEditor } from './ItemEditor.js';
 
 /** The hider flow: build a route by adding items, then finalise it. */
@@ -15,9 +15,10 @@ export function RouteBuilder() {
   const { data, loading, error } = useAsync(() => api.getRoute(routeId), [routeId]);
 
   const [route, setRoute] = useState<Route | null>(null);
-  const [editing, setEditing] = useState<Item | 'new' | null>(null);
+  const [editing, setEditing] = useState<Item | 'new' | 'new-task' | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [moderationIssues, setModerationIssues] = useState<ModerationIssue[]>([]);
 
   useEffect(() => {
     if (data) setRoute(data);
@@ -69,11 +70,18 @@ export function RouteBuilder() {
 
   async function finalize() {
     setSaving(true);
+    setModerationIssues([]);
     try {
+      const result = await api.moderateRoute(route!.id);
+      if (result.flagged) {
+        setModerationIssues(result.issues);
+        setSaving(false);
+        return;
+      }
       await api.updateRoute(route!.id, { title: route!.title, description: route!.description, coverPhotoUrl: route!.coverPhotoUrl, items: route!.items });
       await api.finalizeRoute(route!.id);
       navigate(`/play/${route!.id}`);
-    } finally {
+    } catch (e) {
       setSaving(false);
     }
   }
@@ -82,7 +90,8 @@ export function RouteBuilder() {
     return (
       <Page onBack={() => setEditing(null)} title="Item">
         <ItemEditor
-          initial={editing === 'new' ? undefined : editing}
+          initial={editing === 'new' || editing === 'new-task' ? undefined : editing}
+          defaultKind={editing === 'new-task' ? 'task' : 'photo'}
           onSave={saveItem}
           onCancel={() => setEditing(null)}
         />
@@ -152,7 +161,12 @@ export function RouteBuilder() {
                 <span style={{ fontSize: '1.5rem' }}>{i + 1}️⃣</span>
                 <div>
                   <strong>{item.name || 'Untitled item'}</strong>
-                  <div className="muted">{item.photos.length} photo{item.photos.length === 1 ? '' : 's'}{item.location ? ' · 📍' : ''}</div>
+                  <div className="muted">
+                    {item.kind === 'task'
+                      ? `🎯 ${item.taskInstruction?.slice(0, 50) ?? 'Task'}`
+                      : `${item.photos.length} photo${item.photos.length === 1 ? '' : 's'}${item.location ? ' · 📍' : ''}`
+                    }
+                  </div>
                 </div>
               </div>
               <div className="row">
@@ -165,9 +179,29 @@ export function RouteBuilder() {
           </Card>
         ))}
 
-        <Button variant="accent" size="lg" block onClick={() => setEditing('new')}>
-          ➕ Add an item
-        </Button>
+        <div className="row" style={{ gap: 8 }}>
+          <Button variant="accent" size="lg" style={{ flex: 3 }} onClick={() => setEditing('new')}>
+            ➕ Add a photo item
+          </Button>
+          <Button variant="ghost" size="lg" style={{ flex: 2 }} onClick={() => setEditing('new-task')}>
+            🎯 Add a task
+          </Button>
+        </div>
+
+        {moderationIssues.length > 0 && (
+          <Card>
+            <div className="stack">
+              <Banner tone="no">⚠️ Please fix these issues before publishing:</Banner>
+              {moderationIssues.map((issue, i) => (
+                <div key={i}>
+                  <strong style={{ fontSize: '0.85rem' }}>{issue.field}</strong>
+                  <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.85rem' }}>{issue.reason}</p>
+                </div>
+              ))}
+              <Button variant="ghost" onClick={() => setModerationIssues([])}>Dismiss</Button>
+            </div>
+          </Card>
+        )}
 
         <Button
           variant="happy"

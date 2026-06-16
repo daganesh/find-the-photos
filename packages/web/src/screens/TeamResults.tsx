@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { HuntSession, Team, TeamResult } from '@ftp/shared';
 import { computeTeamResult } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
-import { shareScore } from '../services/scoreCard.js';
+import { renderScoreCard, shareScore } from '../services/scoreCard.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { Banner, Button, Card, Page, ScorePill, Spinner, formatDuration } from '../ui/index.js';
 
@@ -21,6 +21,8 @@ export function TeamResults() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [sharing, setSharing] = useState(false);
+  const [summaryUrl, setSummaryUrl] = useState<string | null>(null);
+  const [renderingCard, setRenderingCard] = useState(false);
 
   const route = useAsync(() => routeId ? api.getRoute(routeId) : Promise.resolve(undefined), [routeId]);
 
@@ -47,6 +49,20 @@ export function TeamResults() {
     return () => { cancelled = true; };
   }, [teamId]);
 
+  async function handleShowSummary() {
+    if (!result || !session || !route.data) return;
+    setRenderingCard(true);
+    try {
+      const nameMap = new Map(route.data.items.map((i) => [i.id, i.name]));
+      const playUrl = `${window.location.origin}/play/${session.routeId}`;
+      const blob = await renderScoreCard(route.data.title, session, nameMap, playUrl, team, result);
+      if (summaryUrl) URL.revokeObjectURL(summaryUrl);
+      setSummaryUrl(URL.createObjectURL(blob));
+    } finally {
+      setRenderingCard(false);
+    }
+  }
+
   async function handleShare() {
     if (!result || !session || !route.data) return;
     setSharing(true);
@@ -71,7 +87,6 @@ export function TeamResults() {
     );
   }
 
-  const mvp = result.memberScores[0];
   const isMvp = (userId: string) => userId === result.mvpUserId;
 
   return (
@@ -91,9 +106,26 @@ export function TeamResults() {
             {result.totalSeconds !== undefined && (
               <p className="muted">Total time: {formatDuration(result.totalSeconds)}</p>
             )}
-            <Button variant="accent" block disabled={sharing || route.loading} onClick={handleShare}>
-              {sharing ? 'Creating polaroid…' : '📤 Share polaroid'}
-            </Button>
+            {summaryUrl ? (
+              <div className="stack">
+                <img src={summaryUrl} alt="Score card" style={{ width: '100%', borderRadius: 'var(--radius)', border: '1px solid var(--color-line)' }} />
+                <Button variant="accent" block disabled={sharing} onClick={handleShare}>
+                  {sharing ? 'Sharing…' : '📤 Share this'}
+                </Button>
+                <Button variant="ghost" block onClick={() => { URL.revokeObjectURL(summaryUrl); setSummaryUrl(null); }}>
+                  Hide summary
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button variant="accent" block disabled={renderingCard || route.loading} onClick={handleShowSummary}>
+                  {renderingCard ? 'Creating…' : '🖼 Show Summary'}
+                </Button>
+                <Button variant="ghost" block disabled={sharing} onClick={handleShare}>
+                  {sharing ? 'Creating polaroid…' : '📤 Share polaroid'}
+                </Button>
+              </>
+            )}
           </div>
         </Card>
 

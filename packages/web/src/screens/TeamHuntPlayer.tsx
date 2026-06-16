@@ -106,7 +106,19 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   }, [hunt.team?.startedAt]);
 
   // Reset dispute confirm when verdict or focused item changes.
-  useEffect(() => { setDisputeConfirm(false); }, [hunt.lastVerdict, focusedItemId]);
+  useEffect(() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }, [hunt.lastVerdict, focusedItemId]);
+
+  async function handleDispute() {
+    if (!focusedItemId) return;
+    setDisputeError('');
+    try {
+      await hunt.dispute(focusedItemId, disputeDesc.trim());
+      setDisputeConfirm(false);
+      setDisputeDesc('');
+    } catch (e) {
+      setDisputeError(e instanceof Error ? e.message : 'Could not verify — please try again.');
+    }
+  }
 
   if (!hunt.session || !route.data) {
     return <Page title="Hunt"><Spinner label="Loading…" /></Page>;
@@ -242,26 +254,16 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
               <div className="stack">
                 <strong>What did you find?</strong>
                 <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-                  Describe or name what you're looking at to prove you found it.
+                  Name or describe what you're looking at to prove you found it.
                 </p>
                 <input
                   value={disputeDesc}
                   onChange={(e) => setDisputeDesc(e.target.value)}
                   placeholder="e.g. the red mailbox, a blue door…"
-                  autoFocus
                 />
                 {disputeError && <Banner tone="no">{disputeError}</Banner>}
                 <div className="row">
-                  <Button variant="happy" disabled={hunt.busy || !disputeDesc.trim()} onClick={async () => {
-                    setDisputeError('');
-                    try {
-                      await hunt.dispute(focusedItemId, disputeDesc.trim());
-                      setDisputeConfirm(false);
-                      setDisputeDesc('');
-                    } catch (e) {
-                      setDisputeError(e instanceof Error ? e.message : 'Could not verify — please try again.');
-                    }
-                  }}>
+                  <Button variant="happy" disabled={hunt.busy || !disputeDesc.trim()} onClick={handleDispute}>
                     ✅ That's it!
                   </Button>
                   <Button variant="ghost" onClick={() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }}>

@@ -73,7 +73,7 @@ export function HuntPlayer() {
   }, [helpLevel, hunterLoc]);
 
   // Reset dispute confirm when verdict changes.
-  useEffect(() => { setDisputeConfirm(false); }, [hunt.lastVerdict]);
+  useEffect(() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }, [hunt.lastVerdict]);
 
   async function handleDispute() {
     setDisputeError('');
@@ -258,13 +258,12 @@ export function HuntPlayer() {
             <div className="stack">
               <strong>What did you find?</strong>
               <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-                Describe or name what you're looking at to prove you found it.
+                Name or describe what you're looking at to prove you found it.
               </p>
               <input
                 value={disputeDesc}
                 onChange={(e) => setDisputeDesc(e.target.value)}
                 placeholder="e.g. the red mailbox, a blue door…"
-                autoFocus
               />
               {disputeError && <Banner tone="no">{disputeError}</Banner>}
               <div className="row">

@@ -142,8 +142,8 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
           </>
         )}
 
-        {/* Extra clues */}
-        {(item.extraHints ?? []).map((h, i) => (
+        {/* Extra clues — only for photo items */}
+        {item.kind !== 'task' && (item.extraHints ?? []).map((h, i) => (
           <HintEditor
             key={i}
             label={`Extra clue ${i + 1}`}
@@ -155,9 +155,11 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
           />
         ))}
 
-        <Button variant="ghost" onClick={addExtraHint} disabled={busy}>
-          ➕ Add another clue
-        </Button>
+        {item.kind !== 'task' && (
+          <Button variant="ghost" onClick={addExtraHint} disabled={busy}>
+            ➕ Add another clue
+          </Button>
+        )}
 
         <div>
           <label className="field-label" htmlFor="item-name">Answer</label>
@@ -180,19 +182,21 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
           />
         </div>
 
-        <div>
-          <span className="field-label">Location</span>
-          <div className="row">
-            <Button variant="accent" onClick={useMyLocation} disabled={busy}>
-              📍 Use my location
-            </Button>
-            {item.location && (
-              <span className="muted">
-                {item.location.lat.toFixed(5)}, {item.location.lng.toFixed(5)}
-              </span>
-            )}
+        {item.kind !== 'task' && (
+          <div>
+            <span className="field-label">Location</span>
+            <div className="row">
+              <Button variant="accent" onClick={useMyLocation} disabled={busy}>
+                📍 Use my location
+              </Button>
+              {item.location && (
+                <span className="muted">
+                  {item.location.lat.toFixed(5)}, {item.location.lng.toFixed(5)}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <Button variant="ghost" onClick={onCancel}>Cancel</Button>
