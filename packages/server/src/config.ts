@@ -22,6 +22,17 @@ export const config = {
 
   databaseUrl: optional('DATABASE_URL'),
 
+  /** S3-compatible object storage for uploaded photos.
+   *  When S3_BUCKET is set, photos go to S3/R2/B2 instead of local disk. */
+  s3: {
+    bucket: optional('S3_BUCKET'),
+    endpoint: optional('S3_ENDPOINT'),   // omit for AWS; for R2: https://<id>.r2.cloudflarestorage.com
+    region: optional('S3_REGION', 'auto'),
+    accessKey: optional('S3_ACCESS_KEY'),
+    secretKey: optional('S3_SECRET_KEY'),
+    publicUrl: optional('S3_PUBLIC_URL'), // public base URL, e.g. https://cdn.example.com
+  },
+
   google: {
     clientId: optional('GOOGLE_CLIENT_ID'),
   },
