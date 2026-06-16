@@ -27,6 +27,7 @@ export function teamsRouter(ctx: AppContext): Router {
       const member: TeamMember = {
         userId: req.user!.id,
         name: req.user!.name ?? 'Hunter',
+        avatarEmoji: (req.body as { avatarEmoji?: string }).avatarEmoji || undefined,
         joinedAt: new Date().toISOString(),
       };
       const team: Team = {
@@ -65,6 +66,7 @@ export function teamsRouter(ctx: AppContext): Router {
         const member: TeamMember = {
           userId: req.user!.id,
           name: req.user!.name ?? 'Hunter',
+          avatarEmoji: (req.body as { avatarEmoji?: string }).avatarEmoji || undefined,
           joinedAt: new Date().toISOString(),
         };
         await ctx.teams.update(team.id, { members: [...team.members, member] });
@@ -99,9 +101,10 @@ export function teamsRouter(ctx: AppContext): Router {
       const route = await ctx.routes.get(team.routeId);
       if (!route) return void res.status(404).json({ error: 'Route not found' });
 
+      const { location } = req.body as { location?: import('@ftp/shared').GeoPoint };
       const now = new Date().toISOString();
       const session = await ctx.hunts.create(
-        buildTeamSession(route, team.ownerId, team.id, team.members.length),
+        buildTeamSession(route, team.ownerId, team.id, team.members.length, location),
       );
       const updated = await ctx.teams.update(team.id, {
         status: 'playing',
