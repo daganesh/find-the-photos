@@ -15,7 +15,7 @@ interface TeamHuntController {
   submitPhoto: (itemId: string, photo: Blob) => Promise<void>;
   useHelp: (itemId: string) => Promise<void>;
   skip: (itemId: string) => Promise<void>;
-  dispute: (itemId: string) => Promise<void>;
+  dispute: (itemId: string, description: string) => Promise<void>;
   returnToSkipped: (itemId: string) => Promise<void>;
   pauseOrResume: () => Promise<void>;
 }
@@ -96,8 +96,8 @@ export function useTeamHunt(teamId: string, sessionId: string): TeamHuntControll
     await run(itemId, () => api.skipStep(sessionId, itemId));
   }, [sessionId, run]);
 
-  const dispute = useCallback(async (itemId: string) => {
-    await run(itemId, () => api.disputeStep(sessionId, itemId));
+  const dispute = useCallback(async (itemId: string, description: string) => {
+    await run(itemId, () => api.disputeStep(sessionId, itemId, description));
   }, [sessionId, run]);
 
   const returnToSkipped = useCallback(async (itemId: string) => {

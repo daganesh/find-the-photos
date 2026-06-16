@@ -6,23 +6,26 @@ import { Button, Card, PhotoCapture, PhotoGallery, AudioRecorder } from '../ui/i
 
 interface ItemEditorProps {
   initial?: Item;
+  defaultKind?: 'photo' | 'task';
   onSave: (item: Item) => void;
   onCancel: () => void;
 }
 
-const blankItem = (): Item => ({
+const blankItem = (kind?: 'photo' | 'task'): Item => ({
   id: crypto.randomUUID(),
+  kind: kind ?? 'photo',
   name: '',
   description: '',
   hint: { kind: 'text', text: '' },
   extraHints: [],
   photos: [],
   difficult: false,
+  taskInstruction: '',
 });
 
 /** Capture or edit a single hidden item: photos, name, hints, description, GPS. */
-export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
-  const [item, setItem] = useState<Item>(initial ?? blankItem());
+export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEditorProps) {
+  const [item, setItem] = useState<Item>(initial ?? blankItem(defaultKind));
   const [busy, setBusy] = useState(false);
   const update = (patch: Partial<Item>) => setItem((prev) => ({ ...prev, ...patch }));
 
@@ -87,31 +90,57 @@ export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
     }
   }
 
-  const canSave = item.name.trim().length > 0 && item.photos.length > 0;
+  const canSave = item.kind === 'task'
+    ? item.name.trim().length > 0 && (item.taskInstruction ?? '').trim().length > 0
+    : item.name.trim().length > 0 && item.photos.length > 0;
 
   return (
     <Card>
       <div className="stack">
         <h2>{initial ? 'Edit item' : 'New item'}</h2>
 
-        <div>
-          <span className="field-label">Photos (a few angles!)</span>
-          <PhotoGallery photos={item.photos} onRemove={removePhoto} />
-          <div style={{ marginTop: 'var(--space-2)' }}>
-            <PhotoCapture onCapture={addPhoto} variant="accent" disabled={busy}>
-              📷 Add a photo
-            </PhotoCapture>
-          </div>
+        <div className="row" style={{ gap: 8 }}>
+          <Button variant={item.kind !== 'task' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'photo' })}>
+            📷 Photo item
+          </Button>
+          <Button variant={item.kind === 'task' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'task' })}>
+            🎯 Task
+          </Button>
         </div>
 
-        {/* Primary clue */}
-        <HintEditor
-          label="Clue"
-          hint={item.hint}
-          onChange={(patch) => update({ hint: { ...item.hint, ...patch } })}
-          onRecord={recordHint}
-          busy={busy}
-        />
+        {item.kind === 'task' ? (
+          <div>
+            <label className="field-label" htmlFor="task-instruction">Task instruction</label>
+            <textarea
+              id="task-instruction"
+              rows={3}
+              value={item.taskInstruction ?? ''}
+              placeholder="e.g. Jump as high as you can! or Make a funny face."
+              onChange={(e) => update({ taskInstruction: e.target.value })}
+            />
+          </div>
+        ) : (
+          <>
+            <div>
+              <span className="field-label">Photos (a few angles!)</span>
+              <PhotoGallery photos={item.photos} onRemove={removePhoto} />
+              <div style={{ marginTop: 'var(--space-2)' }}>
+                <PhotoCapture onCapture={addPhoto} variant="accent" disabled={busy}>
+                  📷 Add a photo
+                </PhotoCapture>
+              </div>
+            </div>
+
+            {/* Primary clue */}
+            <HintEditor
+              label="Clue"
+              hint={item.hint}
+              onChange={(patch) => update({ hint: { ...item.hint, ...patch } })}
+              onRecord={recordHint}
+              busy={busy}
+            />
+          </>
+        )}
 
         {/* Extra clues */}
         {(item.extraHints ?? []).map((h, i) => (
@@ -171,7 +200,7 @@ export function ItemEditor({ initial, onSave, onCancel }: ItemEditorProps) {
             Save item
           </Button>
         </div>
-        {!canSave && <p className="muted center">Add an answer and at least one photo.</p>}
+        {!canSave && <p className="muted center">{item.kind === 'task' ? 'Add a task name and instruction.' : 'Add an answer and at least one photo.'}</p>}
       </div>
     </Card>
   );

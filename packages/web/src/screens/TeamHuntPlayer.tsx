@@ -69,6 +69,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const prevFoundCount = useRef(0);
   const [countdown, setCountdown] = useState(0);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
+  const [disputeDesc, setDisputeDesc] = useState('');
+  const [disputeError, setDisputeError] = useState('');
 
   // Celebrate when the current user's photo matches.
   useEffect(() => {
@@ -212,12 +214,21 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
         }
       >
         <div className="stack">
-          <Card>
-            <div className="stack">
-              <span className="field-label">Your clue</span>
-              <HintView hint={item.hint} extraHints={item.extraHints} />
-            </div>
-          </Card>
+          {item.kind === 'task' ? (
+            <Card>
+              <div className="stack">
+                <span className="field-label">🎯 Your task</span>
+                <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{item.taskInstruction ?? item.name}</p>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="stack">
+                <span className="field-label">Your clue</span>
+                <HintView hint={item.hint} extraHints={item.extraHints} />
+              </div>
+            </Card>
+          )}
 
           <HelpPanel item={item} step={step} />
 
@@ -229,19 +240,31 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           {disputeConfirm && (
             <Card>
               <div className="stack">
-                <strong>Confirm: I found this!</strong>
-                {item.description
-                  ? <p style={{ margin: 0 }}>{item.description}</p>
-                  : <p className="muted" style={{ margin: 0 }}>No description available.</p>
-                }
+                <strong>What did you find?</strong>
+                <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
+                  Describe or name what you're looking at to prove you found it.
+                </p>
+                <input
+                  value={disputeDesc}
+                  onChange={(e) => setDisputeDesc(e.target.value)}
+                  placeholder="e.g. the red mailbox, a blue door…"
+                  autoFocus
+                />
+                {disputeError && <Banner tone="no">{disputeError}</Banner>}
                 <div className="row">
-                  <Button variant="happy" disabled={hunt.busy} onClick={async () => {
-                    setDisputeConfirm(false);
-                    await hunt.dispute(focusedItemId);
+                  <Button variant="happy" disabled={hunt.busy || !disputeDesc.trim()} onClick={async () => {
+                    setDisputeError('');
+                    try {
+                      await hunt.dispute(focusedItemId, disputeDesc.trim());
+                      setDisputeConfirm(false);
+                      setDisputeDesc('');
+                    } catch (e) {
+                      setDisputeError(e instanceof Error ? e.message : 'Could not verify — please try again.');
+                    }
                   }}>
-                    ✅ Yes, I found it
+                    ✅ That's it!
                   </Button>
-                  <Button variant="ghost" onClick={() => setDisputeConfirm(false)}>
+                  <Button variant="ghost" onClick={() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }}>
                     Cancel
                   </Button>
                 </div>
@@ -256,7 +279,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <Button variant="accent" disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}
               onClick={() => hunt.useHelp(focusedItemId)}>💡 Help me</Button>
-            {verdict && !verdict.match && (
+            {item.kind !== 'task' && verdict && !verdict.match && (
               <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
                 🙋 I really found it!
               </Button>

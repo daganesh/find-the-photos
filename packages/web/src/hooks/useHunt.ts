@@ -20,7 +20,7 @@ interface HuntController {
   submitPhoto: (photo: Blob) => Promise<void>;
   useHelp: () => Promise<void>;
   skip: () => Promise<void>;
-  dispute: () => Promise<void>;
+  dispute: (description: string) => Promise<void>;
   returnToSkipped: (itemId: string) => Promise<void>;
   pause: () => void;
   resume: () => void;
@@ -109,10 +109,20 @@ export function useHunt(routeId: string): HuntController {
     await run((itemId) => api.skipStep(session!.id, itemId));
   }, [run, session]);
 
-  const dispute = useCallback(async () => {
+  const dispute = useCallback(async (description: string) => {
+    if (!session || !activeStep) return;
     setLastVerdict(undefined);
-    await run((itemId) => api.disputeStep(session!.id, itemId));
-  }, [run, session]);
+    setBusy(true);
+    setError(undefined);
+    try {
+      const { session: next } = await api.disputeStep(session.id, activeStep.itemId, description);
+      if (!cancelRef.current) setSession(next);
+    } catch (e) {
+      if (!cancelRef.current) setBusy(false);
+      throw e;
+    }
+    if (!cancelRef.current) setBusy(false);
+  }, [session, activeStep]);
 
   const returnToSkipped = useCallback(async (itemId: string) => {
     if (!session) return;
