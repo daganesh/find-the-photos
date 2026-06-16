@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HuntSession, MatchVerdict, StepProgress } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { getCurrentLocation } from '../services/geolocation.js';
@@ -8,37 +8,57 @@ interface HuntController {
   /** The step currently being played, if any. */
   activeStep: StepProgress | undefined;
   loading: boolean;
+  /** True while we are waiting for the player to click Start. */
+  notStarted: boolean;
   busy: boolean;
+  paused: boolean;
   error: string | undefined;
   /** Verdict from the most recent photo attempt (cleared on next action). */
   lastVerdict: MatchVerdict | undefined;
+  /** Start the hunt (called when player clicks Start). */
+  start: () => Promise<void>;
   submitPhoto: (photo: Blob) => Promise<void>;
   useHelp: () => Promise<void>;
   skip: () => Promise<void>;
   dispute: () => Promise<void>;
+  returnToSkipped: (itemId: string) => Promise<void>;
+  pause: () => void;
+  resume: () => void;
 }
 
-/** Owns a single play-through: starts the session and applies each action. */
+/** Owns a single play-through: waits for Start, then applies each action. */
 export function useHunt(routeId: string): HuntController {
   const [session, setSession] = useState<HuntSession>();
-  const [loading, setLoading] = useState(true);
+  const [notStarted, setNotStarted] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [error, setError] = useState<string>();
   const [lastVerdict, setLastVerdict] = useState<MatchVerdict>();
+  const cancelRef = useRef(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .startHunt(routeId)
-      .then((r) => !cancelled && setSession(r.session))
-      .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : 'Could not start'))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [routeId]);
+  // Cleanup on unmount.
+  useEffect(() => () => { cancelRef.current = true; }, []);
 
   const activeStep = session?.steps.find((s) => s.status === 'active');
+
+  /** Begin the hunt: create the session on the server (sets startedAt). */
+  const start = useCallback(async () => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const { session: s } = await api.startHunt(routeId);
+      if (!cancelRef.current) {
+        setSession(s);
+        setNotStarted(false);
+      }
+    } catch (e) {
+      if (!cancelRef.current)
+        setError(e instanceof Error ? e.message : 'Could not start the hunt');
+    } finally {
+      if (!cancelRef.current) setLoading(false);
+    }
+  }, [routeId]);
 
   /** Wrap an action: manage busy/error and apply the returned session. */
   const run = useCallback(
@@ -93,5 +113,25 @@ export function useHunt(routeId: string): HuntController {
     await run((itemId) => api.disputeStep(session!.id, itemId));
   }, [run, session]);
 
-  return { session, activeStep, loading, busy, error, lastVerdict, submitPhoto, useHelp, skip, dispute };
+  const returnToSkipped = useCallback(async (itemId: string) => {
+    if (!session) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const { session: next } = await api.returnToSkipped(session.id, itemId);
+      setSession(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not return to item');
+    } finally {
+      setBusy(false);
+    }
+  }, [session]);
+
+  const pause = useCallback(() => setPaused(true), []);
+  const resume = useCallback(() => setPaused(false), []);
+
+  return {
+    session, activeStep, loading, notStarted, busy, paused, error, lastVerdict,
+    start, submitPhoto, useHelp, skip, dispute, returnToSkipped, pause, resume,
+  };
 }

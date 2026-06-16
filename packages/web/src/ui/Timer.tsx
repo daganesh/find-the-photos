@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /** Format a number of seconds as m:ss (or h:mm:ss when long). */
 export function formatDuration(totalSeconds: number): string {
@@ -15,20 +15,41 @@ interface TimerProps {
   startedAt?: string;
   /** ISO end time — when set, the timer freezes. */
   finishedAt?: string;
+  /** When true, stop counting (accumulated time is frozen). */
+  paused?: boolean;
 }
 
-/** A live ⏱ that counts up from `startedAt` until `finishedAt`. */
-export function Timer({ startedAt, finishedAt }: TimerProps) {
-  const [now, setNow] = useState(() => Date.now());
+/** A live ⏱ that counts up from `startedAt`, supporting pause. */
+export function Timer({ startedAt, finishedAt, paused }: TimerProps) {
+  const [elapsed, setElapsed] = useState(0);
+  const lastTickRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    if (!startedAt || finishedAt) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [startedAt, finishedAt]);
+    if (!startedAt) { setElapsed(0); return; }
+    // Seed elapsed from server time on mount (or when startedAt changes).
+    setElapsed(Math.max(0, Date.now() - new Date(startedAt).getTime()));
+    lastTickRef.current = Date.now();
+  }, [startedAt]);
 
-  if (!startedAt) return <span className="timer">0:00</span>;
-  const end = finishedAt ? new Date(finishedAt).getTime() : now;
-  const seconds = (end - new Date(startedAt).getTime()) / 1000;
-  return <span className="timer">⏱ {formatDuration(seconds)}</span>;
+  useEffect(() => {
+    if (!startedAt || finishedAt || paused) return;
+    const id = setInterval(() => {
+      const now = Date.now();
+      setElapsed((e) => e + (now - lastTickRef.current));
+      lastTickRef.current = now;
+    }, 1000);
+    return () => clearInterval(id);
+  }, [startedAt, finishedAt, paused]);
+
+  // When paused, update the lastTick ref so we don't double-count on resume.
+  useEffect(() => {
+    if (paused) lastTickRef.current = Date.now();
+  }, [paused]);
+
+  if (finishedAt && startedAt) {
+    const secs = (new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000;
+    return <span className="timer">⏱ {formatDuration(secs)}</span>;
+  }
+
+  return <span className="timer">{paused ? '⏸' : '⏱'} {formatDuration(elapsed / 1000)}</span>;
 }

@@ -42,7 +42,7 @@ export function SignIn() {
     <div className="page__body" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
       <Card>
         <div className="stack center">
-          <div style={{ fontSize: '3.5rem' }}>📸</div>
+          <img src="/logo.jpg" alt="Find the Photos logo" style={{ width: 80, height: 80, objectFit: 'contain', borderRadius: 16 }} />
           <h1>Find the Photos</h1>
           <p className="muted">A photo treasure hunt for the whole family.</p>
 

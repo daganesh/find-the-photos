@@ -62,12 +62,13 @@ describe('help escalation', () => {
 });
 
 describe('skip', () => {
-  it('is only offered after enough failed attempts', () => {
-    let step = createStep('i', NOW);
-    expect(canSkip(step)).toBe(false);
-    for (let n = 0; n < 3; n++) step = recordAttempt(step, miss, 'p', NOW);
+  it('is available for any active step', () => {
+    const step = createStep('i', NOW);
     expect(canSkip(step)).toBe(true);
-    step = skipStep(step, NOW);
+  });
+
+  it('marks the step skipped', () => {
+    const step = skipStep(createStep('i', NOW), NOW);
     expect(step.status).toBe('skipped');
   });
 });

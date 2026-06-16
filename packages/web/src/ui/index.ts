@@ -17,3 +17,5 @@ export { AudioRecorder } from './AudioRecorder.js';
 export { MapView } from './MapView.js';
 export { Banner } from './Banner.js';
 export { Fireworks } from './Fireworks.js';
+export { AppBar } from './AppBar.js';
+export { UserMenu } from './UserMenu.js';

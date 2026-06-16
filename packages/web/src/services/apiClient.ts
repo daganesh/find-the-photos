@@ -125,6 +125,9 @@ export class ApiClient {
   disputeStep(sessionId: string, itemId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}/steps/${itemId}/dispute`, { method: 'POST' });
   }
+  returnToSkipped(sessionId: string, itemId: string): Promise<{ session: HuntSession }> {
+    return this.request(`/api/hunt/${sessionId}/steps/${itemId}/return`, { method: 'POST' });
+  }
 }
 
 export class ApiError extends Error {

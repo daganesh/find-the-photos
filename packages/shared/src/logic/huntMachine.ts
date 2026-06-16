@@ -83,12 +83,21 @@ export function escalateHelp(
   return { ...step, helpLevel: next, cluesUsed: step.cluesUsed + 1 };
 }
 
-/** Whether the hunter has earned the option to skip this item. */
+/** Any active step can be skipped — skip is always an option. */
 export function canSkip(step: StepProgress): boolean {
-  return (
-    step.status === 'active' &&
-    failedAttempts(step) >= HUNT_RULES.skipAfterFailedAttempts
-  );
+  return step.status === 'active';
+}
+
+/** Re-activate a previously skipped step with a scoring penalty already applied. */
+export function returnSkippedStep(step: StepProgress, now: string): StepProgress {
+  if (step.status !== 'skipped') return step;
+  return {
+    ...step,
+    status: 'active',
+    finishedAt: undefined,
+    startedAt: now,
+    cluesUsed: step.cluesUsed + HUNT_RULES.skipAfterFailedAttempts,
+  };
 }
 
 /** Give up on this item. Scored as 0 and flags the item as difficult later. */

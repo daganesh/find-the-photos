@@ -7,6 +7,7 @@ import {
   buildSession,
   dispute,
   findActiveStep,
+  returnSkipped,
   skip,
   submitPhoto,
   useHelp,
@@ -110,6 +111,17 @@ export function huntRouter(ctx: AppContext): Router {
       if ('error' in found) return void res.status(found.status).json({ error: found.error });
       const session = await dispute(ctx, found);
       res.json({ session, step: lastStep(session.steps, req.params.itemId) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Return to a previously skipped item (with scoring penalty).
+  router.post('/:sessionId/steps/:itemId/return', requireAuth, async (req, res, next) => {
+    try {
+      const result = await returnSkipped(ctx, req.params.sessionId, req.params.itemId);
+      if ('error' in result) return void res.status(result.status).json({ error: result.error });
+      res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });
     } catch (err) {
       next(err);
     }

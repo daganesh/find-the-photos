@@ -13,6 +13,7 @@ import {
   escalateHelp,
   proximityTo,
   recordAttempt,
+  returnSkippedStep,
   scoreSession,
   skipStep,
   stepLookedDifficult,
@@ -110,6 +111,25 @@ export async function findActiveStep(
   return { session, route, item, step };
 }
 
+/** Resolve a skipped step for returning to it. */
+async function findSkippedStep(
+  ctx: AppContext,
+  sessionId: string,
+  itemId: string,
+): Promise<StepLookup | { error: string; status: number }> {
+  const session = await ctx.hunts.get(sessionId);
+  if (!session) return { error: 'Hunt not found', status: 404 };
+  const route = await ctx.routes.get(session.routeId);
+  if (!route) return { error: 'Route not found', status: 404 };
+  const item = route.items.find((i) => i.id === itemId);
+  const step = session.steps.find((s) => s.itemId === itemId);
+  if (!item || !step) return { error: 'Item not in this hunt', status: 404 };
+  if (step.status !== 'skipped') return { error: 'That step is not skipped', status: 409 };
+  return { session, route, item, step };
+}
+
+export { findSkippedStep };
+
 /** Submit a candidate photo and judge it with the image-match service. */
 export async function submitPhoto(
   ctx: AppContext,
@@ -150,5 +170,20 @@ export async function skip(ctx: AppContext, found: StepLookup): Promise<HuntSess
 export async function dispute(ctx: AppContext, found: StepLookup): Promise<HuntSession> {
   const nextStep = disputeStep(found.step, now());
   const session = withStep(found.session, found.item.id, nextStep);
+  return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
+}
+
+/** Re-activate a skipped step with a scoring penalty. */
+export async function returnSkipped(ctx: AppContext, sessionId: string, itemId: string): Promise<HuntSession | { error: string; status: number }> {
+  const found = await findSkippedStep(ctx, sessionId, itemId);
+  if ('error' in found) return found;
+  const nextStep = returnSkippedStep(found.step, now());
+  // Clear finishedAt so the hunt isn't considered complete yet.
+  const session: HuntSession = {
+    ...found.session,
+    finishedAt: undefined,
+    steps: found.session.steps.map((s) => (s.itemId === itemId ? nextStep : s)),
+  };
+  session.totalScore = scoreSession(session);
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
 }
