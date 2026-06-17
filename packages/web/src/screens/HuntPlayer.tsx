@@ -31,11 +31,34 @@ export function HuntPlayer() {
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [hunterLoc, setHunterLoc] = useState<GeoPoint | undefined>();
   const prevFound = useRef(0);
-  const [countdown, setCountdown] = useState(0);
-  const countdownStartedRef = useRef(false);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeError, setDisputeError] = useState('');
+
+  // Countdown: 3 → 2 → 1 → null (hunt becomes visible after)
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [timerStartedAt, setTimerStartedAt] = useState<string>();
+  const sessionCreatedRef = useRef(false);
+
+  // Start countdown the moment the session arrives for the first time
+  useEffect(() => {
+    if (!sessionCreatedRef.current && hunt.session && !hunt.notStarted) {
+      sessionCreatedRef.current = true;
+      setCountdown(3);
+    }
+  }, [hunt.session, hunt.notStarted]);
+
+  // Tick the countdown down
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown === 0) {
+      setTimerStartedAt(new Date().toISOString());
+      setCountdown(null);
+      return;
+    }
+    const id = setTimeout(() => setCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    return () => clearTimeout(id);
+  }, [countdown]);
 
   // Celebrate + play sound whenever a new item gets solved.
   useEffect(() => {
@@ -47,21 +70,6 @@ export function HuntPlayer() {
       playSuccessSound();
     }
     prevFound.current = found.length;
-  }, [hunt.session]);
-
-  // Start 5-second countdown when session first appears.
-  useEffect(() => {
-    if (hunt.session && !countdownStartedRef.current) {
-      countdownStartedRef.current = true;
-      setCountdown(5);
-      const tick = setInterval(() => {
-        setCountdown((c) => {
-          if (c <= 1) { clearInterval(tick); return 0; }
-          return c - 1;
-        });
-      }, 1000);
-      return () => clearInterval(tick);
-    }
   }, [hunt.session]);
 
   // Fetch the device location once we reach a map-help level.
@@ -120,30 +128,28 @@ export function HuntPlayer() {
     );
   }
 
-  if (hunt.session && countdown > 0) {
-    return (
-      <Page title="Get ready!">
-        <div className="stack center" style={{ paddingTop: 60 }}>
-          <div style={{
-            fontSize: '7rem', fontWeight: 900,
-            color: 'var(--color-happy)',
-            animation: 'pop-in 0.3s ease',
-            lineHeight: 1,
-          }}>
-            {countdown}
-          </div>
-          <p className="muted" style={{ fontSize: '1.2rem' }}>Hunt starts in…</p>
-        </div>
-      </Page>
-    );
-  }
-
   if (!hunt.session) {
     return (
       <Page onBack title="Play">
         <div className="stack">
           <Banner tone="no">{hunt.error ?? 'Could not start the hunt — please try again.'}</Banner>
           <Button block onClick={() => navigate('/')}>Back to home</Button>
+        </div>
+      </Page>
+    );
+  }
+
+  // ── Countdown before hunt begins ────────────────────────────────────────
+  if (countdown !== null) {
+    return (
+      <Page title="">
+        <div className="countdown-wrap">
+          <p style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--color-ink-soft)', margin: 0 }}>
+            Get ready!
+          </p>
+          {/* key forces remount on each tick, restarting the CSS animation */}
+          <div className="countdown-digit" key={countdown}>{countdown}</div>
+          <p className="muted" style={{ margin: 0 }}>Hunt starts in…</p>
         </div>
       </Page>
     );
@@ -217,7 +223,7 @@ export function HuntPlayer() {
       title={`Clue ${stepNumber} / ${items.length}`}
       right={
         <div className="row" style={{ gap: 8 }}>
-          <Timer startedAt={session.startedAt} paused={hunt.paused} />
+          <Timer startedAt={timerStartedAt ?? session.startedAt} paused={hunt.paused} />
           <button
             className="btn btn--ghost"
             style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}

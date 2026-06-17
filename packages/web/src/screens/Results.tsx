@@ -63,6 +63,8 @@ export function Results() {
       const blob = await renderScoreCard(route.data!.title, session!, nameMap, playUrl);
       if (summaryUrl) URL.revokeObjectURL(summaryUrl);
       setSummaryUrl(URL.createObjectURL(blob));
+    } catch {
+      // Fail silently — share button still available
     } finally {
       setRenderingCard(false);
     }
@@ -71,9 +73,18 @@ export function Results() {
   async function handleShare() {
     setSharing(true);
     try {
-      const nameMap = new Map(items.map((i) => [i.id, i.name]));
       const playUrl = `${window.location.origin}/play/${routeId}`;
-      await shareScore(route.data!.title, session!, nameMap, playUrl);
+      if (summaryUrl) {
+        // Re-use the already-rendered blob for sharing
+        const resp = await fetch(summaryUrl);
+        const blob = await resp.blob();
+        const file = new File([blob], 'hunt-score.png', { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: `I scored ${session!.totalScore} pts on "${route.data!.title}"!` });
+          return;
+        }
+      }
+      await shareScore(route.data!.title, session!, new Map(items.map((i) => [i.id, i.name])), playUrl);
     } catch {
       // Share cancelled or not supported — silently ignore.
     } finally {
@@ -92,13 +103,15 @@ export function Results() {
             {totalSeconds !== undefined && <p className="muted">Total time: {formatDuration(totalSeconds)}</p>}
             {summaryUrl ? (
               <div className="stack">
-                <img src={summaryUrl} alt="Score card" style={{ width: '100%', borderRadius: 'var(--radius)', border: '1px solid var(--color-line)' }} />
-                <Button variant="accent" block disabled={sharing} onClick={handleShare}>
-                  {sharing ? 'Sharing…' : '📤 Share this'}
-                </Button>
-                <Button variant="ghost" block onClick={() => { URL.revokeObjectURL(summaryUrl); setSummaryUrl(null); }}>
-                  Hide summary
-                </Button>
+                <img src={summaryUrl} alt="Score card" style={{ width: '100%', borderRadius: 'var(--radius)', display: 'block' }} />
+                <div className="row" style={{ gap: 8 }}>
+                  <Button variant="accent" style={{ flex: 1 }} disabled={sharing} onClick={handleShare}>
+                    {sharing ? 'Sharing…' : '📤 Share this'}
+                  </Button>
+                  <Button variant="ghost" onClick={() => { URL.revokeObjectURL(summaryUrl); setSummaryUrl(null); }}>
+                    Hide
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
