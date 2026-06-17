@@ -122,7 +122,8 @@ export function HuntPlayer() {
   // ── Lobby: let the player start when ready ──────────────────────────────
   if (hunt.notStarted) {
     const startItem = reversed ? routeData.items.at(-1) : routeData.items[0];
-    const endItem = reversed ? routeData.items[0] : routeData.items.at(-1);
+    const endItem   = reversed ? routeData.items[0]     : routeData.items.at(-1);
+    const showEnd   = endItem && endItem.id !== startItem?.id;
     return (
       <Page onBack title="Ready?">
         <div className="stack">
@@ -146,7 +147,7 @@ export function HuntPlayer() {
                       📍 Starting point
                     </a>
                   )}
-                  {endItem?.location && endItem !== startItem && (
+                  {showEnd && endItem?.location && (
                     <a href={googleMapsLink(endItem.location.lat, endItem.location.lng)} target="_blank" rel="noreferrer" className="btn btn--ghost" style={{ fontSize: '0.85rem' }}>
                       🏁 End point
                     </a>

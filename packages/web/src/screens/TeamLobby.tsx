@@ -3,7 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { Team } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
+import { useAsync } from '../hooks/useAsync.js';
 import { getCurrentLocation } from '../services/geolocation.js';
+import { mediaUrl } from '../services/media.js';
+import { googleMapsLink } from '../services/maps.js';
 import { Banner, Button, Card, Page, Spinner } from '../ui/index.js';
 
 const POLL_MS = 2500;
@@ -20,6 +23,11 @@ export function TeamLobby() {
   const [reversed, setReversed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string>();
+
+  const route = useAsync(
+    () => team?.routeId ? api.getRoute(team.routeId) : Promise.resolve(undefined),
+    [team?.routeId],
+  );
 
   // Poll team state so all members see the lobby refresh.
   useEffect(() => {
@@ -88,9 +96,47 @@ export function TeamLobby() {
     );
   }
 
+  const routeItems = route.data?.items ?? [];
+  const startItem = reversed ? routeItems.at(-1) : routeItems[0];
+  const endItem   = reversed ? routeItems[0]     : routeItems.at(-1);
+  const showEnd   = endItem && endItem.id !== startItem?.id;
+
   return (
     <Page onBack title={team.name}>
       <div className="stack">
+        {/* Route cover + start/end */}
+        {route.data && (
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            {route.data.coverPhotoUrl && (
+              <img
+                src={mediaUrl(route.data.coverPhotoUrl)}
+                alt=""
+                style={{ width: '100%', display: 'block', maxHeight: 200, objectFit: 'cover' }}
+              />
+            )}
+            <div className="stack center" style={{ padding: 'var(--space-3) var(--space-4)' }}>
+              <h3 style={{ margin: 0 }}>{route.data.title}</h3>
+              <p className="muted" style={{ margin: 0 }}>
+                {routeItems.length} item{routeItems.length !== 1 ? 's' : ''} to find
+              </p>
+              {(startItem?.location || (showEnd && endItem?.location)) && (
+                <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {startItem?.location && (
+                    <a href={googleMapsLink(startItem.location.lat, startItem.location.lng)} target="_blank" rel="noreferrer" className="btn btn--ghost" style={{ fontSize: '0.85rem' }}>
+                      📍 Starting point
+                    </a>
+                  )}
+                  {showEnd && endItem?.location && (
+                    <a href={googleMapsLink(endItem.location.lat, endItem.location.lng)} target="_blank" rel="noreferrer" className="btn btn--ghost" style={{ fontSize: '0.85rem' }}>
+                      🏁 End point
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
         {/* Join code */}
         <Card>
           <div className="stack center">
