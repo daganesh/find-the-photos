@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { GeoPoint, Item } from '@ftp/shared';
-import { HelpLevel, canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
+import type { Item } from '@ftp/shared';
+import { canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { playSuccessSound } from '../services/sounds.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { useHunt } from '../hooks/useHunt.js';
-import { getCurrentLocation } from '../services/geolocation.js';
 import {
   Banner,
   Button,
@@ -15,7 +14,6 @@ import {
   Fireworks,
   HintView,
   JigsawView,
-  MapView,
   Page,
   PhotoCapture,
   ScorePill,
@@ -33,7 +31,6 @@ export function HuntPlayer() {
   const hunt = useHunt(routeId);
 
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
-  const [hunterLoc, setHunterLoc] = useState<GeoPoint | undefined>();
   const [reversed, setReversed] = useState(false);
   const prevFound = useRef(0);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
@@ -79,14 +76,6 @@ export function HuntPlayer() {
     }
     prevFound.current = found.length;
   }, [hunt.session]);
-
-  // Fetch the device location once we reach a map-help level.
-  const helpLevel = hunt.activeStep?.helpLevel ?? HelpLevel.None;
-  useEffect(() => {
-    if (helpLevel >= HelpLevel.MapDot && !hunterLoc) {
-      getCurrentLocation().then(setHunterLoc);
-    }
-  }, [helpLevel, hunterLoc]);
 
   // Reset dispute confirm when verdict changes.
   useEffect(() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }, [hunt.lastVerdict]);
@@ -359,14 +348,12 @@ export function HuntPlayer() {
                 seed={item.id}
               />
             )}
-            {(item.extraHints ?? []).filter((h) => h.text).length > 0 && (
-              <Card>
-                <div className="stack">
-                  <span className="field-label">Clues</span>
-                  <HintView hint={item.hint} extraHints={item.extraHints} />
-                </div>
-              </Card>
-            )}
+            <Card>
+              <div className="stack">
+                <span className="field-label">Clue</span>
+                <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} />
+              </div>
+            </Card>
           </div>
         ) : item.kind === 'task' ? (
           <Card>
@@ -379,14 +366,9 @@ export function HuntPlayer() {
           <Card>
             <div className="stack">
               <span className="field-label">Your clue</span>
-              <HintView hint={item.hint} extraHints={item.extraHints} />
+              <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} />
             </div>
           </Card>
-        )}
-
-        {/* Help panel — photo items only */}
-        {item.kind !== 'task' && item.kind !== 'riddle' && item.kind !== 'jigsaw' && (
-          <HelpPanel item={item} step={step} hunterLoc={hunterLoc} />
         )}
 
         {/* Error banners */}
@@ -451,6 +433,15 @@ export function HuntPlayer() {
               </Card>
             )}
             <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <Button variant="accent" onClick={hunt.useHelp}
+                disabled={hunt.busy || !item.extraHints?.length || step.cluesUsed >= (item.extraHints?.length ?? 0)}>
+                💡 Next clue
+              </Button>
+              {item.location && (
+                <a href={googleMapsLink(item.location.lat, item.location.lng)} target="_blank" rel="noreferrer" className="btn btn--accent">
+                  📍 Location
+                </a>
+              )}
               {hunt.lastVerdict && !hunt.lastVerdict.match && (
                 <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
                   🙋 I really found it!
@@ -510,9 +501,15 @@ export function HuntPlayer() {
             </PhotoCapture>
 
             <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <Button variant="accent" onClick={hunt.useHelp} disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}>
-                💡 Help me
+              <Button variant="accent" onClick={hunt.useHelp}
+                disabled={hunt.busy || !item.extraHints?.length || step.cluesUsed >= (item.extraHints?.length ?? 0)}>
+                💡 Next clue
               </Button>
+              {item.location && (
+                <a href={googleMapsLink(item.location.lat, item.location.lng)} target="_blank" rel="noreferrer" className="btn btn--accent">
+                  📍 Location
+                </a>
+              )}
               {hunt.lastVerdict && !hunt.lastVerdict.match && (
                 <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
                   🙋 I really found it!
@@ -568,37 +565,6 @@ export function HuntPlayer() {
         )}
       </div>
     </Page>
-  );
-}
-
-/** Renders help appropriate to the unlocked level (map, then descriptions). */
-function HelpPanel({ item, step, hunterLoc }: { item: Item; step: { helpLevel: HelpLevel }; hunterLoc?: GeoPoint }) {
-  if (step.helpLevel === HelpLevel.None) return null;
-
-  return (
-    <Card>
-      <div className="stack">
-        <span className="field-label">💡 Help</span>
-        {step.helpLevel >= HelpLevel.MapDot && item.location && (
-          <MapView
-            target={item.location}
-            hunter={hunterLoc}
-            showRoute={step.helpLevel >= HelpLevel.RouteLine}
-          />
-        )}
-        {step.helpLevel >= HelpLevel.MapDot && !item.location && (
-          <Banner tone="info">This item has no map location — read the clues below!</Banner>
-        )}
-        {step.helpLevel >= HelpLevel.Describe && item.description && (
-          <p style={{ margin: 0 }}>📝 {item.description}</p>
-        )}
-        {step.helpLevel >= HelpLevel.Surroundings && (
-          <p className="muted" style={{ margin: 0 }}>
-            You're very close! Look high and low, behind and underneath things.
-          </p>
-        )}
-      </div>
-    </Card>
   );
 }
 

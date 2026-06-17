@@ -18,12 +18,17 @@ function SingleHint({ hint }: { hint: Hint }) {
   );
 }
 
-/** Show one or more clues for an item. */
-export function HintView({ hint, extraHints }: { hint: Hint; extraHints?: Hint[] }) {
+/** Show one or more clues for an item.
+ *  When `revealedCount` is given, only that many extraHints are shown (progressive reveal).
+ *  When omitted, all extraHints are shown (backwards-compatible for non-player UIs). */
+export function HintView({ hint, extraHints, revealedCount }: { hint: Hint; extraHints?: Hint[]; revealedCount?: number }) {
+  const visible = revealedCount !== undefined
+    ? (extraHints?.slice(0, revealedCount) ?? [])
+    : (extraHints ?? []);
   return (
     <div className="stack">
       <SingleHint hint={hint} />
-      {extraHints?.map((h, i) => <SingleHint key={i} hint={h} />)}
+      {visible.map((h, i) => <SingleHint key={i} hint={h} />)}
     </div>
   );
 }
