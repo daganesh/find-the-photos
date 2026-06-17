@@ -247,6 +247,7 @@ export async function solveFinalItem(
   }
 
   const updated: HuntSession = { ...session, finalItemSolved: true };
+  updated.totalScore = scoreSession(updated);
   return ctx.hunts.update(session.id, updated) as Promise<HuntSession>;
 }
 

@@ -41,12 +41,26 @@ describe('scoreStep', () => {
 describe('scoreSession', () => {
   it('sums step scores', () => {
     const session: HuntSession = {
-      id: 's',
-      routeId: 'r',
-      hunterId: 'h',
-      startedAt: NOW,
-      totalScore: 0,
+      id: 's', routeId: 'r', hunterId: 'h', startedAt: NOW, totalScore: 0,
       steps: [foundFirstTry(), { ...createStep('j', NOW), status: 'skipped' }],
+    };
+    expect(scoreSession(session)).toBe(SCORING.base);
+  });
+
+  it('adds the final item bonus when finalItemSolved is true', () => {
+    const session: HuntSession = {
+      id: 's', routeId: 'r', hunterId: 'h', startedAt: NOW, totalScore: 0,
+      steps: [foundFirstTry()],
+      finalItemSolved: true,
+    };
+    expect(scoreSession(session)).toBe(SCORING.base + SCORING.finalItemBonus);
+  });
+
+  it('does not add the bonus when finalItemSolved is false', () => {
+    const session: HuntSession = {
+      id: 's', routeId: 'r', hunterId: 'h', startedAt: NOW, totalScore: 0,
+      steps: [foundFirstTry()],
+      finalItemSolved: false,
     };
     expect(scoreSession(session)).toBe(SCORING.base);
   });

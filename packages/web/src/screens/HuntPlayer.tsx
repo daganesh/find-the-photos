@@ -34,6 +34,7 @@ export function HuntPlayer() {
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [hunterLoc, setHunterLoc] = useState<GeoPoint | undefined>();
   const prevFound = useRef(0);
+  const [finalItemSkipped, setFinalItemSkipped] = useState(false);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeError, setDisputeError] = useState('');
@@ -182,42 +183,52 @@ export function HuntPlayer() {
     const solvedIds = new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId));
     const skippedIds = new Set(session.steps.filter((s) => s.status === 'skipped').map((s) => s.itemId));
     const goToResults = () => navigate(`/results/${routeId}`, { state: { session } });
+    const hasFinalItem = Boolean(routeData.finalItem);
+    const finalDone = !hasFinalItem || !!session.finalItemSolved || finalItemSkipped;
 
-    if (routeData.finalItem) {
+    // ── 1. Final item gate — shown BEFORE fireworks/score ─────────────
+    if (hasFinalItem && !finalDone) {
       return (
-        <Page title={session.finalItemSolved ? 'All done! 🏆' : 'Final challenge!'}>
-          <Fireworks />
+        <Page title="🏆 Final challenge!">
           <div className="stack">
             <Card>
-              <div className="stack center">
-                <ScorePill score={session.totalScore} />
-                {session.finalItemSolved && (
-                  <p className="muted" style={{ margin: 0 }}>You solved the final item!</p>
-                )}
-              </div>
+              <p className="muted center" style={{ margin: 0 }}>
+                You found {solvedIds.size} of {items.length} items. Now for the grand finale!
+              </p>
             </Card>
             <FinalItemPanel
-              finalItem={routeData.finalItem}
+              finalItem={routeData.finalItem!}
               items={items}
               solvedItemIds={solvedIds}
               onSolve={hunt.solveFinalItem}
-              solved={!!session.finalItemSolved}
+              solved={false}
               busy={hunt.busy}
               defaultExpanded
               showBreakdown
               skippedItemIds={skippedIds}
               onRetry={(itemId) => hunt.returnToSkipped(itemId)}
             />
-            <Button variant="ghost" block onClick={goToResults}>📊 See full results</Button>
+            <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
+              ⏭ Give up on the final item
+            </Button>
           </div>
         </Page>
       );
     }
 
+    // ── 2. Celebration — shown after final item or when there is none ──
     return (
-      <Page title="Done!">
+      <Page title={session.finalItemSolved ? 'All done! 🏆' : 'Hunt complete!'}>
         <Fireworks />
         <div className="stack">
+          {session.finalItemSolved && (
+            <Card>
+              <div className="stack center">
+                <div style={{ fontSize: '2.5rem' }}>🏆</div>
+                <strong>Final item solved! +100 bonus points!</strong>
+              </div>
+            </Card>
+          )}
           <FinishedCard
             total={session.totalScore}
             onSeeResults={goToResults}
@@ -239,7 +250,9 @@ export function HuntPlayer() {
             <h2>You found {item?.name}!</h2>
             {step && <ScorePill score={scoreStep(step)} max={100} />}
             <Button size="lg" block variant="happy" onClick={() => setCelebrateId(null)}>
-              {complete ? '🏁 See your results' : '➡️ Next clue'}
+              {complete
+                ? routeData.finalItem ? '🏆 Go to final challenge' : '🏁 See your results'
+                : '➡️ Next clue'}
             </Button>
           </div>
         </Card>
