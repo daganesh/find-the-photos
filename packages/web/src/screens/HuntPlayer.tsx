@@ -37,6 +37,31 @@ export function HuntPlayer() {
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeError, setDisputeError] = useState('');
 
+  // Countdown: 3 → 2 → 1 → null (hunt becomes visible after)
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [timerStartedAt, setTimerStartedAt] = useState<string>();
+  const sessionCreatedRef = useRef(false);
+
+  // Start countdown the moment the session arrives for the first time
+  useEffect(() => {
+    if (!sessionCreatedRef.current && hunt.session && !hunt.notStarted) {
+      sessionCreatedRef.current = true;
+      setCountdown(3);
+    }
+  }, [hunt.session, hunt.notStarted]);
+
+  // Tick the countdown down
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown === 0) {
+      setTimerStartedAt(new Date().toISOString());
+      setCountdown(null);
+      return;
+    }
+    const id = setTimeout(() => setCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    return () => clearTimeout(id);
+  }, [countdown]);
+
   // Celebrate + play sound whenever a new item gets solved.
   useEffect(() => {
     if (!hunt.session) return;
@@ -149,6 +174,22 @@ export function HuntPlayer() {
     );
   }
 
+  // ── Countdown before hunt begins ────────────────────────────────────────
+  if (countdown !== null) {
+    return (
+      <Page title="">
+        <div className="countdown-wrap">
+          <p style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--color-ink-soft)', margin: 0 }}>
+            Get ready!
+          </p>
+          {/* key forces remount on each tick, restarting the CSS animation */}
+          <div className="countdown-digit" key={countdown}>{countdown}</div>
+          <p className="muted" style={{ margin: 0 }}>Hunt starts in…</p>
+        </div>
+      </Page>
+    );
+  }
+
   const items = routeData.items;
   const session = hunt.session;
   const skippedSteps = session.steps.filter((s) => s.status === 'skipped');
@@ -217,7 +258,7 @@ export function HuntPlayer() {
       title={`Clue ${stepNumber} / ${items.length}`}
       right={
         <div className="row" style={{ gap: 8 }}>
-          <Timer startedAt={session.startedAt} paused={hunt.paused} />
+          <Timer startedAt={timerStartedAt ?? session.startedAt} paused={hunt.paused} />
           <button
             className="btn btn--ghost"
             style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}

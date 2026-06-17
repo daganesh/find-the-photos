@@ -102,3 +102,37 @@ input:focus, textarea:focus { border-color: var(--color-accent); outline: none; 
   from { transform: scale(0.85); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* ── Countdown screen ───────────────────────────────────────────────── */
+.countdown-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.countdown-digit {
+  font-size: clamp(9rem, 38vw, 16rem);
+  font-weight: 900;
+  color: var(--color-primary);
+  line-height: 1;
+  transform-origin: center center;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .countdown-digit {
+    animation: countdown-beat 0.95s cubic-bezier(0.2, 0.8, 0.25, 1) forwards;
+  }
+}
+
+@keyframes countdown-beat {
+  0%   { transform: scale(0.45); opacity: 0; }
+  38%  { transform: scale(1.22); opacity: 1; }
+  60%  { transform: scale(0.94); }
+  78%  { transform: scale(1.07); }
+  100% { transform: scale(1.00); }
+}
