@@ -9,11 +9,21 @@ import { Button, Card, Page, ScorePill, Spinner, StarRating, formatDuration } fr
 
 /** End-of-hunt: per-item scores, total time, share, and rate-the-route. */
 export function Results() {
-  const { routeId = '' } = useParams();
+  const { routeId = '', sessionId } = useParams<{ routeId: string; sessionId?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const session = (location.state as { session?: HuntSession } | null)?.session;
-  const route = useAsync(() => api.getRoute(routeId), [routeId]);
+
+  // Session passed through router state (same-session navigation — fast path).
+  // Falls back to an API fetch using the session ID embedded in the URL, so
+  // Android browsers that kill the background tab can still show results.
+  const stateSession = (location.state as { session?: HuntSession } | null)?.session;
+  const sessionFetch = useAsync(
+    () => !stateSession && sessionId
+      ? api.getHunt(sessionId).then((r) => r.session)
+      : Promise.resolve(undefined),
+    [sessionId],
+  );
+  const session: HuntSession | undefined = stateSession ?? sessionFetch.data;
 
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState('');
@@ -23,12 +33,28 @@ export function Results() {
   const [summaryUrl, setSummaryUrl] = useState<string | null>(null);
   const [renderingCard, setRenderingCard] = useState(false);
 
+  const route = useAsync(() => api.getRoute(routeId), [routeId]);
+
+  // All hooks must run unconditionally before any early return.
   const totalSeconds = useMemo(() => {
     if (!session?.finishedAt) return undefined;
     return (new Date(session.finishedAt).getTime() - new Date(session.startedAt).getTime()) / 1000;
   }, [session]);
 
-  if (route.loading) return <Page title="Results"><Spinner /></Page>;
+  const items = route.data?.items ?? [];
+
+  const jigsawPhotos = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of items) {
+      if (item.kind === 'jigsaw' && item.photos[0]) map.set(item.id, item.photos[0].url);
+    }
+    return map;
+  }, [items]);
+
+  const loading = route.loading || (!stateSession && sessionFetch.loading);
+
+  if (loading) return <Page title="Results"><Spinner /></Page>;
+
   if (!session || !route.data) {
     return (
       <Page onBack title="Results">
@@ -38,15 +64,7 @@ export function Results() {
     );
   }
 
-  const items = route.data.items;
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? 'Item';
-  const jigsawPhotos = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const item of items) {
-      if (item.kind === 'jigsaw' && item.photos[0]) map.set(item.id, item.photos[0].url);
-    }
-    return map;
-  }, [items]);
   const stepSeconds = (s: HuntSession['steps'][number]): number | undefined =>
     s.startedAt && s.finishedAt
       ? (new Date(s.finishedAt).getTime() - new Date(s.startedAt).getTime()) / 1000
@@ -82,7 +100,6 @@ export function Results() {
     try {
       const playUrl = `${window.location.origin}/play/${routeId}`;
       if (summaryUrl) {
-        // Re-use the already-rendered blob for sharing
         const resp = await fetch(summaryUrl);
         const blob = await resp.blob();
         const file = new File([blob], 'hunt-score.png', { type: 'image/png' });

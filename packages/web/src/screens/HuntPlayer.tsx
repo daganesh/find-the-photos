@@ -182,7 +182,7 @@ export function HuntPlayer() {
   if (complete && !celebrateId) {
     const solvedIds = new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId));
     const skippedIds = new Set(session.steps.filter((s) => s.status === 'skipped').map((s) => s.itemId));
-    const goToResults = () => navigate(`/results/${routeId}`, { state: { session } });
+    const goToResults = () => navigate(`/results/${routeId}/${session.id}`, { state: { session } });
     const hasFinalItem = Boolean(routeData.finalItem);
     const finalDone = !hasFinalItem || !!session.finalItemSolved || finalItemSkipped;
 
