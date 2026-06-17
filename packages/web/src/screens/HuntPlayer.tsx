@@ -31,8 +31,6 @@ export function HuntPlayer() {
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [hunterLoc, setHunterLoc] = useState<GeoPoint | undefined>();
   const prevFound = useRef(0);
-  const [countdown, setCountdown] = useState(0);
-  const countdownStartedRef = useRef(false);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeError, setDisputeError] = useState('');
@@ -72,21 +70,6 @@ export function HuntPlayer() {
       playSuccessSound();
     }
     prevFound.current = found.length;
-  }, [hunt.session]);
-
-  // Start 5-second countdown when session first appears.
-  useEffect(() => {
-    if (hunt.session && !countdownStartedRef.current) {
-      countdownStartedRef.current = true;
-      setCountdown(5);
-      const tick = setInterval(() => {
-        setCountdown((c) => {
-          if (c <= 1) { clearInterval(tick); return 0; }
-          return c - 1;
-        });
-      }, 1000);
-      return () => clearInterval(tick);
-    }
   }, [hunt.session]);
 
   // Fetch the device location once we reach a map-help level.
@@ -140,24 +123,6 @@ export function HuntPlayer() {
               </Button>
             </div>
           </Card>
-        </div>
-      </Page>
-    );
-  }
-
-  if (hunt.session && countdown > 0) {
-    return (
-      <Page title="Get ready!">
-        <div className="stack center" style={{ paddingTop: 60 }}>
-          <div style={{
-            fontSize: '7rem', fontWeight: 900,
-            color: 'var(--color-happy)',
-            animation: 'pop-in 0.3s ease',
-            lineHeight: 1,
-          }}>
-            {countdown}
-          </div>
-          <p className="muted" style={{ fontSize: '1.2rem' }}>Hunt starts in…</p>
         </div>
       </Page>
     );

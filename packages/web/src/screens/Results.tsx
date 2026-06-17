@@ -84,7 +84,7 @@ export function Results() {
           return;
         }
       }
-      await shareScore(route.data!.title, session!, nameMap(), playUrl);
+      await shareScore(route.data!.title, session!, new Map(items.map((i) => [i.id, i.name])), playUrl);
     } catch {
       // Share cancelled or not supported — silently ignore.
     } finally {
