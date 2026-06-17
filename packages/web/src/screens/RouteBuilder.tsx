@@ -202,11 +202,11 @@ export function RouteBuilder() {
                   <strong>{item.name || 'Untitled item'}</strong>
                   <div className="muted">
                     {item.kind === 'riddle'
-                      ? `🧩 ${item.hint.text?.slice(0, 50) ?? 'Riddle'}`
+                      ? `❓ ${item.hint.text?.slice(0, 50) ?? 'Riddle'}`
                       : item.kind === 'task'
                       ? `🎯 ${item.taskInstruction?.slice(0, 50) ?? 'Task'}`
                       : item.kind === 'jigsaw'
-                      ? `🔲 Jigsaw ${item.jigsawDifficulty === 1 ? '3×3' : item.jigsawDifficulty === 2 ? '5×5' : '10×10'}`
+                      ? `🧩 Jigsaw ${item.jigsawDifficulty === 1 ? '3×3' : item.jigsawDifficulty === 2 ? '5×5' : '10×10'}`
                       : `${item.photos.length} photo${item.photos.length === 1 ? '' : 's'}${item.location ? ' · 📍' : ''}`
                     }
                     {finalItem && chunkSize > 0 && (
@@ -228,17 +228,17 @@ export function RouteBuilder() {
         ))}
 
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <Button variant="accent" size="lg" style={{ flex: 3, minWidth: 120 }} onClick={() => setEditing('new')}>
-            ➕ Photo
+          <Button variant="ghost" size="lg" style={{ flex: 3, minWidth: 120, background: '#fff0ee' }} onClick={() => setEditing('new')}>
+            📷 Photo
           </Button>
-          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90 }} onClick={() => setEditing('new-task')}>
+          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90, background: '#fffbeb' }} onClick={() => setEditing('new-task')}>
             🎯 Task
           </Button>
-          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90 }} onClick={() => setEditing('new-riddle')}>
-            🧩 Riddle
+          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90, background: '#f0fdf4' }} onClick={() => setEditing('new-riddle')}>
+            ❓ Riddle
           </Button>
-          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90 }} onClick={() => setEditing('new-jigsaw')}>
-            🔲 Jigsaw
+          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90, background: '#f5f3ff' }} onClick={() => setEditing('new-jigsaw')}>
+            🧩 Jigsaw
           </Button>
         </div>
 
@@ -259,7 +259,7 @@ export function RouteBuilder() {
                     variant={finalItem.kind === k ? 'primary' : 'ghost'}
                     onClick={() => updateFinalItem({ kind: k })}
                   >
-                    {k === 'riddle' ? '🧩 Riddle' : k === 'code' ? '🔢 Code' : '🔲 Jigsaw'}
+                    {k === 'riddle' ? '❓ Riddle' : k === 'code' ? '🔢 Code' : '🧩 Jigsaw'}
                   </Button>
                 ))}
               </div>

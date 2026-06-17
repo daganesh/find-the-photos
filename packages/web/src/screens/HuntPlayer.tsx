@@ -180,15 +180,22 @@ export function HuntPlayer() {
   // ── Hunt finished ───────────────────────────────────────────────────────
   if (complete && !celebrateId) {
     const solvedIds = new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId));
-    return (
-      <Page title="Done!">
-        <Fireworks />
-        <div className="stack">
-          <FinishedCard
-            total={session.totalScore}
-            onSeeResults={() => navigate(`/results/${routeId}`, { state: { session } })}
-          />
-          {routeData.finalItem && (
+    const skippedIds = new Set(session.steps.filter((s) => s.status === 'skipped').map((s) => s.itemId));
+    const goToResults = () => navigate(`/results/${routeId}`, { state: { session } });
+
+    if (routeData.finalItem) {
+      return (
+        <Page title={session.finalItemSolved ? 'All done! 🏆' : 'Final challenge!'}>
+          <Fireworks />
+          <div className="stack">
+            <Card>
+              <div className="stack center">
+                <ScorePill score={session.totalScore} />
+                {session.finalItemSolved && (
+                  <p className="muted" style={{ margin: 0 }}>You solved the final item!</p>
+                )}
+              </div>
+            </Card>
             <FinalItemPanel
               finalItem={routeData.finalItem}
               items={items}
@@ -196,8 +203,25 @@ export function HuntPlayer() {
               onSolve={hunt.solveFinalItem}
               solved={!!session.finalItemSolved}
               busy={hunt.busy}
+              defaultExpanded
+              showBreakdown
+              skippedItemIds={skippedIds}
+              onRetry={(itemId) => hunt.returnToSkipped(itemId)}
             />
-          )}
+            <Button variant="ghost" block onClick={goToResults}>📊 See full results</Button>
+          </div>
+        </Page>
+      );
+    }
+
+    return (
+      <Page title="Done!">
+        <Fireworks />
+        <div className="stack">
+          <FinishedCard
+            total={session.totalScore}
+            onSeeResults={goToResults}
+          />
         </div>
       </Page>
     );

@@ -116,17 +116,33 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
         <h2>{initial ? 'Edit item' : 'New item'}</h2>
 
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <Button variant={!item.kind || item.kind === 'photo' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'photo' })}>
+          <Button
+            variant="ghost"
+            style={{ background: '#fff0ee', outline: (!item.kind || item.kind === 'photo') ? '2px solid var(--color-accent)' : undefined }}
+            onClick={() => update({ kind: 'photo' })}
+          >
             📷 Photo
           </Button>
-          <Button variant={item.kind === 'task' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'task' })}>
+          <Button
+            variant="ghost"
+            style={{ background: '#fffbeb', outline: item.kind === 'task' ? '2px solid var(--color-accent)' : undefined }}
+            onClick={() => update({ kind: 'task' })}
+          >
             🎯 Task
           </Button>
-          <Button variant={item.kind === 'riddle' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'riddle' })}>
-            🧩 Riddle
+          <Button
+            variant="ghost"
+            style={{ background: '#f0fdf4', outline: item.kind === 'riddle' ? '2px solid var(--color-accent)' : undefined }}
+            onClick={() => update({ kind: 'riddle' })}
+          >
+            ❓ Riddle
           </Button>
-          <Button variant={item.kind === 'jigsaw' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'jigsaw', jigsawDifficulty: item.jigsawDifficulty ?? 1 })}>
-            🔲 Jigsaw
+          <Button
+            variant="ghost"
+            style={{ background: '#f5f3ff', outline: item.kind === 'jigsaw' ? '2px solid var(--color-accent)' : undefined }}
+            onClick={() => update({ kind: 'jigsaw', jigsawDifficulty: item.jigsawDifficulty ?? 1 })}
+          >
+            🧩 Jigsaw
           </Button>
         </div>
 
