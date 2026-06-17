@@ -2,16 +2,18 @@ import { useState } from 'react';
 import type { Hint, Item, Photo } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { getCurrentLocation } from '../services/geolocation.js';
-import { Button, Card, PhotoCapture, PhotoGallery, AudioRecorder } from '../ui/index.js';
+import { getJigsawGridSize } from '@ftp/shared';
+import { mediaUrl } from '../services/media.js';
+import { Button, Card, JigsawView, PhotoCapture, PhotoGallery, AudioRecorder } from '../ui/index.js';
 
 interface ItemEditorProps {
   initial?: Item;
-  defaultKind?: 'photo' | 'task' | 'riddle';
+  defaultKind?: Item['kind'];
   onSave: (item: Item) => void;
   onCancel: () => void;
 }
 
-const blankItem = (kind?: 'photo' | 'task' | 'riddle'): Item => ({
+const blankItem = (kind?: Item['kind']): Item => ({
   id: crypto.randomUUID(),
   kind: kind ?? 'photo',
   name: '',
@@ -95,6 +97,8 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
       ? (item.taskInstruction ?? '').trim().length > 0
       : item.kind === 'riddle'
       ? (item.hint.text ?? '').trim().length > 0 && item.name.trim().length > 0
+      : item.kind === 'jigsaw'
+      ? item.photos.length > 0 && item.name.trim().length > 0
       : item.name.trim().length > 0 && item.photos.length > 0;
 
   function handleSave() {
@@ -111,7 +115,7 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
       <div className="stack">
         <h2>{initial ? 'Edit item' : 'New item'}</h2>
 
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           <Button variant={!item.kind || item.kind === 'photo' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'photo' })}>
             📷 Photo
           </Button>
@@ -120,6 +124,9 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
           </Button>
           <Button variant={item.kind === 'riddle' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'riddle' })}>
             🧩 Riddle
+          </Button>
+          <Button variant={item.kind === 'jigsaw' ? 'primary' : 'ghost'} onClick={() => update({ kind: 'jigsaw', jigsawDifficulty: item.jigsawDifficulty ?? 1 })}>
+            🔲 Jigsaw
           </Button>
         </div>
 
@@ -170,6 +177,67 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
                 id="riddle-answer"
                 value={item.name}
                 placeholder="e.g. A clock"
+                onChange={(e) => update({ name: e.target.value })}
+              />
+            </div>
+          </>
+        ) : item.kind === 'jigsaw' ? (
+          <>
+            <div>
+              <span className="field-label">Puzzle photo</span>
+              {item.photos[0] && (
+                <div style={{ marginBottom: 'var(--space-2)' }}>
+                  <JigsawView
+                    imageUrl={mediaUrl(item.photos[0].url)}
+                    gridSize={getJigsawGridSize(item.jigsawDifficulty ?? 1)}
+                    mode="scrambled"
+                    difficulty={item.jigsawDifficulty ?? 1}
+                    seed={item.id}
+                  />
+                </div>
+              )}
+              <PhotoCapture onCapture={addPhoto} variant="accent" disabled={busy}>
+                📷 {item.photos[0] ? 'Change photo' : 'Add puzzle photo'}
+              </PhotoCapture>
+            </div>
+
+            <div>
+              <span className="field-label">Difficulty</span>
+              <div className="row" style={{ gap: 8 }}>
+                {([1, 2, 3] as const).map((d) => (
+                  <Button
+                    key={d}
+                    variant={item.jigsawDifficulty === d ? 'primary' : 'ghost'}
+                    onClick={() => update({ jigsawDifficulty: d })}
+                  >
+                    {d === 1 ? '3×3' : d === 2 ? '5×5' : '10×10'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {(item.extraHints ?? []).map((h, i) => (
+              <div key={i}>
+                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-1)' }}>
+                  <span className="field-label" style={{ margin: 0 }}>Clue {i + 1}</span>
+                  <Button variant="ghost" onClick={() => removeExtraHint(i)} disabled={busy}>🗑 Remove</Button>
+                </div>
+                <textarea
+                  rows={2}
+                  value={h.text ?? ''}
+                  placeholder="An extra hint for the player…"
+                  onChange={(e) => updateExtraHint(i, { kind: 'text', text: e.target.value })}
+                />
+              </div>
+            ))}
+            <Button variant="ghost" onClick={addExtraHint} disabled={busy}>➕ Add a clue</Button>
+
+            <div>
+              <label className="field-label" htmlFor="jigsaw-answer">What is this? (answer)</label>
+              <input
+                id="jigsaw-answer"
+                value={item.name}
+                placeholder="e.g. The old town fountain"
                 onChange={(e) => update({ name: e.target.value })}
               />
             </div>
@@ -259,6 +327,8 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
               ? 'Add a task instruction.'
               : item.kind === 'riddle'
               ? 'Add a riddle question and the answer.'
+              : item.kind === 'jigsaw'
+              ? 'Add a puzzle photo and name what it shows.'
               : 'Add an answer and at least one photo.'}
           </p>
         )}

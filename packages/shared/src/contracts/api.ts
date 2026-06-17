@@ -1,4 +1,4 @@
-import type { Hint, Item, Route, Rating } from '../models/route.js';
+import type { FinalItem, Hint, Item, Route, Rating } from '../models/route.js';
 import type { GeoPoint } from '../models/geo.js';
 import type { HuntSession, MatchVerdict, StepProgress } from '../models/hunt.js';
 import type { User } from '../models/user.js';
@@ -39,6 +39,8 @@ export interface UpdateRouteRequest {
   coverPhotoUrl?: string;
   /** Replace the full ordered item list (handles add/edit/reorder/remove). */
   items?: Item[];
+  /** Set or clear the optional final item. Pass null to remove. */
+  finalItem?: FinalItem | null;
 }
 
 export interface RouteSummary {
@@ -117,8 +119,13 @@ export interface DisputeRequest {
   description: string;
 }
 
-// --- Riddle ---
+// --- Riddle / Jigsaw guess ---
 export interface SolveRiddleRequest {
+  answer: string;
+}
+
+// --- Final item ---
+export interface SolveFinalItemRequest {
   answer: string;
 }
 

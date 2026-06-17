@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { GeoPoint, Item } from '@ftp/shared';
-import { HelpLevel, canSkip, isHuntComplete, scoreStep } from '@ftp/shared';
+import { HelpLevel, canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { playSuccessSound } from '../services/sounds.js';
 import { useAsync } from '../hooks/useAsync.js';
@@ -11,8 +11,10 @@ import {
   Banner,
   Button,
   Card,
+  FinalItemPanel,
   Fireworks,
   HintView,
+  JigsawView,
   MapView,
   Page,
   PhotoCapture,
@@ -20,6 +22,7 @@ import {
   Spinner,
   Timer,
 } from '../ui/index.js';
+import { mediaUrl } from '../services/media.js';
 
 /** The hunter flow: lobby → play → celebrate → results. */
 export function HuntPlayer() {
@@ -176,13 +179,26 @@ export function HuntPlayer() {
 
   // ── Hunt finished ───────────────────────────────────────────────────────
   if (complete && !celebrateId) {
+    const solvedIds = new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId));
     return (
       <Page title="Done!">
         <Fireworks />
-        <FinishedCard
-          total={session.totalScore}
-          onSeeResults={() => navigate(`/results/${routeId}`, { state: { session } })}
-        />
+        <div className="stack">
+          <FinishedCard
+            total={session.totalScore}
+            onSeeResults={() => navigate(`/results/${routeId}`, { state: { session } })}
+          />
+          {routeData.finalItem && (
+            <FinalItemPanel
+              finalItem={routeData.finalItem}
+              items={items}
+              solvedItemIds={solvedIds}
+              onSolve={hunt.solveFinalItem}
+              solved={!!session.finalItemSolved}
+              busy={hunt.busy}
+            />
+          )}
+        </div>
       </Page>
     );
   }
@@ -250,7 +266,7 @@ export function HuntPlayer() {
       }
     >
       <div className="stack">
-        {/* ── Clue / instruction / riddle card ───────────────────────────── */}
+        {/* ── Clue / instruction / riddle / jigsaw card ──────────────────── */}
         {item.kind === 'riddle' ? (
           <Card>
             <div className="stack">
@@ -266,6 +282,26 @@ export function HuntPlayer() {
               )}
             </div>
           </Card>
+        ) : item.kind === 'jigsaw' ? (
+          <div className="stack">
+            {item.photos[0] && (
+              <JigsawView
+                imageUrl={mediaUrl(item.photos[0].url)}
+                gridSize={getJigsawGridSize(item.jigsawDifficulty ?? 1)}
+                mode="scrambled"
+                difficulty={item.jigsawDifficulty ?? 1}
+                seed={item.id}
+              />
+            )}
+            {(item.extraHints ?? []).filter((h) => h.text).length > 0 && (
+              <Card>
+                <div className="stack">
+                  <span className="field-label">Clues</span>
+                  <HintView hint={item.hint} extraHints={item.extraHints} />
+                </div>
+              </Card>
+            )}
+          </div>
         ) : item.kind === 'task' ? (
           <Card>
             <div className="stack">
@@ -283,12 +319,12 @@ export function HuntPlayer() {
         )}
 
         {/* Help panel — photo items only */}
-        {item.kind !== 'task' && item.kind !== 'riddle' && (
+        {item.kind !== 'task' && item.kind !== 'riddle' && item.kind !== 'jigsaw' && (
           <HelpPanel item={item} step={step} hunterLoc={hunterLoc} />
         )}
 
         {/* Error banners */}
-        {hunt.lastVerdict && !hunt.lastVerdict.match && item.kind !== 'riddle' && (
+        {hunt.lastVerdict && !hunt.lastVerdict.match && item.kind !== 'riddle' && item.kind !== 'jigsaw' && (
           <Banner tone="no">🤔 {hunt.lastVerdict.reason} Try another angle, or get help!</Banner>
         )}
         {riddleError && <Banner tone="no">{riddleError}</Banner>}
@@ -315,6 +351,52 @@ export function HuntPlayer() {
           </>
         )}
 
+        {/* ── Jigsaw: text guess + camera + help + dispute ────────────────── */}
+        {item.kind === 'jigsaw' && (
+          <>
+            {riddleError && <Banner tone="no">{riddleError}</Banner>}
+            {hunt.lastVerdict && !hunt.lastVerdict.match && (
+              <Banner tone="no">🤔 {hunt.lastVerdict.reason}</Banner>
+            )}
+            <input
+              value={riddleAnswer}
+              onChange={(e) => setRiddleAnswer(e.target.value)}
+              placeholder="What do you think this shows?"
+              disabled={hunt.busy}
+              onKeyDown={(e) => { if (e.key === 'Enter' && riddleAnswer.trim()) handleRiddleSubmit(); }}
+            />
+            <Button variant="happy" block disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
+              {hunt.busy ? 'Checking…' : '✅ Guess what it shows'}
+            </Button>
+            <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="accent" disabled={hunt.busy}>
+              📸 Go find it — take a photo
+            </PhotoCapture>
+            {disputeConfirm && (
+              <Card>
+                <div className="stack">
+                  <strong>Describe what you found</strong>
+                  <input value={disputeDesc} onChange={(e) => setDisputeDesc(e.target.value)} placeholder="e.g. the old fountain…" />
+                  {disputeError && <Banner tone="no">{disputeError}</Banner>}
+                  <div className="row">
+                    <Button variant="happy" disabled={hunt.busy || !disputeDesc.trim()} onClick={handleDispute}>✅ That's it!</Button>
+                    <Button variant="ghost" onClick={() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }}>Cancel</Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              {hunt.lastVerdict && !hunt.lastVerdict.match && (
+                <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
+                  🙋 I really found it!
+                </Button>
+              )}
+              {canSkip(step) && (
+                <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>⏭ Skip</Button>
+              )}
+            </div>
+          </>
+        )}
+
         {/* ── Task: camera only, no help or dispute ───────────────────────── */}
         {item.kind === 'task' && (
           <>
@@ -330,7 +412,7 @@ export function HuntPlayer() {
         )}
 
         {/* ── Photo: full UI with help, camera, and dispute ───────────────── */}
-        {item.kind !== 'task' && item.kind !== 'riddle' && (
+        {item.kind !== 'task' && item.kind !== 'riddle' && item.kind !== 'jigsaw' && (
           <>
             {disputeConfirm && (
               <Card>
@@ -377,6 +459,18 @@ export function HuntPlayer() {
               )}
             </div>
           </>
+        )}
+
+        {/* Final item progress — shown during the hunt */}
+        {routeData.finalItem && (
+          <FinalItemPanel
+            finalItem={routeData.finalItem}
+            items={items}
+            solvedItemIds={new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId))}
+            onSolve={hunt.solveFinalItem}
+            solved={!!session.finalItemSolved}
+            busy={hunt.busy}
+          />
         )}
 
         {/* Skipped items — offer to retry them */}

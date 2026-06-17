@@ -99,6 +99,7 @@ export function routesRouter(ctx: AppContext): Router {
       if (body.description !== undefined) patch.description = body.description.trim() || undefined;
       if (body.coverPhotoUrl !== undefined) patch.coverPhotoUrl = body.coverPhotoUrl || undefined;
       if (body.items !== undefined) patch.items = body.items;
+      if (body.finalItem !== undefined) patch.finalItem = body.finalItem ?? undefined;
       res.json(await ctx.routes.update(route.id, patch));
     } catch (err) {
       next(err);

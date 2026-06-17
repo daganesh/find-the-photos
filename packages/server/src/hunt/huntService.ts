@@ -220,6 +220,36 @@ export async function dispute(
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
 }
 
+/** Verify the optional final item answer; mark session as solved on success. */
+export async function solveFinalItem(
+  ctx: AppContext,
+  sessionId: string,
+  answer: string,
+): Promise<HuntSession | { error: string; status: number }> {
+  const session = await ctx.hunts.get(sessionId);
+  if (!session) return { error: 'Hunt not found', status: 404 };
+  const route = await ctx.routes.get(session.routeId);
+  if (!route) return { error: 'Route not found', status: 404 };
+  if (!route.finalItem) return { error: 'This hunt has no final item', status: 400 };
+  if (session.finalItemSolved) return { error: 'Final item already solved', status: 409 };
+
+  const finalItem = route.finalItem;
+  if (finalItem.kind === 'code') {
+    const norm = (s: string) => s.toLowerCase().replace(/[\s\-]/g, '');
+    if (norm(answer) !== norm(finalItem.answer)) {
+      return { error: 'Wrong code — try again!', status: 409 };
+    }
+  } else {
+    const verification = await ctx.imageMatch.verifyDispute(answer, finalItem.answer);
+    if (!verification.match) {
+      return { error: verification.reason, status: 409 };
+    }
+  }
+
+  const updated: HuntSession = { ...session, finalItemSolved: true };
+  return ctx.hunts.update(session.id, updated) as Promise<HuntSession>;
+}
+
 /** Verify a riddle answer and mark found on match (no disputed flag). */
 export async function solveRiddle(
   ctx: AppContext,

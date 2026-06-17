@@ -8,6 +8,8 @@ export type {
   Hint,
   Photo,
   Item,
+  ItemKind,
+  FinalItem,
   RouteStatus,
   Rating,
   Route,
@@ -57,6 +59,7 @@ export {
   isHuntComplete,
 } from './logic/huntMachine.js';
 export { isRoutePlayable, averageRating } from './logic/route.js';
+export { getJigsawGridSize, getFinalItemPositions } from './logic/finalItem.js';
 export { computeTeamResult, findBestBlooper } from './logic/teamScoring.js';
 
 // Contracts

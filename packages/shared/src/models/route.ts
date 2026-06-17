@@ -19,11 +19,18 @@ export interface Photo {
   angleLabel?: string;
 }
 
+/**
+ * All supported item kinds, shared between hunt items and the final item.
+ * Not every kind is valid in every context:
+ *   Hunt items: photo | task | riddle | jigsaw
+ *   Final item: riddle | code | jigsaw
+ */
+export type ItemKind = 'photo' | 'task' | 'riddle' | 'jigsaw' | 'code';
+
 /** A single thing to find on a route. */
 export interface Item {
   id: string;
-  /** 'photo' (default) = photo-match hunt item. 'task' = AI-scored action. 'riddle' = text answer compared to name. */
-  kind?: 'photo' | 'task' | 'riddle';
+  kind?: ItemKind;
   name: string;
   description?: string;
   hint: Hint;
@@ -35,8 +42,27 @@ export interface Item {
   location?: GeoPoint;
   /** Flagged internally when hunters struggle (skips / many clues). */
   difficult: boolean;
-  /** For task items: the full instruction shown to the player ("Jump as high as you can!"). */
+  /** For task items: the full instruction shown to the player. */
   taskInstruction?: string;
+  /** For jigsaw items: puzzle complexity (1=3×3, 2=5×5, 3=10×10). */
+  jigsawDifficulty?: 1 | 2 | 3;
+}
+
+/**
+ * An optional hidden bonus item collected progressively across the whole hunt.
+ * As each regular item is solved the player earns a clue (letters / code
+ * characters / jigsaw pieces) toward solving the final item.
+ */
+export interface FinalItem {
+  kind: ItemKind; // riddle | code | jigsaw are the supported kinds
+  /** For riddle: the question shown upfront. */
+  riddleQuestion?: string;
+  /** The answer / code to verify against. For jigsaw: what the photo shows. */
+  answer: string;
+  /** For jigsaw: the reference photo URL. */
+  photoUrl?: string;
+  /** For jigsaw: puzzle complexity (1=3×3, 2=5×5, 3=10×10). */
+  difficulty?: 1 | 2 | 3;
 }
 
 export type RouteStatus = 'draft' | 'ready';
@@ -63,4 +89,7 @@ export interface Route {
   ratings: Rating[];
   /** Average of ratings.stars, or undefined when unrated. */
   avgRating?: number;
+  /** Optional bonus item unlocked progressively as hunt items are solved. */
+  finalItem?: FinalItem;
 }
+

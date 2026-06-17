@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { Item, ModerationIssue, Route } from '@ftp/shared';
-import { isRoutePlayable } from '@ftp/shared';
+import type { FinalItem, Item, ModerationIssue, Route } from '@ftp/shared';
+import { getJigsawGridSize, isRoutePlayable } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { Banner, Button, Card, Page, PhotoCapture, Spinner } from '../ui/index.js';
 import { ItemEditor } from './ItemEditor.js';
+
+type EditingState = Item | 'new' | 'new-task' | 'new-riddle' | 'new-jigsaw' | null;
 
 /** The hider flow: build a route by adding items, then finalise it. */
 export function RouteBuilder() {
@@ -15,9 +17,10 @@ export function RouteBuilder() {
   const { data, loading, error } = useAsync(() => api.getRoute(routeId), [routeId]);
 
   const [route, setRoute] = useState<Route | null>(null);
-  const [editing, setEditing] = useState<Item | 'new' | 'new-task' | 'new-riddle' | null>(null);
+  const [editing, setEditing] = useState<EditingState>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingFinalPhoto, setUploadingFinalPhoto] = useState(false);
   const [moderationIssues, setModerationIssues] = useState<ModerationIssue[]>([]);
 
   useEffect(() => {
@@ -34,6 +37,7 @@ export function RouteBuilder() {
       description: next.description,
       coverPhotoUrl: next.coverPhotoUrl,
       items: next.items,
+      finalItem: next.finalItem ?? null,
     });
   }
 
@@ -68,6 +72,21 @@ export function RouteBuilder() {
     await persist({ ...route!, items });
   }
 
+  async function updateFinalItem(patch: Partial<FinalItem>) {
+    const next: Route = { ...route!, finalItem: { ...(route!.finalItem ?? { kind: 'riddle', answer: '' }), ...patch } };
+    await persist(next);
+  }
+
+  async function addFinalItemPhoto(file: File) {
+    setUploadingFinalPhoto(true);
+    try {
+      const { url } = await api.uploadFile(file, file.name);
+      await updateFinalItem({ photoUrl: url });
+    } finally {
+      setUploadingFinalPhoto(false);
+    }
+  }
+
   async function finalize() {
     setSaving(true);
     setModerationIssues([]);
@@ -78,7 +97,13 @@ export function RouteBuilder() {
         setSaving(false);
         return;
       }
-      await api.updateRoute(route!.id, { title: route!.title, description: route!.description, coverPhotoUrl: route!.coverPhotoUrl, items: route!.items });
+      await api.updateRoute(route!.id, {
+        title: route!.title,
+        description: route!.description,
+        coverPhotoUrl: route!.coverPhotoUrl,
+        items: route!.items,
+        finalItem: route!.finalItem ?? null,
+      });
       await api.finalizeRoute(route!.id);
       navigate(`/play/${route!.id}`);
     } catch (e) {
@@ -87,11 +112,16 @@ export function RouteBuilder() {
   }
 
   if (editing) {
+    const isNew = editing === 'new' || editing === 'new-task' || editing === 'new-riddle' || editing === 'new-jigsaw';
+    const defaultKind =
+      editing === 'new-task' ? 'task' :
+      editing === 'new-riddle' ? 'riddle' :
+      editing === 'new-jigsaw' ? 'jigsaw' : 'photo';
     return (
       <Page onBack={() => setEditing(null)} title="Item">
         <ItemEditor
-          initial={editing === 'new' || editing === 'new-task' || editing === 'new-riddle' ? undefined : editing}
-          defaultKind={editing === 'new-task' ? 'task' : editing === 'new-riddle' ? 'riddle' : 'photo'}
+          initial={isNew ? undefined : (editing as Item)}
+          defaultKind={defaultKind}
           onSave={saveItem}
           onCancel={() => setEditing(null)}
         />
@@ -99,12 +129,21 @@ export function RouteBuilder() {
     );
   }
 
+  const finalItem = route.finalItem;
+  const totalPositions = finalItem
+    ? finalItem.kind === 'jigsaw'
+      ? getJigsawGridSize(finalItem.difficulty ?? 1) ** 2
+      : finalItem.answer.length
+    : 0;
+  const chunkSize = route.items.length > 0 && totalPositions > 0
+    ? Math.ceil(totalPositions / route.items.length)
+    : 0;
+
   return (
     <Page onBack title="Build your hunt">
       <div className="stack">
         <Card>
           <div className="stack">
-            {/* Cover photo */}
             <div>
               <span className="field-label">Cover photo (optional)</span>
               {route.coverPhotoUrl ? (
@@ -166,8 +205,15 @@ export function RouteBuilder() {
                       ? `🧩 ${item.hint.text?.slice(0, 50) ?? 'Riddle'}`
                       : item.kind === 'task'
                       ? `🎯 ${item.taskInstruction?.slice(0, 50) ?? 'Task'}`
+                      : item.kind === 'jigsaw'
+                      ? `🔲 Jigsaw ${item.jigsawDifficulty === 1 ? '3×3' : item.jigsawDifficulty === 2 ? '5×5' : '10×10'}`
                       : `${item.photos.length} photo${item.photos.length === 1 ? '' : 's'}${item.location ? ' · 📍' : ''}`
                     }
+                    {finalItem && chunkSize > 0 && (
+                      <span style={{ marginLeft: 6, color: 'var(--color-accent)' }}>
+                        🏆 {chunkSize} clue{chunkSize !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -182,16 +228,108 @@ export function RouteBuilder() {
         ))}
 
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <Button variant="accent" size="lg" style={{ flex: 3 }} onClick={() => setEditing('new')}>
-            ➕ Add a photo item
+          <Button variant="accent" size="lg" style={{ flex: 3, minWidth: 120 }} onClick={() => setEditing('new')}>
+            ➕ Photo
           </Button>
-          <Button variant="ghost" size="lg" style={{ flex: 2 }} onClick={() => setEditing('new-task')}>
-            🎯 Add a task
+          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90 }} onClick={() => setEditing('new-task')}>
+            🎯 Task
           </Button>
-          <Button variant="ghost" size="lg" style={{ flex: 2 }} onClick={() => setEditing('new-riddle')}>
-            🧩 Add a riddle
+          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90 }} onClick={() => setEditing('new-riddle')}>
+            🧩 Riddle
+          </Button>
+          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90 }} onClick={() => setEditing('new-jigsaw')}>
+            🔲 Jigsaw
           </Button>
         </div>
+
+        {/* ── Final item ─────────────────────────────────────────────────── */}
+        <h2>Final item (optional)</h2>
+        {finalItem ? (
+          <Card>
+            <div className="stack">
+              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong>🏆 Final item</strong>
+                <Button variant="ghost" onClick={() => persist({ ...route, finalItem: undefined })}>Remove</Button>
+              </div>
+
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                {(['riddle', 'code', 'jigsaw'] as const).map((k) => (
+                  <Button
+                    key={k}
+                    variant={finalItem.kind === k ? 'primary' : 'ghost'}
+                    onClick={() => updateFinalItem({ kind: k })}
+                  >
+                    {k === 'riddle' ? '🧩 Riddle' : k === 'code' ? '🔢 Code' : '🔲 Jigsaw'}
+                  </Button>
+                ))}
+              </div>
+
+              {finalItem.kind === 'riddle' && (
+                <div>
+                  <label className="field-label">Riddle question</label>
+                  <textarea
+                    rows={2}
+                    value={finalItem.riddleQuestion ?? ''}
+                    placeholder="Shown to players from the start…"
+                    onChange={(e) => updateFinalItem({ riddleQuestion: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {finalItem.kind === 'jigsaw' && (
+                <>
+                  <div>
+                    <span className="field-label">Puzzle photo</span>
+                    {finalItem.photoUrl && (
+                      <img src={mediaUrl(finalItem.photoUrl)} alt="" style={{ width: '100%', borderRadius: 'var(--radius)', maxHeight: 160, objectFit: 'cover', marginBottom: 'var(--space-2)' }} />
+                    )}
+                    <PhotoCapture onCapture={addFinalItemPhoto} variant="accent" disabled={uploadingFinalPhoto}>
+                      📷 {finalItem.photoUrl ? 'Change photo' : 'Add photo'}
+                    </PhotoCapture>
+                  </div>
+                  <div>
+                    <span className="field-label">Difficulty</span>
+                    <div className="row" style={{ gap: 8 }}>
+                      {([1, 2, 3] as const).map((d) => (
+                        <Button key={d} variant={finalItem.difficulty === d ? 'primary' : 'ghost'} onClick={() => updateFinalItem({ difficulty: d })}>
+                          {d === 1 ? '3×3' : d === 2 ? '5×5' : '10×10'}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="field-label">{finalItem.kind === 'code' ? 'Code' : 'Answer'}</label>
+                <input
+                  value={finalItem.answer}
+                  placeholder={finalItem.kind === 'code' ? 'e.g. CASTLE or 2847' : 'The final answer…'}
+                  onChange={(e) => updateFinalItem({ answer: e.target.value })}
+                />
+              </div>
+
+              {route.items.length > 0 && finalItem.answer && finalItem.kind !== 'jigsaw' && (
+                <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>
+                  Each solved item reveals ~{chunkSize} character{chunkSize !== 1 ? 's' : ''} of the {finalItem.kind === 'code' ? 'code' : 'answer'}.
+                </p>
+              )}
+              {route.items.length > 0 && finalItem.kind === 'jigsaw' && (
+                <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>
+                  Each solved item reveals ~{chunkSize} of {totalPositions} puzzle piece{totalPositions !== 1 ? 's' : ''}.
+                </p>
+              )}
+            </div>
+          </Card>
+        ) : (
+          <Button
+            variant="ghost"
+            block
+            onClick={() => persist({ ...route, finalItem: { kind: 'riddle', answer: '', riddleQuestion: '' } })}
+          >
+            🏆 Add a final item
+          </Button>
+        )}
 
         {moderationIssues.length > 0 && (
           <Card>
