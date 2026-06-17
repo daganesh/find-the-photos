@@ -139,6 +139,18 @@ export class ApiClient {
   returnToSkipped(sessionId: string, itemId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}/steps/${itemId}/return`, { method: 'POST' });
   }
+  solveRiddle(sessionId: string, itemId: string, answer: string): Promise<{ session: HuntSession }> {
+    return this.request(`/api/hunt/${sessionId}/steps/${itemId}/solve`, {
+      method: 'POST',
+      body: JSON.stringify({ answer }),
+    });
+  }
+  solveFinalItem(sessionId: string, answer: string): Promise<{ session: HuntSession }> {
+    return this.request(`/api/hunt/${sessionId}/solve-final`, {
+      method: 'POST',
+      body: JSON.stringify({ answer }),
+    });
+  }
 
   // --- Teams ---
   createTeam(routeId: string, name?: string, avatarEmoji?: string): Promise<Team> {

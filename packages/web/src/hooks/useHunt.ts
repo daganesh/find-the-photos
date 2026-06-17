@@ -21,6 +21,8 @@ interface HuntController {
   useHelp: () => Promise<void>;
   skip: () => Promise<void>;
   dispute: (description: string) => Promise<void>;
+  submitRiddleAnswer: (answer: string) => Promise<void>;
+  solveFinalItem: (answer: string) => Promise<void>;
   returnToSkipped: (itemId: string) => Promise<void>;
   pause: () => void;
   resume: () => void;
@@ -124,6 +126,34 @@ export function useHunt(routeId: string): HuntController {
     if (!cancelRef.current) setBusy(false);
   }, [session, activeStep]);
 
+  const submitRiddleAnswer = useCallback(async (answer: string) => {
+    if (!session || !activeStep) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const { session: next } = await api.solveRiddle(session.id, activeStep.itemId, answer);
+      if (!cancelRef.current) setSession(next);
+    } catch (e) {
+      if (!cancelRef.current) setBusy(false);
+      throw e;
+    }
+    if (!cancelRef.current) setBusy(false);
+  }, [session, activeStep]);
+
+  const solveFinalItem = useCallback(async (answer: string) => {
+    if (!session) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const { session: next } = await api.solveFinalItem(session.id, answer);
+      if (!cancelRef.current) setSession(next);
+    } catch (e) {
+      if (!cancelRef.current) setBusy(false);
+      throw e;
+    }
+    if (!cancelRef.current) setBusy(false);
+  }, [session]);
+
   const returnToSkipped = useCallback(async (itemId: string) => {
     if (!session) return;
     setBusy(true);
@@ -143,6 +173,6 @@ export function useHunt(routeId: string): HuntController {
 
   return {
     session, activeStep, loading, notStarted, busy, paused, error, lastVerdict,
-    start, submitPhoto, useHelp, skip, dispute, returnToSkipped, pause, resume,
+    start, submitPhoto, useHelp, skip, dispute, submitRiddleAnswer, solveFinalItem, returnToSkipped, pause, resume,
   };
 }

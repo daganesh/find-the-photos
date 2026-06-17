@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import type { DisputeRequest, EscalateHelpRequest, StepProgress, SubmitPhotoResponse } from '@ftp/shared';
+import type { DisputeRequest, EscalateHelpRequest, SolveFinalItemRequest, SolveRiddleRequest, StepProgress, SubmitPhotoResponse } from '@ftp/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import {
@@ -9,6 +9,8 @@ import {
   findActiveStep,
   returnSkipped,
   skip,
+  solveFinalItem,
+  solveRiddle,
   submitPhoto,
   useHelp,
 } from '../hunt/huntService.js';
@@ -116,6 +118,38 @@ export function huntRouter(ctx: AppContext): Router {
       const result = await dispute(ctx, found, description);
       if ('error' in result) return void res.status(result.status).json({ error: result.error });
       res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Submit a text answer to a riddle item.
+  router.post('/:sessionId/steps/:itemId/solve', requireAuth, async (req, res, next) => {
+    try {
+      const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
+      if ('error' in found) return void res.status(found.status).json({ error: found.error });
+      const { answer } = req.body as SolveRiddleRequest;
+      if (!answer?.trim()) {
+        return void res.status(400).json({ error: 'An answer is required' });
+      }
+      const result = await solveRiddle(ctx, found, answer.trim());
+      if ('error' in result) return void res.status(result.status).json({ error: result.error });
+      res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Submit an answer for the optional final item.
+  router.post('/:sessionId/solve-final', requireAuth, async (req, res, next) => {
+    try {
+      const { answer } = req.body as SolveFinalItemRequest;
+      if (!answer?.trim()) {
+        return void res.status(400).json({ error: 'An answer is required' });
+      }
+      const result = await solveFinalItem(ctx, req.params.sessionId, answer.trim());
+      if ('error' in result) return void res.status(result.status).json({ error: result.error });
+      res.json({ session: result });
     } catch (err) {
       next(err);
     }

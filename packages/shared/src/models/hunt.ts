@@ -69,4 +69,6 @@ export interface HuntSession {
   startLocation?: GeoPoint;
   finishedAt?: string;
   totalScore: number;
+  /** True when the player correctly solved the optional final item. */
+  finalItemSolved?: boolean;
 }
