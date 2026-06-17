@@ -347,7 +347,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           activeSteps.map((step) => {
             const item = items.find((i) => i.id === step.itemId);
             if (!item) return null;
-            const stepNum = items.findIndex((i) => i.id === step.itemId) + 1;
+            const stepNum = session.steps.findIndex((s) => s.itemId === step.itemId) + 1;
             return (
               <Card key={step.itemId}>
                 <div className="stack" style={{ gap: 8 }}>

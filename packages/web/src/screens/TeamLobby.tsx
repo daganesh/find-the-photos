@@ -17,6 +17,7 @@ export function TeamLobby() {
   const [team, setTeam] = useState<Team>();
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [reversed, setReversed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -66,7 +67,7 @@ export function TeamLobby() {
     setError(undefined);
     try {
       const location = await getCurrentLocation().catch(() => undefined);
-      const { team: t } = await api.startTeamHunt(teamId, location);
+      const { team: t } = await api.startTeamHunt(teamId, location, reversed);
       setTeam(t);
       if (t.status === 'playing') {
         navigate(`/team/${teamId}/play`, { replace: true });
@@ -149,9 +150,19 @@ export function TeamLobby() {
         {error && <Banner tone="no">{error}</Banner>}
 
         {isOwner ? (
-          <Button size="lg" block variant="happy" onClick={handleStart} disabled={starting}>
-            {starting ? 'Starting…' : '▶ Start Hunt'}
-          </Button>
+          <>
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem' }}>
+                {reversed ? '🔄 Playing reversed order' : '▶ Playing original order'}
+              </span>
+              <Button variant="ghost" onClick={() => setReversed((r) => !r)}>
+                {reversed ? 'Play original' : 'Play reversed'}
+              </Button>
+            </div>
+            <Button size="lg" block variant="happy" onClick={handleStart} disabled={starting}>
+              {starting ? 'Starting…' : '▶ Start Hunt'}
+            </Button>
+          </>
         ) : (
           <Card>
             <p className="center muted" style={{ margin: 0 }}>

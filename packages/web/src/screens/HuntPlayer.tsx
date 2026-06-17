@@ -155,13 +155,14 @@ export function HuntPlayer() {
               )}
               {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
               {routeData.items.length > 1 && (
-                <Button
-                  variant={reversed ? 'primary' : 'ghost'}
-                  block
-                  onClick={() => setReversed((r) => !r)}
-                >
-                  🔄 {reversed ? 'Reversed order ✓' : 'Play in normal order'}
-                </Button>
+                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className="muted" style={{ fontSize: '0.9rem' }}>
+                    {reversed ? '🔄 Playing reversed order' : '▶ Playing original order'}
+                  </span>
+                  <Button variant="ghost" onClick={() => setReversed((r) => !r)}>
+                    {reversed ? 'Play original' : 'Play reversed'}
+                  </Button>
+                </div>
               )}
               <Button size="lg" block variant="happy" onClick={() => hunt.start(reversed)} disabled={hunt.loading}>
                 {hunt.loading ? 'Starting…' : '▶ Start Hunt'}

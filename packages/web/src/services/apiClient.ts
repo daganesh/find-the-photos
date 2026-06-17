@@ -162,8 +162,8 @@ export class ApiClient {
   joinTeamByCode(code: string, avatarEmoji?: string): Promise<Team> {
     return this.request(`/api/teams/join/${code}`, { method: 'POST', body: JSON.stringify({ avatarEmoji }) });
   }
-  startTeamHunt(teamId: string, location?: GeoPoint): Promise<{ team: Team; session: HuntSession }> {
-    return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location }) });
+  startTeamHunt(teamId: string, location?: GeoPoint, reversed?: boolean): Promise<{ team: Team; session: HuntSession }> {
+    return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location, reversed }) });
   }
   pauseOrResumeTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}/pause`, { method: 'POST' });

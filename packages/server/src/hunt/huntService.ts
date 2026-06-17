@@ -59,9 +59,11 @@ export function buildTeamSession(
   teamId: string,
   teamSize: number,
   startLocation?: GeoPoint,
+  reversed = false,
 ): HuntSession {
   const n = Math.max(1, Math.min(teamSize, route.items.length));
-  const steps: StepProgress[] = route.items.map((item, index) => {
+  const items = reversed ? [...route.items].reverse() : route.items;
+  const steps: StepProgress[] = items.map((item, index) => {
     const step = createStep(item.id, now());
     return index < n ? step : { ...step, status: 'locked', startedAt: undefined };
   });
@@ -75,6 +77,7 @@ export function buildTeamSession(
     startedAt: now(),
     startLocation,
     totalScore: 0,
+    ...(reversed && { reversed: true }),
   };
 }
 
