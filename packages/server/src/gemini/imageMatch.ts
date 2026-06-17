@@ -40,6 +40,18 @@ CRITICAL RULES FOR THE REASON FIELD:
   NEVER reveal, name, describe, or hint at the target object in any way.
   The name of the target object must NEVER appear in the reason field.`;
 
+/** Retry an async fn up to `attempts` times with exponential back-off. */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try { return await fn(); } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 600 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 /** Real Gemini-backed matcher. */
 export class GeminiImageMatchService implements ImageMatchService {
   private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
@@ -60,23 +72,23 @@ export class GeminiImageMatchService implements ImageMatchService {
       { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
     ];
 
-    const response = await this.ai.models.generateContent({
+    const response = await withRetry(() => this.ai.models.generateContent({
       model: config.gemini.model,
       contents: [{ role: 'user', parts }],
       config: { responseMimeType: 'application/json' },
-    });
+    }));
 
     return parseVerdict(response.text ?? '');
   }
 
   async verifyDispute(description: string, itemName: string): Promise<MatchVerdict> {
-    const prompt = `You are verifying a treasure hunt dispute. The player says they found: "${description}". The actual target is: "${itemName}". Do they refer to the same real-world object? Be generous — synonyms, partial descriptions, and different languages count if clearly the same thing. Reply with STRICT JSON: {"match": boolean, "confidence": number (0..1), "reason": "one short sentence"}`;
+    const prompt = `You are verifying a treasure hunt answer. The player answered: "${description}". The correct answer is: "${itemName}". Do they mean the same thing? Be generous — synonyms, partial descriptions, and different languages count if clearly the same. CRITICAL RULES FOR THE REASON FIELD: Do NOT mention, reveal, or hint at the correct answer under any circumstances. If wrong, give only a short directional hint (e.g. "think bigger", "that's a different kind of thing", "look more carefully"). Reply with STRICT JSON: {"match": boolean, "confidence": number (0..1), "reason": "one short kid-friendly sentence"}`;
 
-    const response = await this.ai.models.generateContent({
+    const response = await withRetry(() => this.ai.models.generateContent({
       model: config.gemini.model,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: { responseMimeType: 'application/json' },
-    });
+    }));
 
     return parseVerdict(response.text ?? '');
   }
@@ -88,11 +100,11 @@ export class GeminiImageMatchService implements ImageMatchService {
       { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
     ];
 
-    const response = await this.ai.models.generateContent({
+    const response = await withRetry(() => this.ai.models.generateContent({
       model: config.gemini.model,
       contents: [{ role: 'user', parts }],
       config: { responseMimeType: 'application/json' },
-    });
+    }));
 
     return parseVerdict(response.text ?? '');
   }

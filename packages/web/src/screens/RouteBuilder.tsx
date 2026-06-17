@@ -195,7 +195,7 @@ export function RouteBuilder() {
         <h2>Items ({route.items.length})</h2>
         {route.items.map((item, i) => (
           <Card key={item.id}>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
+            <div className="stack" style={{ gap: 'var(--space-2)' }}>
               <div className="row">
                 <span style={{ fontSize: '1.5rem' }}>{i + 1}️⃣</span>
                 <div>
@@ -217,7 +217,7 @@ export function RouteBuilder() {
                   </div>
                 </div>
               </div>
-              <div className="row">
+              <div className="row" style={{ justifyContent: 'flex-end' }}>
                 <button className="btn btn--ghost" onClick={() => move(i, -1)} aria-label="Move up" style={{ width: 44, minWidth: 44, padding: 0 }}>↑</button>
                 <button className="btn btn--ghost" onClick={() => move(i, 1)} aria-label="Move down" style={{ width: 44, minWidth: 44, padding: 0 }}>↓</button>
                 <button className="btn btn--ghost" onClick={() => setEditing(item)} aria-label="Edit" style={{ width: 44, minWidth: 44, padding: 0 }}>✏️</button>
@@ -227,17 +227,17 @@ export function RouteBuilder() {
           </Card>
         ))}
 
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <Button variant="ghost" size="lg" style={{ flex: 3, minWidth: 120, background: '#fff0ee' }} onClick={() => setEditing('new')}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <Button variant="ghost" size="lg" block style={{ background: '#fff0ee' }} onClick={() => setEditing('new')}>
             📷 Photo
           </Button>
-          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90, background: '#fffbeb' }} onClick={() => setEditing('new-task')}>
+          <Button variant="ghost" size="lg" block style={{ background: '#fffbeb' }} onClick={() => setEditing('new-task')}>
             🎯 Task
           </Button>
-          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90, background: '#f0fdf4' }} onClick={() => setEditing('new-riddle')}>
+          <Button variant="ghost" size="lg" block style={{ background: '#f0fdf4' }} onClick={() => setEditing('new-riddle')}>
             ❓ Riddle
           </Button>
-          <Button variant="ghost" size="lg" style={{ flex: 2, minWidth: 90, background: '#f5f3ff' }} onClick={() => setEditing('new-jigsaw')}>
+          <Button variant="ghost" size="lg" block style={{ background: '#f5f3ff' }} onClick={() => setEditing('new-jigsaw')}>
             🧩 Jigsaw
           </Button>
         </div>
