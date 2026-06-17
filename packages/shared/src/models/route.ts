@@ -22,8 +22,8 @@ export interface Photo {
 /** A single thing to find on a route. */
 export interface Item {
   id: string;
-  /** 'photo' (default) = photo-match hunt item. 'task' = player performs an action and is AI-scored. */
-  kind?: 'photo' | 'task';
+  /** 'photo' (default) = photo-match hunt item. 'task' = AI-scored action. 'riddle' = text answer compared to name. */
+  kind?: 'photo' | 'task' | 'riddle';
   name: string;
   description?: string;
   hint: Hint;

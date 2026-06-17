@@ -15,7 +15,7 @@ export function RouteBuilder() {
   const { data, loading, error } = useAsync(() => api.getRoute(routeId), [routeId]);
 
   const [route, setRoute] = useState<Route | null>(null);
-  const [editing, setEditing] = useState<Item | 'new' | 'new-task' | null>(null);
+  const [editing, setEditing] = useState<Item | 'new' | 'new-task' | 'new-riddle' | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [moderationIssues, setModerationIssues] = useState<ModerationIssue[]>([]);
@@ -90,8 +90,8 @@ export function RouteBuilder() {
     return (
       <Page onBack={() => setEditing(null)} title="Item">
         <ItemEditor
-          initial={editing === 'new' || editing === 'new-task' ? undefined : editing}
-          defaultKind={editing === 'new-task' ? 'task' : 'photo'}
+          initial={editing === 'new' || editing === 'new-task' || editing === 'new-riddle' ? undefined : editing}
+          defaultKind={editing === 'new-task' ? 'task' : editing === 'new-riddle' ? 'riddle' : 'photo'}
           onSave={saveItem}
           onCancel={() => setEditing(null)}
         />
@@ -162,7 +162,9 @@ export function RouteBuilder() {
                 <div>
                   <strong>{item.name || 'Untitled item'}</strong>
                   <div className="muted">
-                    {item.kind === 'task'
+                    {item.kind === 'riddle'
+                      ? `🧩 ${item.hint.text?.slice(0, 50) ?? 'Riddle'}`
+                      : item.kind === 'task'
                       ? `🎯 ${item.taskInstruction?.slice(0, 50) ?? 'Task'}`
                       : `${item.photos.length} photo${item.photos.length === 1 ? '' : 's'}${item.location ? ' · 📍' : ''}`
                     }
@@ -179,12 +181,15 @@ export function RouteBuilder() {
           </Card>
         ))}
 
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           <Button variant="accent" size="lg" style={{ flex: 3 }} onClick={() => setEditing('new')}>
             ➕ Add a photo item
           </Button>
           <Button variant="ghost" size="lg" style={{ flex: 2 }} onClick={() => setEditing('new-task')}>
             🎯 Add a task
+          </Button>
+          <Button variant="ghost" size="lg" style={{ flex: 2 }} onClick={() => setEditing('new-riddle')}>
+            🧩 Add a riddle
           </Button>
         </div>
 

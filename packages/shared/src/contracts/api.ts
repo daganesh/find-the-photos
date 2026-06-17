@@ -117,6 +117,11 @@ export interface DisputeRequest {
   description: string;
 }
 
+// --- Riddle ---
+export interface SolveRiddleRequest {
+  answer: string;
+}
+
 // --- Moderation ---
 export interface ModerationIssue {
   field: string;   // e.g. "item[2].name", "route.title"

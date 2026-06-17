@@ -10,6 +10,7 @@ import type {
 import {
   createStep,
   disputeStep,
+  solveStep,
   escalateHelp,
   proximityTo,
   recordAttempt,
@@ -215,6 +216,21 @@ export async function dispute(
     return { error: verification.reason, status: 409 };
   }
   const nextStep = disputeStep(found.step, now());
+  const session = withStep(found.session, found.item.id, nextStep);
+  return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
+}
+
+/** Verify a riddle answer and mark found on match (no disputed flag). */
+export async function solveRiddle(
+  ctx: AppContext,
+  found: StepLookup,
+  answer: string,
+): Promise<HuntSession | { error: string; status: number }> {
+  const verification = await ctx.imageMatch.verifyDispute(answer, found.item.name);
+  if (!verification.match) {
+    return { error: verification.reason, status: 409 };
+  }
+  const nextStep = solveStep(found.step, now());
   const session = withStep(found.session, found.item.id, nextStep);
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
 }

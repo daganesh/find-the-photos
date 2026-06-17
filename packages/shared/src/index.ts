@@ -53,6 +53,7 @@ export {
   skipStep,
   returnSkippedStep,
   disputeStep,
+  solveStep,
   isHuntComplete,
 } from './logic/huntMachine.js';
 export { isRoutePlayable, averageRating } from './logic/route.js';

@@ -34,6 +34,8 @@ export function HuntPlayer() {
   const [disputeConfirm, setDisputeConfirm] = useState(false);
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeError, setDisputeError] = useState('');
+  const [riddleAnswer, setRiddleAnswer] = useState('');
+  const [riddleError, setRiddleError] = useState('');
 
   // Countdown: 3 → 2 → 1 → null (hunt becomes visible after)
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -82,6 +84,18 @@ export function HuntPlayer() {
 
   // Reset dispute confirm when verdict changes.
   useEffect(() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }, [hunt.lastVerdict]);
+
+  // Reset riddle input when the active step changes.
+  useEffect(() => { setRiddleAnswer(''); setRiddleError(''); }, [hunt.activeStep?.itemId]);
+
+  async function handleRiddleSubmit() {
+    setRiddleError('');
+    try {
+      await hunt.submitRiddleAnswer(riddleAnswer.trim());
+    } catch (e) {
+      setRiddleError(e instanceof Error ? e.message : 'Not quite — try again!');
+    }
+  }
 
   async function handleDispute() {
     setDisputeError('');
@@ -236,7 +250,23 @@ export function HuntPlayer() {
       }
     >
       <div className="stack">
-        {item.kind === 'task' ? (
+        {/* ── Clue / instruction / riddle card ───────────────────────────── */}
+        {item.kind === 'riddle' ? (
+          <Card>
+            <div className="stack">
+              <span className="field-label">🧩 Riddle</span>
+              <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{item.hint.text}</p>
+              {(item.extraHints ?? []).filter((h) => h.text).length > 0 && (
+                <>
+                  <span className="field-label" style={{ marginTop: 'var(--space-1)' }}>Clues</span>
+                  {(item.extraHints ?? []).map((h, i) => (
+                    <p key={i} style={{ margin: 0, color: 'var(--color-ink-soft)' }}>• {h.text}</p>
+                  ))}
+                </>
+              )}
+            </div>
+          </Card>
+        ) : item.kind === 'task' ? (
           <Card>
             <div className="stack">
               <span className="field-label">🎯 Your task</span>
@@ -252,57 +282,102 @@ export function HuntPlayer() {
           </Card>
         )}
 
-        <HelpPanel item={item} step={step} hunterLoc={hunterLoc} />
+        {/* Help panel — photo items only */}
+        {item.kind !== 'task' && item.kind !== 'riddle' && (
+          <HelpPanel item={item} step={step} hunterLoc={hunterLoc} />
+        )}
 
-        {hunt.lastVerdict && !hunt.lastVerdict.match && (
+        {/* Error banners */}
+        {hunt.lastVerdict && !hunt.lastVerdict.match && item.kind !== 'riddle' && (
           <Banner tone="no">🤔 {hunt.lastVerdict.reason} Try another angle, or get help!</Banner>
         )}
+        {riddleError && <Banner tone="no">{riddleError}</Banner>}
         {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
 
-        {disputeConfirm && (
-          <Card>
-            <div className="stack">
-              <strong>What did you find?</strong>
-              <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-                Name or describe what you're looking at to prove you found it.
-              </p>
-              <input
-                value={disputeDesc}
-                onChange={(e) => setDisputeDesc(e.target.value)}
-                placeholder="e.g. the red mailbox, a blue door…"
-              />
-              {disputeError && <Banner tone="no">{disputeError}</Banner>}
-              <div className="row">
-                <Button variant="happy" disabled={hunt.busy || !disputeDesc.trim()} onClick={handleDispute}>
-                  ✅ That's it!
-                </Button>
-                <Button variant="ghost" onClick={() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </Card>
+        {/* ── Riddle: text answer ─────────────────────────────────────────── */}
+        {item.kind === 'riddle' && (
+          <>
+            <input
+              value={riddleAnswer}
+              onChange={(e) => setRiddleAnswer(e.target.value)}
+              placeholder="Your answer…"
+              disabled={hunt.busy}
+              onKeyDown={(e) => { if (e.key === 'Enter' && riddleAnswer.trim()) handleRiddleSubmit(); }}
+            />
+            <Button variant="happy" block disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
+              {hunt.busy ? 'Checking…' : '✅ Submit answer'}
+            </Button>
+            {canSkip(step) && (
+              <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>
+                ⏭ Skip
+              </Button>
+            )}
+          </>
         )}
 
-        <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="happy" disabled={hunt.busy}>
-          {hunt.busy ? '🔎 Checking…' : '📸 I found it — take a photo'}
-        </PhotoCapture>
+        {/* ── Task: camera only, no help or dispute ───────────────────────── */}
+        {item.kind === 'task' && (
+          <>
+            <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="happy" disabled={hunt.busy}>
+              {hunt.busy ? '🔎 Checking…' : '📸 Take a photo'}
+            </PhotoCapture>
+            {canSkip(step) && (
+              <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>
+                ⏭ Skip
+              </Button>
+            )}
+          </>
+        )}
 
-        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <Button variant="accent" onClick={hunt.useHelp} disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}>
-            💡 Help me
-          </Button>
-          {item.kind !== 'task' && hunt.lastVerdict && !hunt.lastVerdict.match && (
-            <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
-              🙋 I really found it!
-            </Button>
-          )}
-          {canSkip(step) && (
-            <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>
-              ⏭ Skip
-            </Button>
-          )}
-        </div>
+        {/* ── Photo: full UI with help, camera, and dispute ───────────────── */}
+        {item.kind !== 'task' && item.kind !== 'riddle' && (
+          <>
+            {disputeConfirm && (
+              <Card>
+                <div className="stack">
+                  <strong>What did you find?</strong>
+                  <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
+                    Name or describe what you're looking at to prove you found it.
+                  </p>
+                  <input
+                    value={disputeDesc}
+                    onChange={(e) => setDisputeDesc(e.target.value)}
+                    placeholder="e.g. the red mailbox, a blue door…"
+                  />
+                  {disputeError && <Banner tone="no">{disputeError}</Banner>}
+                  <div className="row">
+                    <Button variant="happy" disabled={hunt.busy || !disputeDesc.trim()} onClick={handleDispute}>
+                      ✅ That's it!
+                    </Button>
+                    <Button variant="ghost" onClick={() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="happy" disabled={hunt.busy}>
+              {hunt.busy ? '🔎 Checking…' : '📸 I found it — take a photo'}
+            </PhotoCapture>
+
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <Button variant="accent" onClick={hunt.useHelp} disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}>
+                💡 Help me
+              </Button>
+              {hunt.lastVerdict && !hunt.lastVerdict.match && (
+                <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
+                  🙋 I really found it!
+                </Button>
+              )}
+              {canSkip(step) && (
+                <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>
+                  ⏭ Skip
+                </Button>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Skipped items — offer to retry them */}
         {skippedSteps.length > 0 && (

@@ -116,6 +116,15 @@ export function disputeStep(step: StepProgress, now: string): StepProgress {
   return { ...step, status: 'found', disputed: true, finishedAt: now };
 }
 
+/**
+ * Mark a step as cleanly solved without a disputed flag.
+ * Used for riddle answers that verified correctly against the expected answer.
+ */
+export function solveStep(step: StepProgress, now: string): StepProgress {
+  if (step.status !== 'active') return step;
+  return { ...step, status: 'found', disputed: false, finishedAt: now };
+}
+
 /** True when every step has been finished (found or skipped). */
 export function isHuntComplete(steps: StepProgress[]): boolean {
   return steps.length > 0 && steps.every((s) => s.status === 'found' || s.status === 'skipped');
