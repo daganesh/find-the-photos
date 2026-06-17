@@ -1,9 +1,39 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { nanoid } from 'nanoid';
+import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { config } from '../config.js';
 import { getPool } from '../storage/db.js';
+
+const MAX_DIM = 1440;
+
+/**
+ * Downscale any image buffer whose longest side exceeds MAX_DIM, re-encoding
+ * as JPEG. Non-image buffers (audio) pass through unchanged.
+ * Returns { buffer, mimeType } always.
+ */
+export async function resizeIfNeeded(
+  buffer: Buffer,
+  mimeType: string,
+): Promise<{ buffer: Buffer; mimeType: string }> {
+  if (!mimeType.startsWith('image/')) return { buffer, mimeType };
+  try {
+    const img = sharp(buffer, { failOn: 'none' });
+    const meta = await img.metadata();
+    const w = meta.width ?? 0;
+    const h = meta.height ?? 0;
+    if (w <= MAX_DIM && h <= MAX_DIM) return { buffer, mimeType };
+    const resized = await img
+      .resize({ width: MAX_DIM, height: MAX_DIM, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85, mozjpeg: true })
+      .toBuffer();
+    return { buffer: resized, mimeType: 'image/jpeg' };
+  } catch {
+    // If sharp can't parse the image (e.g. unknown format), store as-is.
+    return { buffer, mimeType };
+  }
+}
 
 /** A stored image: bytes on disk/db plus the public URL the client uses. */
 export interface StoredImage {
@@ -45,7 +75,8 @@ const s3 = config.s3.bucket
  * 3. Local filesystem              — dev fallback only (ephemeral on Railway)
  */
 export class PhotoStore {
-  async save(buffer: Buffer, mimeType: string): Promise<StoredImage> {
+  async save(rawBuffer: Buffer, rawMimeType: string): Promise<StoredImage> {
+    const { buffer, mimeType } = await resizeIfNeeded(rawBuffer, rawMimeType);
     const ext = EXT_BY_MIME[mimeType] ?? 'bin';
     const id = nanoid();
     const key = `${id}.${ext}`;
