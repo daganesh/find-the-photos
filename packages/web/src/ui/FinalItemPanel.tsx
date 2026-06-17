@@ -16,11 +16,30 @@ interface FinalItemPanelProps {
   onSolve: (answer: string) => Promise<void>;
   solved: boolean;
   busy: boolean;
+  /** Start expanded (e.g. for the completion screen). Defaults to false. */
+  defaultExpanded?: boolean;
+  /** Show a per-item contribution list below the mask/jigsaw. */
+  showBreakdown?: boolean;
+  /** Item IDs that are currently skipped. */
+  skippedItemIds?: Set<string>;
+  /** Called when the player retries a skipped item. */
+  onRetry?: (itemId: string) => void;
 }
 
 /** Reveals final-item clues progressively as hunt items are solved. */
-export function FinalItemPanel({ finalItem, items, solvedItemIds, onSolve, solved, busy }: FinalItemPanelProps) {
-  const [expanded, setExpanded] = useState(false);
+export function FinalItemPanel({
+  finalItem,
+  items,
+  solvedItemIds,
+  onSolve,
+  solved,
+  busy,
+  defaultExpanded,
+  showBreakdown,
+  skippedItemIds,
+  onRetry,
+}: FinalItemPanelProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState('');
 
@@ -105,6 +124,17 @@ export function FinalItemPanel({ finalItem, items, solvedItemIds, onSolve, solve
               <AnswerMask answer={finalItem.answer} revealed={revealedPositions} />
             )}
 
+            {showBreakdown && (
+              <ItemBreakdown
+                finalItem={finalItem}
+                items={items}
+                solvedItemIds={solvedItemIds}
+                skippedItemIds={skippedItemIds}
+                onRetry={onRetry}
+                totalPositions={totalPositions}
+              />
+            )}
+
             {error && <Banner tone="no">{error}</Banner>}
 
             <input
@@ -121,6 +151,85 @@ export function FinalItemPanel({ finalItem, items, solvedItemIds, onSolve, solve
         )}
       </div>
     </Card>
+  );
+}
+
+interface ItemBreakdownProps {
+  finalItem: FinalItem;
+  items: Item[];
+  solvedItemIds: Set<string>;
+  skippedItemIds?: Set<string>;
+  onRetry?: (itemId: string) => void;
+  totalPositions: number;
+}
+
+function ItemBreakdown({
+  finalItem,
+  items,
+  solvedItemIds,
+  skippedItemIds,
+  onRetry,
+  totalPositions,
+}: ItemBreakdownProps) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 4 }}>
+      {items.map((item, i) => {
+        const positions = getFinalItemPositions(i, items.length, totalPositions);
+        const isSolved = solvedItemIds.has(item.id);
+        const isSkipped = skippedItemIds?.has(item.id) ?? false;
+        const showRetry = isSkipped && onRetry != null;
+
+        let contributionLabel: string;
+        if (finalItem.kind === 'jigsaw') {
+          const count = positions.length;
+          contributionLabel = isSolved ? `+${count} pieces` : `${count} pieces`;
+        } else {
+          const chars = positions
+            .map((pos) => finalItem.answer[pos] ?? '')
+            .filter(Boolean)
+            .join('');
+          contributionLabel = isSolved ? `+${chars}` : chars;
+        }
+
+        const icon = isSolved ? '✅' : '⏭';
+        const textColor = isSolved ? 'var(--color-ok, #22c55e)' : 'var(--color-ink-soft, #9ca3af)';
+
+        return (
+          <div
+            key={item.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '0.875rem',
+              gap: 8,
+            }}
+          >
+            <span style={{ color: textColor, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {icon} {item.name} → {contributionLabel}
+            </span>
+            {showRetry && (
+              <button
+                onClick={() => onRetry(item.id)}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--color-ink-soft, #9ca3af)',
+                  borderRadius: 4,
+                  padding: '1px 6px',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  color: 'var(--color-ink-soft, #9ca3af)',
+                  flexShrink: 0,
+                  lineHeight: 1.5,
+                }}
+              >
+                ↩ Retry
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

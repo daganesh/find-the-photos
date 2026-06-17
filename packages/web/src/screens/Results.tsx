@@ -40,6 +40,13 @@ export function Results() {
 
   const items = route.data.items;
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? 'Item';
+  const jigsawPhotos = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of items) {
+      if (item.kind === 'jigsaw' && item.photos[0]) map.set(item.id, item.photos[0].url);
+    }
+    return map;
+  }, [items]);
   const stepSeconds = (s: HuntSession['steps'][number]): number | undefined =>
     s.startedAt && s.finishedAt
       ? (new Date(s.finishedAt).getTime() - new Date(s.startedAt).getTime()) / 1000
@@ -60,7 +67,7 @@ export function Results() {
     try {
       const nameMap = new Map(items.map((i) => [i.id, i.name]));
       const playUrl = `${window.location.origin}/play/${routeId}`;
-      const blob = await renderScoreCard(route.data!.title, session!, nameMap, playUrl);
+      const blob = await renderScoreCard(route.data!.title, session!, nameMap, playUrl, undefined, undefined, jigsawPhotos);
       if (summaryUrl) URL.revokeObjectURL(summaryUrl);
       setSummaryUrl(URL.createObjectURL(blob));
     } catch {
@@ -84,7 +91,7 @@ export function Results() {
           return;
         }
       }
-      await shareScore(route.data!.title, session!, new Map(items.map((i) => [i.id, i.name])), playUrl);
+      await shareScore(route.data!.title, session!, new Map(items.map((i) => [i.id, i.name])), playUrl, undefined, undefined, jigsawPhotos);
     } catch {
       // Share cancelled or not supported — silently ignore.
     } finally {

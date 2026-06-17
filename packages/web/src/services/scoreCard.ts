@@ -210,6 +210,7 @@ export async function renderScoreCard(
   playUrl: string,
   team?: Team,
   _teamResult?: TeamResult,
+  itemPhotos?: Map<string, string>,
 ): Promise<Blob> {
   await document.fonts.ready;
 
@@ -233,6 +234,8 @@ export async function renderScoreCard(
   const logoImg = await loadImg('/logo.jpg');
   const photoImgs = await Promise.all(
     steps.map((s) => {
+      const refUrl = itemPhotos?.get(s.itemId);
+      if (refUrl) return loadImg(mediaUrl(refUrl));
       const url = s.photoAttempts.at(-1)?.photoUrl ?? null;
       return url ? loadImg(mediaUrl(url)) : Promise.resolve(null);
     }),
@@ -330,8 +333,9 @@ export async function shareScore(
   playUrl: string,
   team?: Team,
   teamResult?: TeamResult,
+  itemPhotos?: Map<string, string>,
 ): Promise<void> {
-  const blob = await renderScoreCard(routeTitle, session, itemNames, playUrl, team, teamResult);
+  const blob = await renderScoreCard(routeTitle, session, itemNames, playUrl, team, teamResult, itemPhotos);
   const file = new File([blob], 'hunt-score.png', { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({ files: [file], title: `I scored ${session.totalScore} pts on "${routeTitle}"!` });
