@@ -5,8 +5,9 @@ export function getJigsawGridSize(difficulty: 1 | 2 | 3): number {
 
 /**
  * Positions (0-based indices) of the final item answer/jigsaw that a given
- * hunt item reveals. Positions are distributed in equal consecutive chunks.
- * The last item may receive fewer positions when totalPositions % totalItems ≠ 0.
+ * hunt item reveals. Uses round-robin distribution so every item gets at least
+ * one position when totalPositions ≥ totalItems, and the counts differ by at
+ * most 1 when they cannot divide evenly.
  */
 export function getFinalItemPositions(
   itemIndex: number,
@@ -14,8 +15,9 @@ export function getFinalItemPositions(
   totalPositions: number,
 ): number[] {
   if (totalPositions === 0 || totalItems === 0) return [];
-  const chunkSize = Math.ceil(totalPositions / totalItems);
-  const start = itemIndex * chunkSize;
-  const end = Math.min(start + chunkSize, totalPositions);
-  return Array.from({ length: Math.max(0, end - start) }, (_, i) => start + i);
+  const positions: number[] = [];
+  for (let pos = 0; pos < totalPositions; pos++) {
+    if (pos % totalItems === itemIndex) positions.push(pos);
+  }
+  return positions;
 }

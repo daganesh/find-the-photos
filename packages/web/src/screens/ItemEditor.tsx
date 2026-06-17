@@ -115,9 +115,10 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
       <div className="stack">
         <h2>{initial ? 'Edit item' : 'New item'}</h2>
 
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <Button
             variant="ghost"
+            block
             style={{ background: '#fff0ee', outline: (!item.kind || item.kind === 'photo') ? '2px solid var(--color-accent)' : undefined }}
             onClick={() => update({ kind: 'photo' })}
           >
@@ -125,6 +126,7 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
           </Button>
           <Button
             variant="ghost"
+            block
             style={{ background: '#fffbeb', outline: item.kind === 'task' ? '2px solid var(--color-accent)' : undefined }}
             onClick={() => update({ kind: 'task' })}
           >
@@ -132,6 +134,7 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
           </Button>
           <Button
             variant="ghost"
+            block
             style={{ background: '#f0fdf4', outline: item.kind === 'riddle' ? '2px solid var(--color-accent)' : undefined }}
             onClick={() => update({ kind: 'riddle' })}
           >
@@ -139,6 +142,7 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
           </Button>
           <Button
             variant="ghost"
+            block
             style={{ background: '#f5f3ff', outline: item.kind === 'jigsaw' ? '2px solid var(--color-accent)' : undefined }}
             onClick={() => update({ kind: 'jigsaw', jigsawDifficulty: item.jigsawDifficulty ?? 1 })}
           >
