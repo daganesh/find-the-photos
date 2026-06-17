@@ -20,12 +20,16 @@ export function photosRouter(ctx: AppContext): Router {
         return;
       }
       if (req.file.mimetype.startsWith('image/')) {
-        const issues = await ctx.moderation.checkImage({
-          base64: req.file.buffer.toString('base64'),
-          mimeType: req.file.mimetype,
-        });
-        if (issues.length > 0) {
-          return void res.status(422).json({ error: 'This image cannot be uploaded: ' + issues[0]!.reason });
+        try {
+          const issues = await ctx.moderation.checkImage({
+            base64: req.file.buffer.toString('base64'),
+            mimeType: req.file.mimetype,
+          });
+          if (issues.length > 0) {
+            return void res.status(422).json({ error: 'This image cannot be uploaded: ' + issues[0]!.reason });
+          }
+        } catch (err) {
+          console.warn('[photos] moderation check failed, proceeding:', err instanceof Error ? err.message : err);
         }
       }
       const stored = await ctx.photos.save(req.file.buffer, req.file.mimetype);

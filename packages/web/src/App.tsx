@@ -26,6 +26,7 @@ function AppRoutes() {
         <Route path="/build/:routeId" element={<RouteBuilder />} />
         <Route path="/play/:routeId" element={<HuntPlayer />} />
         <Route path="/results/:routeId" element={<Results />} />
+        <Route path="/results/:routeId/:sessionId" element={<Results />} />
         <Route path="/join/:code" element={<JoinTeam />} />
         <Route path="/team/:teamId" element={<TeamLobby />} />
         <Route path="/team/:teamId/play" element={<TeamHuntPlayer />} />

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
+import { googleMapsLink } from '../services/maps.js';
 import { Banner, Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
 
 /** The hub: greet the player, list playable routes, and start building. */
@@ -141,36 +142,30 @@ function RouteCard({
   teaming?: boolean;
 }) {
   const hasCover = Boolean(route.coverPhotoUrl);
+  const hasActions = Boolean(onEdit ?? onShare ?? onTeamPlay);
 
   return (
-    <Card>
-      {/* Cover photo */}
-      {hasCover && (
-        <img
-          src={mediaUrl(route.coverPhotoUrl!)}
-          alt={route.title}
-          style={{
-            width: 'calc(100% + var(--space-4) * 2)',
-            marginLeft: 'calc(var(--space-4) * -1)',
-            marginTop: 'calc(var(--space-4) * -1)',
-            marginBottom: 'var(--space-3)',
-            height: 160,
-            objectFit: 'cover',
-            borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
-            display: 'block',
-          }}
-        />
-      )}
-
-      {/* Main info row — tappable to play */}
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Hero / clickable area — cover photo fills this as a background */}
       <div
-        className="row"
-        style={{ justifyContent: 'space-between', cursor: 'pointer' }}
         onClick={onPlay}
+        style={{
+          cursor: 'pointer',
+          padding: 'var(--space-4)',
+          minHeight: hasCover ? 160 : undefined,
+          display: 'flex',
+          alignItems: hasCover ? 'flex-end' : undefined,
+          justifyContent: 'space-between',
+          backgroundImage: hasCover
+            ? `linear-gradient(rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.62) 100%), url(${mediaUrl(route.coverPhotoUrl!)})`
+            : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
       >
         <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4 }}>{route.title}</h3>
-          <p className="muted" style={{ margin: 0 }}>
+          <h3 style={{ marginBottom: 4, color: hasCover ? '#fff' : undefined }}>{route.title}</h3>
+          <p className="muted" style={{ margin: 0, color: hasCover ? 'rgba(255,255,255,0.78)' : undefined }}>
             {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
             {mine && route.status === 'draft' && ' · draft'}
           </p>
@@ -181,11 +176,41 @@ function RouteCard({
         </div>
       </div>
 
-      {/* Actions */}
-      {(onEdit ?? onShare ?? onTeamPlay) && (
+      {/* Start / end location links */}
+      {(route.startLocation || route.endLocation) && (
+        <div className="row" style={{ padding: '4px var(--space-4) 4px', gap: 8, flexWrap: 'wrap' }}>
+          {route.startLocation && (
+            <a
+              href={googleMapsLink(route.startLocation.lat, route.startLocation.lng)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn--ghost"
+              style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              📍 Start
+            </a>
+          )}
+          {route.endLocation && (
+            <a
+              href={googleMapsLink(route.endLocation.lat, route.endLocation.lng)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn--ghost"
+              style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              🏁 End
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Action buttons */}
+      {hasActions && (
         <div
           className="row"
-          style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)', flexWrap: 'wrap', gap: 4 }}
+          style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)', flexWrap: 'wrap', gap: 4 }}
         >
           {onTeamPlay && (
             <Button variant="accent" disabled={teaming} onClick={(e) => { e.stopPropagation(); onTeamPlay(); }}>

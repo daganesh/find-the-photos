@@ -12,6 +12,8 @@ export const SCORING = {
   skipped: 0,
   /** Score can never go below this — effort still counts. */
   floor: 10,
+  /** Bonus awarded for solving the optional final item. */
+  finalItemBonus: 100,
 } as const;
 
 /** Highest score a single step can earn (for showing "x / max"). */
@@ -41,9 +43,10 @@ export function scoreStep(step: StepProgress): number {
   return Math.max(SCORING.floor, SCORING.base - helpPenalty - retryPenalty);
 }
 
-/** Sum of all step scores in a session. */
+/** Sum of all step scores in a session, including optional final item bonus. */
 export function scoreSession(session: HuntSession): number {
-  return session.steps.reduce((total, step) => total + scoreStep(step), 0);
+  const itemScore = session.steps.reduce((total, step) => total + scoreStep(step), 0);
+  return itemScore + (session.finalItemSolved ? SCORING.finalItemBonus : 0);
 }
 
 /** Friendly star rating (1..3) for a finished step, for kid-readable feedback. */

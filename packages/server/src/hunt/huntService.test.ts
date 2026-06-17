@@ -237,6 +237,7 @@ describe('solveFinalItem — code kind', () => {
     expect('error' in result).toBe(false);
     if ('error' in result) return;
     expect(result.finalItemSolved).toBe(true);
+    expect(result.totalScore).toBeGreaterThan(s.totalScore); // bonus applied
   });
 
   it('rejects a wrong code', async () => {

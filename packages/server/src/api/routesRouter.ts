@@ -14,6 +14,7 @@ import type { AppContext } from '../context.js';
 import { optionalAuth, requireAuth, type AuthedRequest } from '../auth/middleware.js';
 
 function toSummary(route: Route): RouteSummary {
+  const located = route.items.filter((i) => i.location);
   return {
     id: route.id,
     title: route.title,
@@ -24,6 +25,8 @@ function toSummary(route: Route): RouteSummary {
     status: route.status,
     avgRating: route.avgRating,
     createdAt: route.createdAt,
+    startLocation: located[0]?.location,
+    endLocation: located.length > 1 ? located[located.length - 1]?.location : undefined,
   };
 }
 

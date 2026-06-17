@@ -53,6 +53,10 @@ export interface RouteSummary {
   status: Route['status'];
   avgRating?: number;
   createdAt: string;
+  /** GPS of the first item that has a location — shown as "Start" on cards. */
+  startLocation?: GeoPoint;
+  /** GPS of the last item that has a location (omitted when same as start). */
+  endLocation?: GeoPoint;
 }
 
 // --- Photos ---
