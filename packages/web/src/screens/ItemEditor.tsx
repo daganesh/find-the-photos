@@ -4,7 +4,7 @@ import { api } from '../services/apiClient.js';
 import { getCurrentLocation } from '../services/geolocation.js';
 import { getJigsawGridSize } from '@ftp/shared';
 import { mediaUrl } from '../services/media.js';
-import { Button, Card, JigsawView, PhotoCapture, PhotoGallery, AudioRecorder } from '../ui/index.js';
+import { Banner, Button, Card, JigsawView, PhotoCapture, PhotoGallery, AudioRecorder } from '../ui/index.js';
 
 interface ItemEditorProps {
   initial?: Item;
@@ -29,14 +29,18 @@ const blankItem = (kind?: Item['kind']): Item => ({
 export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEditorProps) {
   const [item, setItem] = useState<Item>(initial ?? blankItem(defaultKind));
   const [busy, setBusy] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const update = (patch: Partial<Item>) => setItem((prev) => ({ ...prev, ...patch }));
 
   async function addPhoto(file: File) {
     setBusy(true);
+    setUploadError('');
     try {
       const { id, url } = await api.uploadFile(file, file.name);
       const photo: Photo = { id, url };
       update({ photos: [...item.photos, photo] });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed — please try again');
     } finally {
       setBusy(false);
     }
@@ -335,6 +339,7 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
           </>
         )}
 
+        {uploadError && <Banner tone="no">{uploadError}</Banner>}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <Button variant="ghost" onClick={onCancel}>Cancel</Button>
           <Button onClick={handleSave} disabled={!canSave || busy}>

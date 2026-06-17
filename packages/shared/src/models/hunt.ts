@@ -71,4 +71,6 @@ export interface HuntSession {
   totalScore: number;
   /** True when the player correctly solved the optional final item. */
   finalItemSolved?: boolean;
+  /** True when items are played in reverse route order. */
+  reversed?: boolean;
 }

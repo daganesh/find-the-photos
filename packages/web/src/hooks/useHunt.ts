@@ -16,7 +16,7 @@ interface HuntController {
   /** Verdict from the most recent photo attempt (cleared on next action). */
   lastVerdict: MatchVerdict | undefined;
   /** Start the hunt (called when player clicks Start). */
-  start: () => Promise<void>;
+  start: (reversed?: boolean) => Promise<void>;
   submitPhoto: (photo: Blob) => Promise<void>;
   useHelp: () => Promise<void>;
   skip: () => Promise<void>;
@@ -45,12 +45,12 @@ export function useHunt(routeId: string): HuntController {
   const activeStep = session?.steps.find((s) => s.status === 'active');
 
   /** Begin the hunt: create the session on the server (sets startedAt). */
-  const start = useCallback(async () => {
+  const start = useCallback(async (reversed?: boolean) => {
     setLoading(true);
     setError(undefined);
     try {
       const location = await getCurrentLocation().catch(() => undefined);
-      const { session: s } = await api.startHunt(routeId, location);
+      const { session: s } = await api.startHunt(routeId, location, reversed);
       if (!cancelRef.current) {
         setSession(s);
         setNotStarted(false);

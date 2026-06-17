@@ -33,8 +33,9 @@ const MIME_BY_EXT: Record<string, string> = {
 const now = (): string => new Date().toISOString();
 
 /** Build a fresh solo session: first item active, the rest locked (sequential play). */
-export function buildSession(route: Route, hunterId: string, startLocation?: GeoPoint): HuntSession {
-  const steps: StepProgress[] = route.items.map((item, index) => {
+export function buildSession(route: Route, hunterId: string, startLocation?: GeoPoint, reversed = false): HuntSession {
+  const items = reversed ? [...route.items].reverse() : route.items;
+  const steps: StepProgress[] = items.map((item, index) => {
     const step = createStep(item.id, now());
     return index === 0 ? step : { ...step, status: 'locked', startedAt: undefined };
   });
@@ -47,6 +48,7 @@ export function buildSession(route: Route, hunterId: string, startLocation?: Geo
     startedAt: now(),
     startLocation,
     totalScore: 0,
+    ...(reversed && { reversed: true }),
   };
 }
 

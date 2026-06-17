@@ -4,6 +4,7 @@ import type { FinalItem, Item, ModerationIssue, Route } from '@ftp/shared';
 import { getJigsawGridSize, isRoutePlayable } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
+import { googleMapsLink } from '../services/maps.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { Banner, Button, Card, Page, PhotoCapture, Spinner } from '../ui/index.js';
 import { ItemEditor } from './ItemEditor.js';
@@ -20,6 +21,7 @@ export function RouteBuilder() {
   const [editing, setEditing] = useState<EditingState>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [coverError, setCoverError] = useState('');
   const [uploadingFinalPhoto, setUploadingFinalPhoto] = useState(false);
   const [moderationIssues, setModerationIssues] = useState<ModerationIssue[]>([]);
 
@@ -43,9 +45,12 @@ export function RouteBuilder() {
 
   async function addCoverPhoto(file: File) {
     setUploadingCover(true);
+    setCoverError('');
     try {
       const { url } = await api.uploadFile(file, file.name);
       await persist({ ...route!, coverPhotoUrl: url });
+    } catch (e) {
+      setCoverError(e instanceof Error ? e.message : 'Upload failed — please try again');
     } finally {
       setUploadingCover(false);
     }
@@ -167,6 +172,7 @@ export function RouteBuilder() {
                   🖼 {uploadingCover ? 'Uploading…' : 'Add a cover photo'}
                 </PhotoCapture>
               )}
+              {coverError && <div style={{ marginTop: 'var(--space-2)' }}><Banner tone="no">{coverError}</Banner></div>}
             </div>
 
             <div>
@@ -189,6 +195,37 @@ export function RouteBuilder() {
                 onBlur={() => persist(route)}
               />
             </div>
+
+            {/* Route start / end points */}
+            {route.items.some((i) => i.location) && (
+              <div>
+                <span className="field-label">Route overview</span>
+                <div className="row" style={{ gap: 8 }}>
+                  {route.items.find((i) => i.location)?.location && (
+                    <a
+                      href={googleMapsLink(route.items.find((i) => i.location)!.location!.lat, route.items.find((i) => i.location)!.location!.lng)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn--ghost"
+                      style={{ fontSize: '0.85rem' }}
+                    >
+                      📍 Start
+                    </a>
+                  )}
+                  {route.items.filter((i) => i.location).length > 1 && (
+                    <a
+                      href={googleMapsLink(route.items.filter((i) => i.location).at(-1)!.location!.lat, route.items.filter((i) => i.location).at(-1)!.location!.lng)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn--ghost"
+                      style={{ fontSize: '0.85rem' }}
+                    >
+                      🏁 End
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 

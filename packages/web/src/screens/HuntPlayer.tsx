@@ -23,6 +23,7 @@ import {
   Timer,
 } from '../ui/index.js';
 import { mediaUrl } from '../services/media.js';
+import { googleMapsLink } from '../services/maps.js';
 
 /** The hunter flow: lobby → play → celebrate → results. */
 export function HuntPlayer() {
@@ -33,6 +34,7 @@ export function HuntPlayer() {
 
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [hunterLoc, setHunterLoc] = useState<GeoPoint | undefined>();
+  const [reversed, setReversed] = useState(false);
   const prevFound = useRef(0);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
@@ -119,6 +121,8 @@ export function HuntPlayer() {
 
   // ── Lobby: let the player start when ready ──────────────────────────────
   if (hunt.notStarted) {
+    const startItem = reversed ? routeData.items.at(-1) : routeData.items[0];
+    const endItem = reversed ? routeData.items[0] : routeData.items.at(-1);
     return (
       <Page onBack title="Ready?">
         <div className="stack">
@@ -135,8 +139,31 @@ export function HuntPlayer() {
               <h2>{routeData.title}</h2>
               {routeData.description && <p className="muted">{routeData.description}</p>}
               <p className="muted">{routeData.items.length} item{routeData.items.length !== 1 ? 's' : ''} to find</p>
+              {(startItem?.location || endItem?.location) && (
+                <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {startItem?.location && (
+                    <a href={googleMapsLink(startItem.location.lat, startItem.location.lng)} target="_blank" rel="noreferrer" className="btn btn--ghost" style={{ fontSize: '0.85rem' }}>
+                      📍 Starting point
+                    </a>
+                  )}
+                  {endItem?.location && endItem !== startItem && (
+                    <a href={googleMapsLink(endItem.location.lat, endItem.location.lng)} target="_blank" rel="noreferrer" className="btn btn--ghost" style={{ fontSize: '0.85rem' }}>
+                      🏁 End point
+                    </a>
+                  )}
+                </div>
+              )}
               {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
-              <Button size="lg" block variant="happy" onClick={hunt.start} disabled={hunt.loading}>
+              {routeData.items.length > 1 && (
+                <Button
+                  variant={reversed ? 'primary' : 'ghost'}
+                  block
+                  onClick={() => setReversed((r) => !r)}
+                >
+                  🔄 {reversed ? 'Reversed order ✓' : 'Play in normal order'}
+                </Button>
+              )}
+              <Button size="lg" block variant="happy" onClick={() => hunt.start(reversed)} disabled={hunt.loading}>
                 {hunt.loading ? 'Starting…' : '▶ Start Hunt'}
               </Button>
             </div>
@@ -282,7 +309,7 @@ export function HuntPlayer() {
   const item = items.find((i) => i.id === step?.itemId);
   if (!step || !item) return <Page onBack title="Play"><Spinner /></Page>;
 
-  const stepNumber = items.findIndex((i) => i.id === item.id) + 1;
+  const stepNumber = session.steps.findIndex((s) => s.itemId === item.id) + 1;
 
   return (
     <Page

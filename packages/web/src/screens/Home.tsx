@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
+import { googleMapsLink } from '../services/maps.js';
 import { Banner, Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
 
 /** The hub: greet the player, list playable routes, and start building. */
@@ -174,6 +175,36 @@ function RouteCard({
           <span style={{ fontSize: '1.6rem' }}>▶️</span>
         </div>
       </div>
+
+      {/* Start / end location links */}
+      {(route.startLocation || route.endLocation) && (
+        <div className="row" style={{ padding: '4px var(--space-4) 4px', gap: 8, flexWrap: 'wrap' }}>
+          {route.startLocation && (
+            <a
+              href={googleMapsLink(route.startLocation.lat, route.startLocation.lng)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn--ghost"
+              style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              📍 Start
+            </a>
+          )}
+          {route.endLocation && (
+            <a
+              href={googleMapsLink(route.endLocation.lat, route.endLocation.lng)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn--ghost"
+              style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              🏁 End
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Action buttons */}
       {hasActions && (
