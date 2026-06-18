@@ -13,6 +13,7 @@ import {
   FinalItemPanel,
   Fireworks,
   HintView,
+  HuntTrail,
   JigsawView,
   Page,
   PhotoCapture,
@@ -305,6 +306,19 @@ export function HuntPlayer() {
 
   const stepNumber = session.steps.findIndex((s) => s.itemId === item.id) + 1;
 
+  // Trail map data — follows session.steps order (respects reversed hunts).
+  const trailItems = session.steps.map((st) => {
+    const it = items.find((i) => i.id === st.itemId);
+    const foundPhoto = st.photoAttempts.filter((a) => a.verdict.match).at(-1)?.photoUrl;
+    return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto };
+  });
+  const trailCurrentIndex = Math.max(0, session.steps.findIndex((s) => s.status === 'active'));
+
+  function handleTrailSelect(idx: number) {
+    const st = session.steps[idx];
+    if (st?.status === 'skipped') hunt.returnToSkipped(st.itemId);
+  }
+
   return (
     <Page
       onBack
@@ -323,7 +337,8 @@ export function HuntPlayer() {
         </div>
       }
     >
-      <div className="stack">
+      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
+      <div className="stack" style={{ flex: 1, minWidth: 0 }}>
         {/* ── Clue / instruction / riddle / jigsaw card ──────────────────── */}
         {item.kind === 'riddle' ? (
           <Card>
@@ -568,6 +583,18 @@ export function HuntPlayer() {
             </div>
           </Card>
         )}
+      </div>
+
+      {/* Trail map side rail */}
+      <div style={{ width: 80, flexShrink: 0 }}>
+        <HuntTrail
+          items={trailItems}
+          currentIndex={trailCurrentIndex}
+          compact
+          maxHeight={520}
+          onSelectItem={handleTrailSelect}
+        />
+      </div>
       </div>
     </Page>
   );

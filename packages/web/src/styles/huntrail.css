@@ -1,0 +1,57 @@
+/* HuntTrail component styles — the .ftp-trail* rules.
+   All values reference the design tokens in theme.css. */
+
+/* ---------- Hunt trail (schematic map of steps) ---------- */
+.ftp-trail { position: relative; }
+.ftp-trail__scroll { overflow-y: auto; scroll-behavior: smooth; padding: var(--space-2) 0; }
+/* soft fade at top & bottom so the trail reads as "continuing" off-screen */
+.ftp-trail__scroll {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%);
+}
+
+.ftp-trail__step { display: grid; grid-template-columns: 92px 1fr; align-items: center; min-height: 134px; }
+.ftp-trail__step--clickable { cursor: pointer; }
+.ftp-trail__step--clickable:hover .ftp-trail__node { transform: translate(-50%, -50%) scale(1.06); }
+.ftp-trail__step--clickable:focus-visible { outline: none; }
+.ftp-trail__step--clickable:focus-visible .ftp-trail__node { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+
+/* meandering trail — a curved SVG path drawn per cell (top half + bottom half) */
+.ftp-trail__rail { position: relative; align-self: stretch; }
+.ftp-trail__path { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+.ftp-trail__seg { fill: none; stroke-width: 5; stroke-linecap: round; vector-effect: non-scaling-stroke; transition: stroke 0.4s ease; }
+.ftp-trail__seg--faint { stroke: var(--color-line); stroke-dasharray: 1 13; }
+.ftp-trail__seg--on { stroke: var(--color-accent); }
+
+/* paw footsteps mark a completed gap (replace the line) */
+.ftp-trail__paw { position: absolute; width: 30px; height: 30px; opacity: 0; color: #1b1b1b; animation: ftp-paw 0.4s var(--ease-pop) forwards; z-index: 1; }
+.ftp-trail__paw svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.18)); }
+@keyframes ftp-paw {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(var(--rot)); }
+  to { opacity: 0.92; transform: translate(-50%, -50%) scale(1) rotate(var(--rot)); }
+}
+
+/* node circle */
+.ftp-trail__node { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 1.7rem; background: var(--color-surface); box-shadow: var(--shadow); overflow: hidden; z-index: 2; border: 3px solid var(--color-line); transition: transform 0.2s var(--ease-pop), border-color 0.3s ease; }
+.ftp-trail__node img { width: 100%; height: 100%; object-fit: cover; }
+.ftp-trail__node--upcoming { background: var(--color-bg); border-style: dashed; border-color: var(--color-line); color: var(--color-ink-soft); font-weight: 800; }
+.ftp-trail__node--current { width: 78px; height: 78px; border-style: solid; border-color: var(--color-primary); color: var(--color-primary); box-shadow: var(--shadow-lg), 0 0 0 5px var(--tint-coral); }
+.ftp-trail__node--done { border-style: solid; border-color: var(--color-accent); }
+.ftp-trail__q { font-size: 1.7rem; line-height: 1; }
+.ftp-trail__check { position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%; background: var(--color-success); color: #fff; display: grid; place-items: center; font-size: 0.8rem; font-weight: 800; box-shadow: var(--shadow); z-index: 3; }
+
+/* right-hand body */
+.ftp-trail__body { padding: var(--space-2) 0; }
+.ftp-trail__name { font-weight: 700; font-size: var(--text-h3); margin: 0; }
+.ftp-trail__name--upcoming { color: var(--color-ink-soft); }
+.ftp-trail__status { font-size: var(--text-small); color: var(--color-ink-soft); margin: 2px 0 0; }
+
+/* ---------- Compact strip — for the narrow mobile rail ---------- */
+.ftp-trail--compact .ftp-trail__step { grid-template-columns: 1fr; min-height: 98px; }
+.ftp-trail--compact .ftp-trail__rail { min-width: 64px; }
+.ftp-trail--compact .ftp-trail__body { display: none; }
+.ftp-trail--compact .ftp-trail__node { width: 48px; height: 48px; font-size: 1.2rem; }
+.ftp-trail--compact .ftp-trail__node--current { width: 58px; height: 58px; }
+.ftp-trail--compact .ftp-trail__q { font-size: 1.2rem; }
+.ftp-trail--compact .ftp-trail__paw { width: 22px; height: 22px; }
+.ftp-trail--compact .ftp-trail__check { width: 18px; height: 18px; font-size: 0.62rem; }
