@@ -284,6 +284,7 @@ export function RouteBuilder() {
 
         {/* ── Final item ─────────────────────────────────────────────────── */}
         <h2>Final item (optional)</h2>
+        <p className="muted">A bonus challenge unlocked only after all items are found — players use clues collected along the way to solve it.</p>
         {finalItem ? (
           <Card>
             <div className="stack">
