@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FinalItem, Item } from '@ftp/shared';
 import { getFinalItemPositions, getJigsawGridSize } from '@ftp/shared';
 import { mediaUrl } from '../services/media.js';
@@ -60,6 +60,17 @@ export function FinalItemPanel({
     return revealed;
   }, [items, solvedItemIds, totalPositions]);
 
+  // For code kind: pre-fill the answer with collected characters so the player
+  // can see what they have and only needs to fill in the blanks.
+  useEffect(() => {
+    if (finalItem.kind !== 'code' || revealedPositions.size === 0) return;
+    setAnswer(
+      finalItem.answer.split('').map((char, i) =>
+        char === ' ' ? ' ' : (revealedPositions.has(i) ? char.toUpperCase() : '_')
+      ).join(''),
+    );
+  }, [finalItem, revealedPositions]);
+
   async function handleSubmit() {
     setError('');
     try {
@@ -82,6 +93,8 @@ export function FinalItemPanel({
 
   const cluesLabel = finalItem.kind === 'jigsaw'
     ? `${revealedPositions.size}/${totalPositions} pieces`
+    : finalItem.kind === 'code'
+    ? `${revealedPositions.size}/${totalPositions} characters collected`
     : `${revealedPositions.size}/${totalPositions} letters`;
 
   return (
@@ -121,11 +134,15 @@ export function FinalItemPanel({
                 seed={finalItem.answer}
                 difficulty={finalItem.difficulty ?? 1}
               />
+            ) : finalItem.kind === 'code' ? (
+              <CodeAssemblyDisplay answer={finalItem.answer} revealed={revealedPositions} />
             ) : (
               <AnswerMask answer={finalItem.answer} revealed={revealedPositions} />
             )}
 
-            {showBreakdown && (
+            {/* For code kind, always show the breakdown so players can see what they have
+                and retry any skipped items to collect missing characters. */}
+            {(showBreakdown || finalItem.kind === 'code') && (
               <ItemBreakdown
                 finalItem={finalItem}
                 items={items}
@@ -141,9 +158,10 @@ export function FinalItemPanel({
             <input
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              placeholder={finalItem.kind === 'code' ? 'Enter the code…' : 'Your answer…'}
+              placeholder={finalItem.kind === 'code' ? 'Fill in the blanks and enter the full code…' : 'Your answer…'}
               disabled={busy}
               onKeyDown={(e) => { if (e.key === 'Enter' && answer.trim()) handleSubmit(); }}
+              style={finalItem.kind === 'code' ? { fontFamily: 'monospace', letterSpacing: '0.15em', textTransform: 'uppercase' } : undefined}
             />
             <Button variant="happy" block disabled={busy || !answer.trim()} onClick={handleSubmit}>
               {busy ? 'Checking…' : '✅ Submit'}
@@ -230,6 +248,49 @@ function ItemBreakdown({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Code assembly display: collected chars in solid accent boxes, missing chars as dashed blanks. */
+function CodeAssemblyDisplay({ answer, revealed }: { answer: string; revealed: Set<number> }) {
+  const allRevealed = answer.split('').every((c, i) => c === ' ' || revealed.has(i));
+  return (
+    <div className="stack" style={{ alignItems: 'center' }}>
+      {!allRevealed && (
+        <p className="muted" style={{ margin: 0, fontSize: '0.85rem', textAlign: 'center' }}>
+          Collected pieces are highlighted — fill in the blanks below
+        </p>
+      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', padding: '8px 0' }}>
+        {answer.split('').map((char, i) => {
+          if (char === ' ') return <span key={i} style={{ width: 12 }} />;
+          const isRevealed = revealed.has(i);
+          return (
+            <span
+              key={i}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 44,
+                borderRadius: 6,
+                border: isRevealed
+                  ? '2px solid var(--color-accent)'
+                  : '2px dashed var(--color-ink-soft, #9ca3af)',
+                background: isRevealed ? 'var(--tint-happy)' : 'transparent',
+                fontSize: '1.4rem',
+                fontWeight: 700,
+                fontFamily: 'monospace',
+                color: isRevealed ? 'var(--color-accent)' : 'var(--color-ink-soft, #9ca3af)',
+              }}
+            >
+              {isRevealed ? char.toUpperCase() : '_'}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }

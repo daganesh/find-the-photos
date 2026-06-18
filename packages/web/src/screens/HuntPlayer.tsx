@@ -533,6 +533,8 @@ export function HuntPlayer() {
             onSolve={hunt.solveFinalItem}
             solved={!!session.finalItemSolved}
             busy={hunt.busy}
+            skippedItemIds={new Set(skippedSteps.map((s) => s.itemId))}
+            onRetry={(itemId) => hunt.returnToSkipped(itemId)}
           />
         )}
 
