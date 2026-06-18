@@ -68,6 +68,8 @@ export interface HuntSession {
   /** Device location captured when the hunt started (for filtering/map later). */
   startLocation?: GeoPoint;
   finishedAt?: string;
+  /** Set when the player explicitly paused mid-hunt; cleared on resume. */
+  pausedAt?: string;
   totalScore: number;
   /** True when the player correctly solved the optional final item. */
   finalItemSolved?: boolean;

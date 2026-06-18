@@ -27,7 +27,7 @@ const lastStep = (steps: StepProgress[], itemId: string): StepProgress =>
 export function huntRouter(ctx: AppContext): Router {
   const router = Router();
 
-  // Begin playing a route.
+  // Begin playing a route — auto-pauses any currently active session.
   router.post('/start', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const { routeId, location, reversed } = req.body as { routeId?: string; location?: import('@ftp/shared').GeoPoint; reversed?: boolean };
@@ -36,8 +36,53 @@ export function huntRouter(ctx: AppContext): Router {
       if (route.status !== 'ready') {
         return void res.status(400).json({ error: 'This route is not ready to play' });
       }
+      // Enforce one active session at a time: auto-pause any playing session.
+      const mine = await ctx.hunts.listByHunter(req.user!.id);
+      const active = mine.find((s) => !s.finishedAt && !s.pausedAt);
+      if (active) {
+        await ctx.hunts.update(active.id, { pausedAt: new Date().toISOString() });
+      }
       const session = await ctx.hunts.create(buildSession(route, req.user!.id, location, reversed));
       res.status(201).json({ session });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // List the caller's unfinished (active or paused) sessions.
+  // Registered before /:sessionId so Express doesn't treat "mine" as a session ID.
+  router.get('/mine', requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const all = await ctx.hunts.listByHunter(req.user!.id);
+      const sessions = all.filter((s) => !s.finishedAt);
+      res.json({ sessions });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Pause a session — persists pausedAt so it appears on the Home screen.
+  router.post('/:sessionId/pause', requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const session = await ctx.hunts.get(req.params.sessionId);
+      if (!session) return void res.status(404).json({ error: 'Hunt not found' });
+      if (session.hunterId !== req.user!.id) return void res.status(403).json({ error: 'Not your session' });
+      if (session.finishedAt) return void res.status(400).json({ error: 'Hunt is already finished' });
+      const updated = await ctx.hunts.update(req.params.sessionId, { pausedAt: new Date().toISOString() });
+      res.json({ session: updated });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Resume a paused session — clears pausedAt.
+  router.post('/:sessionId/resume', requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const session = await ctx.hunts.get(req.params.sessionId);
+      if (!session) return void res.status(404).json({ error: 'Hunt not found' });
+      if (session.hunterId !== req.user!.id) return void res.status(403).json({ error: 'Not your session' });
+      const updated = await ctx.hunts.update(req.params.sessionId, { pausedAt: undefined });
+      res.json({ session: updated });
     } catch (err) {
       next(err);
     }

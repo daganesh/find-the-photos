@@ -60,10 +60,11 @@ export function FinalItemPanel({
     return revealed;
   }, [items, solvedItemIds, totalPositions]);
 
-  // For code kind: pre-fill the answer with collected characters so the player
-  // can see what they have and only needs to fill in the blanks.
+  // For code/riddle kinds: pre-fill the answer with collected characters
+  // in position so the player only needs to fill in the blanks.
   useEffect(() => {
-    if (finalItem.kind !== 'code' || revealedPositions.size === 0) return;
+    if (finalItem.kind !== 'code' && finalItem.kind !== 'riddle') return;
+    if (revealedPositions.size === 0) return;
     setAnswer(
       finalItem.answer.split('').map((char, i) =>
         char === ' ' ? ' ' : (revealedPositions.has(i) ? char.toUpperCase() : '_')
@@ -140,25 +141,25 @@ export function FinalItemPanel({
               <AnswerMask answer={finalItem.answer} revealed={revealedPositions} />
             )}
 
-            {/* For code kind, always show the breakdown so players can see what they have
-                and retry any skipped items to collect missing characters. */}
-            {(showBreakdown || finalItem.kind === 'code') && (
-              <ItemBreakdown
-                finalItem={finalItem}
-                items={items}
-                solvedItemIds={solvedItemIds}
-                skippedItemIds={skippedItemIds}
-                onRetry={onRetry}
-                totalPositions={totalPositions}
-              />
-            )}
+            <ItemBreakdown
+              finalItem={finalItem}
+              items={items}
+              solvedItemIds={solvedItemIds}
+              skippedItemIds={skippedItemIds}
+              onRetry={onRetry}
+              totalPositions={totalPositions}
+            />
 
             {error && <Banner tone="no">{error}</Banner>}
 
             <input
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              placeholder={finalItem.kind === 'code' ? 'Fill in the blanks and enter the full code…' : 'Your answer…'}
+              placeholder={
+                finalItem.kind === 'code' ? 'Fill in the blanks and enter the full code…' :
+                finalItem.kind === 'riddle' && revealedPositions.size > 0 ? 'Fill in the blanks…' :
+                'Your answer…'
+              }
               disabled={busy}
               onKeyDown={(e) => { if (e.key === 'Enter' && answer.trim()) handleSubmit(); }}
               style={finalItem.kind === 'code' ? { fontFamily: 'monospace', letterSpacing: '0.15em', textTransform: 'uppercase' } : undefined}

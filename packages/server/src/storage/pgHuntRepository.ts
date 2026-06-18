@@ -38,4 +38,12 @@ export class PgHuntRepository implements HuntRepository {
     );
     return rows.map((r) => r.data);
   }
+
+  async listByHunter(hunterId: string): Promise<HuntSession[]> {
+    const { rows } = await getPool().query<{ data: HuntSession }>(
+      "SELECT data FROM hunt_sessions WHERE data->>'hunterId' = $1",
+      [hunterId],
+    );
+    return rows.map((r) => r.data);
+  }
 }
