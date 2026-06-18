@@ -24,6 +24,8 @@ export function RouteBuilder() {
   const [coverError, setCoverError] = useState('');
   const [uploadingFinalPhoto, setUploadingFinalPhoto] = useState(false);
   const [moderationIssues, setModerationIssues] = useState<ModerationIssue[]>([]);
+  const [publishError, setPublishError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     if (data) setRoute(data);
@@ -34,13 +36,18 @@ export function RouteBuilder() {
 
   async function persist(next: Route) {
     setRoute(next);
-    await api.updateRoute(next.id, {
-      title: next.title,
-      description: next.description,
-      coverPhotoUrl: next.coverPhotoUrl,
-      items: next.items,
-      finalItem: next.finalItem ?? null,
-    });
+    try {
+      await api.updateRoute(next.id, {
+        title: next.title,
+        description: next.description,
+        coverPhotoUrl: next.coverPhotoUrl,
+        items: next.items,
+        finalItem: next.finalItem ?? null,
+      });
+      setSaveError('');
+    } catch {
+      setSaveError('⚠️ Changes could not be saved — check your connection');
+    }
   }
 
   async function addCoverPhoto(file: File) {
@@ -95,6 +102,7 @@ export function RouteBuilder() {
   async function finalize() {
     setSaving(true);
     setModerationIssues([]);
+    setPublishError('');
     try {
       const result = await api.moderateRoute(route!.id);
       if (result.flagged) {
@@ -102,17 +110,11 @@ export function RouteBuilder() {
         setSaving(false);
         return;
       }
-      await api.updateRoute(route!.id, {
-        title: route!.title,
-        description: route!.description,
-        coverPhotoUrl: route!.coverPhotoUrl,
-        items: route!.items,
-        finalItem: route!.finalItem ?? null,
-      });
       await api.finalizeRoute(route!.id);
       navigate(`/play/${route!.id}`);
     } catch (e) {
       setSaving(false);
+      setPublishError(e instanceof Error ? e.message : 'Could not publish — please try again');
     }
   }
 
@@ -183,6 +185,7 @@ export function RouteBuilder() {
                 onChange={(e) => setRoute({ ...route, title: e.target.value })}
                 onBlur={() => persist(route)}
               />
+              {saveError && <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--color-danger)' }}>{saveError}</p>}
             </div>
             <div>
               <label className="field-label" htmlFor="desc">About this hunt</label>
@@ -392,6 +395,7 @@ export function RouteBuilder() {
         >
           ✅ {saving ? 'Saving…' : route.status === 'ready' ? 'Save & play' : 'Finish & make ready'}
         </Button>
+        {publishError && <Banner tone="no">{publishError}</Banner>}
         {!isRoutePlayable(route) && <p className="muted center">Add a title and at least one item to finish.</p>}
       </div>
     </Page>
