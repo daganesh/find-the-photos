@@ -9,6 +9,7 @@ export interface HuntRepository {
   create(session: HuntSession): Promise<HuntSession>;
   update(id: string, patch: Partial<HuntSession>): Promise<HuntSession | undefined>;
   listByRoute(routeId: string): Promise<HuntSession[]>;
+  listByHunter(hunterId: string): Promise<HuntSession[]>;
 }
 
 export class JsonHuntRepository implements HuntRepository {
@@ -39,5 +40,9 @@ export class JsonHuntRepository implements HuntRepository {
 
   async listByRoute(routeId: string): Promise<HuntSession[]> {
     return (await this.store.all()).filter((s) => s.routeId === routeId);
+  }
+
+  async listByHunter(hunterId: string): Promise<HuntSession[]> {
+    return (await this.store.all()).filter((s) => s.hunterId === hunterId);
   }
 }

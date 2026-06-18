@@ -10,6 +10,8 @@ interface HuntController {
   loading: boolean;
   /** True while we are waiting for the player to click Start. */
   notStarted: boolean;
+  /** True when this session was resumed from a saved pause (no countdown). */
+  wasResumed: boolean;
   busy: boolean;
   paused: boolean;
   error: string | undefined;
@@ -24,15 +26,17 @@ interface HuntController {
   submitRiddleAnswer: (answer: string) => Promise<void>;
   solveFinalItem: (answer: string) => Promise<void>;
   returnToSkipped: (itemId: string) => Promise<void>;
-  pause: () => void;
-  resume: () => void;
+  pause: () => Promise<void>;
+  resume: () => Promise<void>;
 }
 
-/** Owns a single play-through: waits for Start, then applies each action. */
-export function useHunt(routeId: string): HuntController {
+/** Owns a single play-through: waits for Start, then applies each action.
+ *  Pass `resumeSessionId` to load and resume an existing paused session. */
+export function useHunt(routeId: string, resumeSessionId?: string): HuntController {
   const [session, setSession] = useState<HuntSession>();
-  const [notStarted, setNotStarted] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [notStarted, setNotStarted] = useState(!resumeSessionId);
+  const [wasResumed, setWasResumed] = useState(false);
+  const [loading, setLoading] = useState(Boolean(resumeSessionId));
   const [busy, setBusy] = useState(false);
   const [paused, setPaused] = useState(false);
   const [error, setError] = useState<string>();
@@ -41,6 +45,27 @@ export function useHunt(routeId: string): HuntController {
 
   // Cleanup on unmount.
   useEffect(() => () => { cancelRef.current = true; }, []);
+
+  // If a resumeSessionId was provided, load and resume that session on mount.
+  useEffect(() => {
+    if (!resumeSessionId) return;
+    setLoading(true);
+    api.resumeHunt(resumeSessionId)
+      .then(({ session: s }) => {
+        if (!cancelRef.current) {
+          setSession(s);
+          setNotStarted(false);
+          setWasResumed(true);
+        }
+      })
+      .catch((e) => {
+        if (!cancelRef.current) setError(e instanceof Error ? e.message : 'Could not resume hunt');
+      })
+      .finally(() => {
+        if (!cancelRef.current) setLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeSessionId]);
 
   const activeStep = session?.steps.find((s) => s.status === 'active');
 
@@ -168,11 +193,22 @@ export function useHunt(routeId: string): HuntController {
     }
   }, [session]);
 
-  const pause = useCallback(() => setPaused(true), []);
-  const resume = useCallback(() => setPaused(false), []);
+  const pause = useCallback(async () => {
+    if (session) {
+      try { await api.pauseHunt(session.id); } catch { /* best-effort */ }
+    }
+    setPaused(true);
+  }, [session]);
+
+  const resume = useCallback(async () => {
+    if (session) {
+      try { await api.resumeHunt(session.id); } catch { /* best-effort */ }
+    }
+    setPaused(false);
+  }, [session]);
 
   return {
-    session, activeStep, loading, notStarted, busy, paused, error, lastVerdict,
+    session, activeStep, loading, notStarted, wasResumed, busy, paused, error, lastVerdict,
     start, submitPhoto, useHelp, skip, dispute, submitRiddleAnswer, solveFinalItem, returnToSkipped, pause, resume,
   };
 }

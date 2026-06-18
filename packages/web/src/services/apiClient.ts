@@ -108,8 +108,17 @@ export class ApiClient {
   startHunt(routeId: string, location?: GeoPoint, reversed?: boolean): Promise<{ session: HuntSession }> {
     return this.request('/api/hunt/start', { method: 'POST', body: JSON.stringify({ routeId, location, reversed }) });
   }
+  listMyHunts(): Promise<{ sessions: HuntSession[] }> {
+    return this.request('/api/hunt/mine');
+  }
   getHunt(sessionId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}`);
+  }
+  pauseHunt(sessionId: string): Promise<{ session: HuntSession }> {
+    return this.request(`/api/hunt/${sessionId}/pause`, { method: 'POST' });
+  }
+  resumeHunt(sessionId: string): Promise<{ session: HuntSession }> {
+    return this.request(`/api/hunt/${sessionId}/resume`, { method: 'POST' });
   }
   submitHuntPhoto(sessionId: string, itemId: string, photo: Blob): Promise<SubmitPhotoResponse> {
     const form = new FormData();

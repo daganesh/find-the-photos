@@ -25,10 +25,10 @@ import { googleMapsLink } from '../services/maps.js';
 
 /** The hunter flow: lobby → play → celebrate → results. */
 export function HuntPlayer() {
-  const { routeId = '' } = useParams();
+  const { routeId = '', sessionId: resumeSessionId } = useParams();
   const navigate = useNavigate();
   const route = useAsync(() => api.getRoute(routeId), [routeId]);
-  const hunt = useHunt(routeId);
+  const hunt = useHunt(routeId, resumeSessionId);
 
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   const [reversed, setReversed] = useState(false);
@@ -45,13 +45,13 @@ export function HuntPlayer() {
   const [timerStartedAt, setTimerStartedAt] = useState<string>();
   const sessionCreatedRef = useRef(false);
 
-  // Start countdown the moment the session arrives for the first time
+  // Start countdown the moment a fresh session arrives (not when resuming).
   useEffect(() => {
-    if (!sessionCreatedRef.current && hunt.session && !hunt.notStarted) {
+    if (!sessionCreatedRef.current && hunt.session && !hunt.notStarted && !hunt.wasResumed) {
       sessionCreatedRef.current = true;
       setCountdown(3);
     }
-  }, [hunt.session, hunt.notStarted]);
+  }, [hunt.session, hunt.notStarted, hunt.wasResumed]);
 
   // Tick the countdown down
   useEffect(() => {
@@ -286,9 +286,12 @@ export function HuntPlayer() {
           <div className="stack center">
             <div style={{ fontSize: '3rem' }}>⏸️</div>
             <h2>Hunt paused</h2>
-            <p className="muted">Take a break — your progress is saved.</p>
+            <p className="muted">Your progress is saved — resume any time from the home screen.</p>
             <Button size="lg" block variant="happy" onClick={hunt.resume}>
-              ▶ Resume Hunt
+              ▶ Continue now
+            </Button>
+            <Button block variant="ghost" onClick={() => navigate('/')}>
+              🏠 Go home
             </Button>
           </div>
         </Card>
@@ -533,6 +536,8 @@ export function HuntPlayer() {
             onSolve={hunt.solveFinalItem}
             solved={!!session.finalItemSolved}
             busy={hunt.busy}
+            skippedItemIds={new Set(skippedSteps.map((s) => s.itemId))}
+            onRetry={(itemId) => hunt.returnToSkipped(itemId)}
           />
         )}
 

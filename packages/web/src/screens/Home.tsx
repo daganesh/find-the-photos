@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { RouteSummary } from '@ftp/shared';
+import type { HuntSession, RouteSummary } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
@@ -13,6 +13,7 @@ export function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
+  const { data: myHunts } = useAsync(() => (user ? api.listMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [teamingRouteId, setTeamingRouteId] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export function Home() {
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready') ?? []) : [];
+  const activeSessions = myHunts?.sessions ?? [];
 
   return (
     <Page>
@@ -72,6 +74,23 @@ export function Home() {
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
         {teamError && <Banner tone="no">{teamError}</Banner>}
+
+        {activeSessions.length > 0 && (
+          <section className="stack">
+            <h2>{activeSessions.some((s) => s.pausedAt) ? 'Paused hunts' : 'Active hunts'}</h2>
+            {activeSessions.map((s) => {
+              const route = routes?.find((r) => r.id === s.routeId);
+              return (
+                <ActiveHuntCard
+                  key={s.id}
+                  session={s}
+                  routeTitle={route?.title}
+                  onResume={() => navigate(`/play/${s.routeId}/resume/${s.id}`)}
+                />
+              );
+            })}
+          </section>
+        )}
 
         {user && myDrafts.length > 0 && (
           <section className="stack">
@@ -223,6 +242,53 @@ function RouteCard({
           )}
         </div>
       )}
+    </Card>
+  );
+}
+
+function ActiveHuntCard({
+  session,
+  routeTitle,
+  onResume,
+}: {
+  session: HuntSession;
+  routeTitle?: string;
+  onResume: () => void;
+}) {
+  const found = session.steps.filter((s) => s.status === 'found').length;
+  const total = session.steps.length;
+  const isPaused = Boolean(session.pausedAt);
+
+  return (
+    <Card>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ marginBottom: 4 }}>{routeTitle ?? 'Hunt'}</h3>
+          <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+            {found} / {total} items found
+          </p>
+        </div>
+        <span
+          style={{
+            display: 'inline-block',
+            padding: '2px 10px',
+            borderRadius: 'var(--radius-full, 999px)',
+            background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
+            color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            flexShrink: 0,
+            marginLeft: 'var(--space-2)',
+          }}
+        >
+          {isPaused ? '⏸ Paused' : '▶ Active'}
+        </span>
+      </div>
+      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
+        <Button variant="happy" onClick={onResume}>
+          ▶ Resume hunt
+        </Button>
+      </div>
     </Card>
   );
 }
