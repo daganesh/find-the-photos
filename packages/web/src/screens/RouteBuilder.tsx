@@ -26,6 +26,7 @@ export function RouteBuilder() {
   const [moderationIssues, setModerationIssues] = useState<ModerationIssue[]>([]);
   const [publishError, setPublishError] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [headerExpanded, setHeaderExpanded] = useState(true);
 
   useEffect(() => {
     if (data) setRoute(data);
@@ -146,91 +147,116 @@ export function RouteBuilder() {
     ? Math.ceil(totalPositions / route.items.length)
     : 0;
 
+  const isHeaderExpanded = route.items.length === 0 || headerExpanded;
+
   return (
     <Page onBack title="Build your hunt">
       <div className="stack">
-        <Card>
-          <div className="stack">
-            <div>
-              <span className="field-label">Cover photo (optional)</span>
-              {route.coverPhotoUrl ? (
-                <div style={{ position: 'relative' }}>
-                  <img
-                    src={mediaUrl(route.coverPhotoUrl)}
-                    alt="Cover"
-                    style={{ width: '100%', borderRadius: 'var(--radius)', display: 'block', maxHeight: 200, objectFit: 'cover' }}
-                  />
-                  <PhotoCapture
-                    onCapture={addCoverPhoto}
-                    variant="ghost"
-                    disabled={uploadingCover}
-                    style={{ marginTop: 'var(--space-2)' }}
-                  >
-                    🔄 {uploadingCover ? 'Uploading…' : 'Change photo'}
-                  </PhotoCapture>
-                </div>
-              ) : (
-                <PhotoCapture onCapture={addCoverPhoto} variant="accent" disabled={uploadingCover}>
-                  🖼 {uploadingCover ? 'Uploading…' : 'Add a cover photo'}
-                </PhotoCapture>
+        {/* Header card — collapses to a summary row once items are added */}
+        {isHeaderExpanded ? (
+          <Card>
+            <div className="stack">
+              {route.items.length > 0 && (
+                <button
+                  className="btn btn--ghost"
+                  style={{ alignSelf: 'flex-end', padding: '2px 8px', fontSize: '0.85rem' }}
+                  onClick={() => setHeaderExpanded(false)}
+                  aria-label="Collapse hunt details"
+                >
+                  ▲ Collapse
+                </button>
               )}
-              {coverError && <div style={{ marginTop: 'var(--space-2)' }}><Banner tone="no">{coverError}</Banner></div>}
-            </div>
-
-            <div>
-              <label className="field-label" htmlFor="title">Hunt title</label>
-              <input
-                id="title"
-                value={route.title}
-                onChange={(e) => setRoute({ ...route, title: e.target.value })}
-                onBlur={() => persist(route)}
-              />
-              {saveError && <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--color-danger)' }}>{saveError}</p>}
-            </div>
-            <div>
-              <label className="field-label" htmlFor="desc">About this hunt</label>
-              <textarea
-                id="desc"
-                rows={2}
-                value={route.description ?? ''}
-                placeholder="A walk around the park…"
-                onChange={(e) => setRoute({ ...route, description: e.target.value })}
-                onBlur={() => persist(route)}
-              />
-            </div>
-
-            {/* Route start / end points */}
-            {route.items.some((i) => i.location) && (
               <div>
-                <span className="field-label">Route overview</span>
-                <div className="row" style={{ gap: 8 }}>
-                  {route.items.find((i) => i.location)?.location && (
-                    <a
-                      href={googleMapsLink(route.items.find((i) => i.location)!.location!.lat, route.items.find((i) => i.location)!.location!.lng)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn btn--ghost"
-                      style={{ fontSize: '0.85rem' }}
+                <span className="field-label">Cover photo (optional)</span>
+                {route.coverPhotoUrl ? (
+                  <div style={{ position: 'relative' }}>
+                    <img
+                      src={mediaUrl(route.coverPhotoUrl)}
+                      alt="Cover"
+                      style={{ width: '100%', borderRadius: 'var(--radius)', display: 'block', maxHeight: 200, objectFit: 'cover' }}
+                    />
+                    <PhotoCapture
+                      onCapture={addCoverPhoto}
+                      variant="ghost"
+                      disabled={uploadingCover}
+                      style={{ marginTop: 'var(--space-2)' }}
                     >
-                      📍 Start
-                    </a>
-                  )}
-                  {route.items.filter((i) => i.location).length > 1 && (
-                    <a
-                      href={googleMapsLink(route.items.filter((i) => i.location).at(-1)!.location!.lat, route.items.filter((i) => i.location).at(-1)!.location!.lng)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn btn--ghost"
-                      style={{ fontSize: '0.85rem' }}
-                    >
-                      🏁 End
-                    </a>
-                  )}
-                </div>
+                      🔄
+                    </PhotoCapture>
+                  </div>
+                ) : (
+                  <PhotoCapture onCapture={addCoverPhoto} variant="accent" disabled={uploadingCover}>
+                    📷
+                  </PhotoCapture>
+                )}
+                {coverError && <div style={{ marginTop: 'var(--space-2)' }}><Banner tone="no">{coverError}</Banner></div>}
               </div>
-            )}
-          </div>
-        </Card>
+
+              <div>
+                <label className="field-label" htmlFor="title">Hunt title</label>
+                <input
+                  id="title"
+                  value={route.title}
+                  onChange={(e) => setRoute({ ...route, title: e.target.value })}
+                  onBlur={() => persist(route)}
+                />
+                {saveError && <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--color-danger)' }}>{saveError}</p>}
+              </div>
+              <div>
+                <label className="field-label" htmlFor="desc">About this hunt</label>
+                <textarea
+                  id="desc"
+                  rows={2}
+                  value={route.description ?? ''}
+                  placeholder="A walk around the park…"
+                  onChange={(e) => setRoute({ ...route, description: e.target.value })}
+                  onBlur={() => persist(route)}
+                />
+              </div>
+
+              {/* Route start / end points */}
+              {route.items.some((i) => i.location) && (
+                <div>
+                  <span className="field-label">Route overview</span>
+                  <div className="row" style={{ gap: 8 }}>
+                    {route.items.find((i) => i.location)?.location && (
+                      <a
+                        href={googleMapsLink(route.items.find((i) => i.location)!.location!.lat, route.items.find((i) => i.location)!.location!.lng)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn--ghost"
+                        style={{ fontSize: '0.85rem' }}
+                      >
+                        📍 Start
+                      </a>
+                    )}
+                    {route.items.filter((i) => i.location).length > 1 && (
+                      <a
+                        href={googleMapsLink(route.items.filter((i) => i.location).at(-1)!.location!.lat, route.items.filter((i) => i.location).at(-1)!.location!.lng)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn--ghost"
+                        style={{ fontSize: '0.85rem' }}
+                      >
+                        🏁 End
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        ) : (
+          <button
+            className="btn btn--ghost"
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', textAlign: 'left' }}
+            onClick={() => setHeaderExpanded(true)}
+            aria-label="Expand hunt details"
+          >
+            <span>{route.title || 'Untitled hunt'}</span>
+            <span>▼</span>
+          </button>
+        )}
 
         <h2>Items ({route.items.length})</h2>
         {route.items.map((item, i) => (
@@ -394,7 +420,7 @@ export function RouteBuilder() {
           onClick={finalize}
           disabled={!isRoutePlayable(route) || saving}
         >
-          ✅ {saving ? 'Saving…' : route.status === 'ready' ? 'Save & play' : 'Finish & make ready'}
+          ✅ {saving ? 'Saving…' : route.status === 'ready' ? 'Save & play' : 'Publish game'}
         </Button>
         {publishError && <Banner tone="no">{publishError}</Banner>}
         {!isRoutePlayable(route) && <p className="muted center">Add a title and at least one item to finish.</p>}
