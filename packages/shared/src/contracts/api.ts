@@ -138,6 +138,7 @@ export interface ModerationIssue {
   field: string;   // e.g. "item[2].name", "route.title"
   text: string;
   reason: string;
+  severity: 'blocked' | 'flagged';
 }
 export interface ModerationResult {
   flagged: boolean;

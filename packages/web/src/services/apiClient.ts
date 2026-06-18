@@ -81,8 +81,11 @@ export class ApiClient {
   updateRoute(id: string, body: UpdateRouteRequest): Promise<Route> {
     return this.request(`/api/routes/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   }
-  finalizeRoute(id: string): Promise<Route> {
-    return this.request(`/api/routes/${id}/finalize`, { method: 'POST' });
+  finalizeRoute(id: string, flagOverride?: string): Promise<Route> {
+    return this.request(`/api/routes/${id}/finalize`, {
+      method: 'POST',
+      body: JSON.stringify({ flagOverride }),
+    });
   }
   moderateRoute(routeId: string): Promise<ModerationResult> {
     return this.request(`/api/routes/${routeId}/moderate`, { method: 'POST' });

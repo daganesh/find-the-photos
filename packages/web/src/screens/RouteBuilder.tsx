@@ -23,7 +23,9 @@ export function RouteBuilder() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverError, setCoverError] = useState('');
   const [uploadingFinalPhoto, setUploadingFinalPhoto] = useState(false);
-  const [moderationIssues, setModerationIssues] = useState<ModerationIssue[]>([]);
+  const [blockedIssues, setBlockedIssues] = useState<ModerationIssue[]>([]);
+  const [flaggedIssues, setFlaggedIssues] = useState<ModerationIssue[]>([]);
+  const [flagOverride, setFlagOverride] = useState('');
   const [publishError, setPublishError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [headerExpanded, setHeaderExpanded] = useState(true);
@@ -102,16 +104,18 @@ export function RouteBuilder() {
 
   async function finalize() {
     setSaving(true);
-    setModerationIssues([]);
+    setBlockedIssues([]);
+    setFlaggedIssues([]);
     setPublishError('');
     try {
       const result = await api.moderateRoute(route!.id);
-      if (result.flagged) {
-        setModerationIssues(result.issues);
-        setSaving(false);
-        return;
-      }
-      await api.finalizeRoute(route!.id);
+      const blocked = result.issues.filter(i => i.severity === 'blocked');
+      const flagged = result.issues.filter(i => i.severity === 'flagged');
+      setBlockedIssues(blocked);
+      setFlaggedIssues(flagged);
+      if (blocked.length > 0) { setSaving(false); return; }
+      if (flagged.length > 0 && !flagOverride.trim()) { setSaving(false); return; }
+      await api.finalizeRoute(route!.id, flagOverride.trim() || undefined);
       navigate(`/play/${route!.id}`);
     } catch (e) {
       setSaving(false);
@@ -398,17 +402,46 @@ export function RouteBuilder() {
           </Button>
         )}
 
-        {moderationIssues.length > 0 && (
+        {blockedIssues.length > 0 && (
           <Card>
             <div className="stack">
-              <Banner tone="no">⚠️ Please fix these issues before publishing:</Banner>
-              {moderationIssues.map((issue, i) => (
+              <Banner tone="no">This route cannot be published due to the following issues:</Banner>
+              {blockedIssues.map((issue, i) => (
                 <div key={i}>
                   <strong style={{ fontSize: '0.85rem' }}>{issue.field}</strong>
                   <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.85rem' }}>{issue.reason}</p>
                 </div>
               ))}
-              <Button variant="ghost" onClick={() => setModerationIssues([])}>Dismiss</Button>
+            </div>
+          </Card>
+        )}
+
+        {blockedIssues.length === 0 && flaggedIssues.length > 0 && (
+          <Card>
+            <div className="stack">
+              <Banner tone="info">⚠️ This route has content that may not be suitable for all audiences:</Banner>
+              {flaggedIssues.map((issue, i) => (
+                <div key={i}>
+                  <strong style={{ fontSize: '0.85rem' }}>{issue.field}</strong>
+                  <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.85rem' }}>{issue.reason}</p>
+                </div>
+              ))}
+              <div>
+                <label className="field-label" htmlFor="flag-override">I understand and confirm because:</label>
+                <input
+                  id="flag-override"
+                  value={flagOverride}
+                  onChange={(e) => setFlagOverride(e.target.value)}
+                  placeholder="Explain why this content is appropriate…"
+                />
+              </div>
+              <Button
+                variant="happy"
+                disabled={!flagOverride.trim() || saving}
+                onClick={finalize}
+              >
+                Publish anyway
+              </Button>
             </div>
           </Card>
         )}
