@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 
 const MAX_DIM = 1024;
 const JPEG_QUALITY = 0.82;
@@ -52,46 +52,92 @@ interface PhotoCaptureProps {
  * On desktop both fall back to the system file picker.
  */
 export function PhotoCapture({ onCapture, children, variant = 'primary', disabled, style }: PhotoCaptureProps) {
+  const [pasteMsg, setPasteMsg] = useState('');
   const variantCls = { accent: 'btn--accent', happy: 'btn--happy', ghost: 'btn--ghost', primary: '' }[variant];
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ''; // reset so re-picking the same file fires onChange
+    e.target.value = '';
     if (file) resizeImage(file).then(onCapture);
   }
 
-  return (
-    <div className="row" style={{ gap: 8, ...style }}>
-      {/* Camera — opens camera directly on mobile */}
-      <label
-        className={`btn btn--lg capture ${variantCls}`}
-        aria-disabled={disabled}
-        style={{ flex: 3 }}
-      >
-        {children}
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          disabled={disabled}
-          onChange={handleFile}
-        />
-      </label>
+  async function handlePaste() {
+    setPasteMsg('');
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((t) => t.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const file = new File([blob], 'paste.jpg', { type: imageType });
+          resizeImage(file).then(onCapture);
+          return;
+        }
+      }
+      setPasteMsg('No image in clipboard');
+      setTimeout(() => setPasteMsg(''), 2000);
+    } catch {
+      setPasteMsg('Clipboard access denied');
+      setTimeout(() => setPasteMsg(''), 2000);
+    }
+  }
 
-      {/* Gallery — opens photo library without forcing camera */}
-      <label
-        className="btn btn--lg btn--ghost capture"
-        aria-disabled={disabled}
-        style={{ flex: 1, minWidth: 0 }}
-      >
-        📁
-        <input
-          type="file"
-          accept="image/*"
-          disabled={disabled}
-          onChange={handleFile}
-        />
-      </label>
+  const canPaste = typeof navigator !== 'undefined' && 'clipboard' in navigator && typeof (navigator.clipboard as Clipboard & { read?: unknown }).read === 'function';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, ...style }}>
+      <div className="row" style={{ gap: 8 }}>
+        {/* Camera — opens camera directly on mobile */}
+        <label
+          className={`btn btn--lg capture ${variantCls}`}
+          aria-disabled={disabled}
+          style={{ flex: 3 }}
+        >
+          {children}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            disabled={disabled}
+            onChange={handleFile}
+          />
+        </label>
+
+        {/* Gallery — opens photo library without forcing camera */}
+        <label
+          className="btn btn--lg btn--ghost capture"
+          aria-disabled={disabled}
+          style={{ flex: 1, minWidth: 0 }}
+        >
+          📁
+          <input
+            type="file"
+            accept="image/*"
+            disabled={disabled}
+            onChange={handleFile}
+          />
+        </label>
+
+        {/* Paste — reads an image the player copied from a web search */}
+        {canPaste && (
+          <button
+            type="button"
+            className="btn btn--lg btn--ghost"
+            disabled={disabled}
+            onClick={handlePaste}
+            aria-label="Paste image from clipboard"
+            style={{ flex: 1, minWidth: 0 }}
+          >
+            📋
+          </button>
+        )}
+      </div>
+
+      {pasteMsg && (
+        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-danger)', textAlign: 'center' }}>
+          {pasteMsg}
+        </p>
+      )}
     </div>
   );
 }
