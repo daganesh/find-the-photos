@@ -59,14 +59,21 @@ npm run dev
 
 ## Typecheck only
 
+`@ftp/web` and `@ftp/server` import compiled types from `@ftp/shared/dist/`, which is gitignored.
+**Always build shared first** when shared types have changed, otherwise typecheck will use stale `.d.ts` files:
+
 ```bash
-npm run typecheck                               # all workspaces
+npm run build --workspace @ftp/shared           # build shared first
+npm run typecheck                               # then check all workspaces
 npm run typecheck --workspace @ftp/server       # server only
 npm run typecheck --workspace @ftp/web          # web only
 ```
 
-## Production / Railway
+CI (`.github/workflows/ci.yml`) handles this automatically: it runs `Build shared` before `Type-check all packages`.
 
+## Deployment
+
+Merging a PR into `main` triggers automatic deployment to Railway — no manual steps required.  
 `railway.json` configures build (`npm install && npm run build`) and start (`npm start`).  
 `npm start` runs `packages/server/dist/index.js`, which serves the compiled web app from `packages/web/dist/`.  
 Railway injects `DATABASE_URL`, `GEMINI_API_KEY`, `GOOGLE_CLIENT_ID`, etc. as env vars.
