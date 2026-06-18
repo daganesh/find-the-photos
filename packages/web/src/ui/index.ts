@@ -23,3 +23,5 @@ export { JigsawView } from './JigsawView.js';
 export { FinalItemPanel } from './FinalItemPanel.js';
 export { GuessToastOverlay } from './GuessToast.js';
 export type { GuessToastData } from './GuessToast.js';
+export { HuntTrail } from './HuntTrail.js';
+export type { HuntTrailItem } from './HuntTrail.js';

@@ -14,6 +14,7 @@ import {
   Fireworks,
   GuessToastOverlay,
   HintView,
+  HuntTrail,
   Page,
   PhotoCapture,
   ScorePill,
@@ -210,6 +211,20 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const complete = isHuntComplete(session.steps);
   const paused = team?.status === 'paused';
 
+  // Trail map data — follows session.steps order.
+  const trailItems = session.steps.map((st) => {
+    const it = items.find((i) => i.id === st.itemId);
+    const foundPhoto = st.photoAttempts.filter((a) => a.verdict.match).at(-1)?.photoUrl;
+    return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto };
+  });
+  const firstActiveIdx = session.steps.findIndex((s) => s.status === 'active');
+  const trailCurrentIndex = firstActiveIdx >= 0 ? firstActiveIdx : session.steps.length - 1;
+
+  function handleTrailSelect(idx: number) {
+    const st = session.steps[idx];
+    if (st?.status === 'active') setFocusedItemId(st.itemId);
+  }
+
   /** Wraps any screen with the floating guess toast overlay. */
   const withToast = (el: React.ReactElement) => (
     <>
@@ -318,7 +333,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           </div>
         }
       >
-        <div className="stack">
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
+        <div className="stack" style={{ flex: 1, minWidth: 0 }}>
           {item.kind === 'task' ? (
             <Card>
               <div className="stack">
@@ -392,6 +408,18 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             )}
           </div>
         </div>
+
+        {/* Trail map side rail */}
+        <div style={{ width: 80, flexShrink: 0 }}>
+          <HuntTrail
+            items={trailItems}
+            currentIndex={trailCurrentIndex}
+            compact
+            maxHeight={520}
+            onSelectItem={handleTrailSelect}
+          />
+        </div>
+        </div>
       </Page>);
   }
 
@@ -411,7 +439,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
         </div>
       }
     >
-      <div className="stack">
+      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
+      <div className="stack" style={{ flex: 1, minWidth: 0 }}>
         {/* Team progress summary */}
         <Card>
           <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
@@ -501,6 +530,18 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             })}
           </>
         )}
+      </div>
+
+      {/* Trail map side rail */}
+      <div style={{ width: 80, flexShrink: 0 }}>
+        <HuntTrail
+          items={trailItems}
+          currentIndex={trailCurrentIndex}
+          compact
+          maxHeight={560}
+          onSelectItem={handleTrailSelect}
+        />
+      </div>
       </div>
     </Page>);
 }
