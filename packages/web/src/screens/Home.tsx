@@ -55,7 +55,7 @@ export function Home() {
   }
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
-  const mine = routes?.filter((r) => r.authorId === user?.id) ?? [];
+  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready') ?? []) : [];
 
   return (
     <Page>
@@ -73,20 +73,14 @@ export function Home() {
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
         {teamError && <Banner tone="no">{teamError}</Banner>}
 
-        {mine.length > 0 && (
+        {user && myDrafts.length > 0 && (
           <section className="stack">
-            <h2>Your hunts</h2>
-            {mine.map((r) => (
-              <RouteCard
+            <h2>My drafts</h2>
+            {myDrafts.map((r) => (
+              <DraftCard
                 key={r.id}
                 route={r}
-                mine
-                copied={copiedId === r.id}
-                teaming={teamingRouteId === r.id}
-                onPlay={() => navigate(`/play/${r.id}`)}
-                onTeamPlay={r.status === 'ready' ? () => startTeam(r.id) : undefined}
-                onEdit={() => navigate(`/build/${r.id}`)}
-                onShare={r.status === 'ready' ? () => shareRoute(r.id) : undefined}
+                onContinue={() => navigate(`/build/${r.id}`)}
               />
             ))}
           </section>
@@ -229,6 +223,42 @@ function RouteCard({
           )}
         </div>
       )}
+    </Card>
+  );
+}
+
+function DraftCard({ route, onContinue }: { route: RouteSummary; onContinue: () => void }) {
+  return (
+    <Card>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ marginBottom: 4 }}>{route.title || 'Untitled hunt'}</h3>
+          <p className="muted" style={{ margin: 0 }}>
+            {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+          </p>
+        </div>
+        <span
+          style={{
+            display: 'inline-block',
+            padding: '2px 10px',
+            borderRadius: 'var(--radius-full, 999px)',
+            background: 'var(--color-surface-raised, #e8e8e8)',
+            color: 'var(--color-text-muted, #666)',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            letterSpacing: '0.03em',
+            flexShrink: 0,
+            marginLeft: 'var(--space-2)',
+          }}
+        >
+          Draft
+        </span>
+      </div>
+      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
+        <Button variant="ghost" onClick={onContinue}>
+          ✏️ Continue editing
+        </Button>
+      </div>
     </Card>
   );
 }
