@@ -10,6 +10,7 @@ Family photo treasure-hunt game: a hider builds a route of photo/task items; hun
 | [`knowledge/dev-environment.md`](knowledge/dev-environment.md) | Prerequisites, env vars, local run commands, Railway deploy |
 | [`knowledge/testing.md`](knowledge/testing.md) | Vitest setup, where tests live, how to run one or all |
 | [`knowledge/storage.md`](knowledge/storage.md) | Three-tier storage (JSON → PostgreSQL → S3), DB schema |
+| [`knowledge/ui-ux-guidelines.md`](knowledge/ui-ux-guidelines.md) | UI/UX design principles, visual identity, button rules, interaction patterns |
 | [`knowledge/hunt-gameplay.md`](knowledge/hunt-gameplay.md) | Domain model: Route, Item, HuntSession, StepProgress, scoring |
 | [`knowledge/gemini-ai.md`](knowledge/gemini-ai.md) | Gemini services: image match, task scoring, dispute verify, moderation |
 | [`knowledge/api-routes.md`](knowledge/api-routes.md) | All REST endpoints, auth, request/response shapes |
