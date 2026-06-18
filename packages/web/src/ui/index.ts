@@ -21,3 +21,5 @@ export { AppBar } from './AppBar.js';
 export { UserMenu } from './UserMenu.js';
 export { JigsawView } from './JigsawView.js';
 export { FinalItemPanel } from './FinalItemPanel.js';
+export { GuessToastOverlay } from './GuessToast.js';
+export type { GuessToastData } from './GuessToast.js';
