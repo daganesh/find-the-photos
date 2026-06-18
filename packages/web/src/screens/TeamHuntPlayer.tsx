@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import type { HuntSession } from '@ftp/shared';
 import { canSkip, isHuntComplete, scoreStep } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
@@ -11,6 +12,7 @@ import {
   Button,
   Card,
   Fireworks,
+  GuessToastOverlay,
   HintView,
   Page,
   PhotoCapture,
@@ -18,6 +20,13 @@ import {
   Spinner,
   Timer,
 } from '../ui/index.js';
+import type { GuessToastData } from '../ui/index.js';
+import {
+  TOAST_BG_COLORS,
+  buildToastResultLine,
+  pickRandom,
+  randomTilt,
+} from '../ui/GuessToast.js';
 import { googleMapsLink } from '../services/maps.js';
 
 /**
@@ -65,12 +74,89 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const [celebrateItemId, setCelebrateItemId] = useState<string | null>(null);
-  const prevFoundCount = useRef(0);
   const [countdown, setCountdown] = useState(0);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeError, setDisputeError] = useState('');
 
+  // ── Guess toast queue ──────────────────────────────────────────────────
+  const [toastQueue, setToastQueue] = useState<GuessToastData[]>([]);
+  const prevSessionRef = useRef<HuntSession | undefined>();
+  const detectionReadyRef = useRef(false);
+
+  // Detect new photo attempts and riddle solves from teammates via polling.
+  useEffect(() => {
+    if (!hunt.session || !hunt.team || !route.data) return;
+
+    // First time all data is ready: snapshot without firing toasts.
+    if (!detectionReadyRef.current) {
+      prevSessionRef.current = hunt.session;
+      detectionReadyRef.current = true;
+      return;
+    }
+
+    const prev = prevSessionRef.current;
+    prevSessionRef.current = hunt.session;
+    if (!prev) return;
+
+    const newToasts: GuessToastData[] = [];
+
+    for (const step of hunt.session.steps) {
+      const prevStep = prev.steps.find((s) => s.itemId === step.itemId);
+      const item = route.data!.items.find((i) => i.id === step.itemId);
+
+      // New photo attempts by teammates.
+      const prevCount = prevStep?.photoAttempts.length ?? 0;
+      const fresh = step.photoAttempts.slice(prevCount);
+      for (const attempt of fresh) {
+        if (attempt.submittedBy === user?.id) continue; // own attempt shown inline
+        const member = hunt.team!.members.find((m) => m.userId === attempt.submittedBy);
+        newToasts.push({
+          id: `${step.itemId}-${attempt.at}`,
+          playerName: member?.name.split(' ')[0] ?? 'Someone',
+          playerEmoji: member?.avatarEmoji ?? '🧑',
+          photoUrl: attempt.photoUrl,
+          correct: attempt.verdict.match,
+          bgColor: pickRandom(TOAST_BG_COLORS),
+          tilt: randomTilt(6),
+          innerTilt: randomTilt(8),
+          resultLine: buildToastResultLine(attempt.photoUrl, attempt.verdict.match),
+        });
+      }
+
+      // Riddle/task solved by a teammate (no new photo attempt — text answer).
+      const wasPrevFound = prevStep?.status === 'found';
+      const isNowFound = step.status === 'found';
+      const hasPhotoMatch = fresh.some((a) => a.verdict.match);
+      if (isNowFound && !wasPrevFound && !hasPhotoMatch && step.foundBy !== user?.id) {
+        const member = hunt.team!.members.find((m) => m.userId === step.foundBy);
+        newToasts.push({
+          id: `${step.itemId}-solved`,
+          playerName: member?.name.split(' ')[0] ?? 'Someone',
+          playerEmoji: member?.avatarEmoji ?? '🧑',
+          textContent: item?.name ?? 'the riddle',
+          correct: true,
+          bgColor: pickRandom(TOAST_BG_COLORS),
+          tilt: randomTilt(6),
+          innerTilt: randomTilt(8),
+          resultLine: buildToastResultLine(undefined, true),
+        });
+      }
+    }
+
+    if (newToasts.length > 0) {
+      setToastQueue((q) => [...q, ...newToasts]);
+    }
+  }, [hunt.session, hunt.team, route.data, user?.id]);
+
+  // Auto-dismiss the current toast after 4.5 s.
+  useEffect(() => {
+    if (toastQueue.length === 0) return;
+    const t = setTimeout(() => setToastQueue((q) => q.slice(1)), 4500);
+    return () => clearTimeout(t);
+  }, [toastQueue]);
+
+  // ── Celebrate when the current user's photo matches ────────────────────
   // Celebrate when the current user's photo matches.
   useEffect(() => {
     if (hunt.lastVerdict?.verdict.match) {
@@ -79,13 +165,6 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
       playSuccessSound();
     }
   }, [hunt.lastVerdict]);
-
-  // Track new items found by teammates (silent progress update).
-  useEffect(() => {
-    if (!hunt.session) return;
-    const found = hunt.session.steps.filter((s) => s.status === 'found').length;
-    prevFoundCount.current = found;
-  }, [hunt.session]);
 
   useEffect(() => {
     if (!hunt.team?.startedAt) return;
@@ -119,6 +198,9 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
     }
   }
 
+  // Floating guess toast — rendered outside the Page tree so it overlays everything.
+  const currentToast = toastQueue[0];
+
   if (!hunt.session || !route.data) {
     return <Page title="Hunt"><Spinner label="Loading…" /></Page>;
   }
@@ -128,8 +210,21 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const complete = isHuntComplete(session.steps);
   const paused = team?.status === 'paused';
 
+  /** Wraps any screen with the floating guess toast overlay. */
+  const withToast = (el: React.ReactElement) => (
+    <>
+      {currentToast && (
+        <GuessToastOverlay
+          toast={currentToast}
+          onDismiss={() => setToastQueue((q) => q.slice(1))}
+        />
+      )}
+      {el}
+    </>
+  );
+
   if (countdown > 0) {
-    return (
+    return withToast(
       <Page title="Get ready!">
         <div className="stack center" style={{ paddingTop: 60 }}>
           <div style={{
@@ -142,13 +237,13 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           </div>
           <p className="muted" style={{ fontSize: '1.2rem' }}>Hunt starts in…</p>
         </div>
-      </Page>
+      </Page>,
     );
   }
 
   // Navigate to results when done (after user dismisses celebration).
   if (complete && !celebrateItemId) {
-    return (
+    return withToast(
       <Page title="Done!">
         <Fireworks />
         <Card>
@@ -162,14 +257,14 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             </Button>
           </div>
         </Card>
-      </Page>
+      </Page>,
     );
   }
 
   if (celebrateItemId) {
     const item = items.find((i) => i.id === celebrateItemId);
     const step = session.steps.find((s) => s.itemId === celebrateItemId);
-    return (
+    return withToast(
       <Page title="Great find!">
         <Card>
           <div className="stack center pop-in">
@@ -181,12 +276,12 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             </Button>
           </div>
         </Card>
-      </Page>
+      </Page>,
     );
   }
 
   if (paused) {
-    return (
+    return withToast(
       <Page title="Paused ⏸">
         <Card>
           <div className="stack center">
@@ -196,7 +291,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             <Button size="lg" block variant="happy" onClick={hunt.pauseOrResume}>▶ Resume</Button>
           </div>
         </Card>
-      </Page>
+      </Page>,
     );
   }
 
@@ -212,8 +307,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
     const verdict = hunt.lastVerdict?.itemId === focusedItemId ? hunt.lastVerdict.verdict : undefined;
 
-    return (
-      <Page
+    return withToast(<Page
         onBack={() => setFocusedItemId(null)}
         title={item.name}
         right={
@@ -298,8 +392,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             )}
           </div>
         </div>
-      </Page>
-    );
+      </Page>);
   }
 
   // ── Active items grid ─────────────────────────────────────────────────────
@@ -308,8 +401,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const foundSteps = session.steps.filter((s) => s.status === 'found');
   const totalItems = session.steps.length;
 
-  return (
-    <Page
+  return withToast(<Page
       title={team?.name ?? 'Team Hunt'}
       right={
         <div className="row" style={{ gap: 8 }}>
@@ -410,7 +502,6 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           </>
         )}
       </div>
-    </Page>
-  );
+    </Page>);
 }
 
