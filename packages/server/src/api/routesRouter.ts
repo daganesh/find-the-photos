@@ -150,6 +150,10 @@ export function routesRouter(ctx: AppContext): Router {
           .status(400)
           .json({ error: 'Add a title and at least one item before finishing' });
       }
+      const { flagOverride } = req.body as { flagOverride?: string };
+      if (flagOverride && flagOverride.trim()) {
+        console.warn('[moderation] override by author %s for route %s: %s', req.user!.id, route.id, flagOverride);
+      }
       res.json(await ctx.routes.update(route.id, { status: 'ready' }));
     } catch (err) {
       next(err);

@@ -117,8 +117,9 @@ export function FinalItemPanel({
               <JigsawView
                 imageUrl={mediaUrl(finalItem.photoUrl)}
                 gridSize={getJigsawGridSize(finalItem.difficulty ?? 1)}
-                mode="assembling"
-                revealedPieces={revealedPositions}
+                mode="scrambled"
+                seed={finalItem.answer}
+                difficulty={finalItem.difficulty ?? 1}
               />
             ) : (
               <AnswerMask answer={finalItem.answer} revealed={revealedPositions} />

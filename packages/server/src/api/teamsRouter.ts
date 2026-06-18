@@ -101,10 +101,10 @@ export function teamsRouter(ctx: AppContext): Router {
       const route = await ctx.routes.get(team.routeId);
       if (!route) return void res.status(404).json({ error: 'Route not found' });
 
-      const { location } = req.body as { location?: import('@ftp/shared').GeoPoint };
+      const { location, reversed } = req.body as { location?: import('@ftp/shared').GeoPoint; reversed?: boolean };
       const now = new Date().toISOString();
       const session = await ctx.hunts.create(
-        buildTeamSession(route, team.ownerId, team.id, team.members.length, location),
+        buildTeamSession(route, team.ownerId, team.id, team.members.length, location, reversed),
       );
       const updated = await ctx.teams.update(team.id, {
         status: 'playing',

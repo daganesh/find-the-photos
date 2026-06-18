@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { HuntSession, Item, StepProgress } from '@ftp/shared';
-import { HelpLevel, canSkip, isHuntComplete, scoreStep } from '@ftp/shared';
+import { canSkip, isHuntComplete, scoreStep } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { playSuccessSound } from '../services/sounds.js';
@@ -13,13 +12,13 @@ import {
   Card,
   Fireworks,
   HintView,
-  MapView,
   Page,
   PhotoCapture,
   ScorePill,
   Spinner,
   Timer,
 } from '../ui/index.js';
+import { googleMapsLink } from '../services/maps.js';
 
 /**
  * Team hunt play screen.
@@ -237,12 +236,10 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             <Card>
               <div className="stack">
                 <span className="field-label">Your clue</span>
-                <HintView hint={item.hint} extraHints={item.extraHints} />
+                <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} />
               </div>
             </Card>
           )}
-
-          <HelpPanel item={item} step={step} />
 
           {verdict && !verdict.match && (
             <Banner tone="no">🤔 {verdict.reason} Try another angle, or get help!</Banner>
@@ -279,8 +276,16 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           </PhotoCapture>
 
           <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <Button variant="accent" disabled={hunt.busy || step.helpLevel >= HelpLevel.Surroundings}
-              onClick={() => hunt.useHelp(focusedItemId)}>💡 Help me</Button>
+            <Button variant="accent"
+              disabled={hunt.busy || !item.extraHints?.length || step.cluesUsed >= (item.extraHints?.length ?? 0)}
+              onClick={() => hunt.useHelp(focusedItemId)}>
+              💡 Next clue
+            </Button>
+            {item.location && (
+              <a href={googleMapsLink(item.location.lat, item.location.lng)} target="_blank" rel="noreferrer" className="btn btn--accent">
+                📍 Location
+              </a>
+            )}
             {item.kind !== 'task' && verdict && !verdict.match && (
               <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
                 🙋 I really found it!
@@ -347,7 +352,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           activeSteps.map((step) => {
             const item = items.find((i) => i.id === step.itemId);
             if (!item) return null;
-            const stepNum = items.findIndex((i) => i.id === step.itemId) + 1;
+            const stepNum = session.steps.findIndex((s) => s.itemId === step.itemId) + 1;
             return (
               <Card key={step.itemId}>
                 <div className="stack" style={{ gap: 8 }}>
@@ -409,25 +414,3 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   );
 }
 
-function HelpPanel({ item, step }: { item: Item; step: StepProgress }) {
-  if (step.helpLevel === HelpLevel.None) return null;
-  return (
-    <Card>
-      <div className="stack">
-        <span className="field-label">💡 Help</span>
-        {step.helpLevel >= HelpLevel.MapDot && item.location && (
-          <MapView target={item.location} showRoute={step.helpLevel >= HelpLevel.RouteLine} />
-        )}
-        {step.helpLevel >= HelpLevel.MapDot && !item.location && (
-          <Banner tone="info">This item has no map location — read the clues!</Banner>
-        )}
-        {step.helpLevel >= HelpLevel.Describe && item.description && (
-          <p style={{ margin: 0 }}>📝 {item.description}</p>
-        )}
-        {step.helpLevel >= HelpLevel.Surroundings && (
-          <p className="muted" style={{ margin: 0 }}>You're very close! Look high and low.</p>
-        )}
-      </div>
-    </Card>
-  );
-}

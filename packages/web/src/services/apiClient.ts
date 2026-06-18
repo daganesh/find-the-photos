@@ -81,8 +81,11 @@ export class ApiClient {
   updateRoute(id: string, body: UpdateRouteRequest): Promise<Route> {
     return this.request(`/api/routes/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   }
-  finalizeRoute(id: string): Promise<Route> {
-    return this.request(`/api/routes/${id}/finalize`, { method: 'POST' });
+  finalizeRoute(id: string, flagOverride?: string): Promise<Route> {
+    return this.request(`/api/routes/${id}/finalize`, {
+      method: 'POST',
+      body: JSON.stringify({ flagOverride }),
+    });
   }
   moderateRoute(routeId: string): Promise<ModerationResult> {
     return this.request(`/api/routes/${routeId}/moderate`, { method: 'POST' });
@@ -162,8 +165,8 @@ export class ApiClient {
   joinTeamByCode(code: string, avatarEmoji?: string): Promise<Team> {
     return this.request(`/api/teams/join/${code}`, { method: 'POST', body: JSON.stringify({ avatarEmoji }) });
   }
-  startTeamHunt(teamId: string, location?: GeoPoint): Promise<{ team: Team; session: HuntSession }> {
-    return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location }) });
+  startTeamHunt(teamId: string, location?: GeoPoint, reversed?: boolean): Promise<{ team: Team; session: HuntSession }> {
+    return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location, reversed }) });
   }
   pauseOrResumeTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}/pause`, { method: 'POST' });
