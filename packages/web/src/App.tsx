@@ -4,6 +4,7 @@ import { SignIn } from './screens/SignIn.js';
 import { Home } from './screens/Home.js';
 import { RouteBuilder } from './screens/RouteBuilder.js';
 import { HuntPlayer } from './screens/HuntPlayer.js';
+import { HuntStart } from './screens/HuntStart.js';
 import { Results } from './screens/Results.js';
 import { JoinTeam } from './screens/JoinTeam.js';
 import { TeamLobby } from './screens/TeamLobby.js';
@@ -25,6 +26,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/build/:routeId" element={<RouteBuilder />} />
+        <Route path="/hunt/:routeId" element={<HuntStart />} />
         <Route path="/play/:routeId" element={<HuntPlayer />} />
         <Route path="/play/:routeId/resume/:sessionId" element={<HuntPlayer />} />
         <Route path="/results/:routeId" element={<Results />} />

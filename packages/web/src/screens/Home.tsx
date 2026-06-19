@@ -5,8 +5,7 @@ import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { googleMapsLink } from '../services/maps.js';
-import { Banner, Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
+import { Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
 
 /** The hub: greet the player, list playable routes, and start building. */
 export function Home() {
@@ -16,9 +15,6 @@ export function Home() {
   const { data: myHunts } = useAsync(() => (user ? api.listAllMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
   const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
   const [creating, setCreating] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [teamingRouteId, setTeamingRouteId] = useState<string | null>(null);
-  const [teamError, setTeamError] = useState<string>();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function createRoute() {
@@ -38,32 +34,6 @@ export function Home() {
       reload();
     } finally {
       setDeletingId(null);
-    }
-  }
-
-  async function startTeam(routeId: string) {
-    setTeamingRouteId(routeId);
-    setTeamError(undefined);
-    try {
-      const avatarEmoji = user?.id ? (localStorage.getItem(`ftp.avatar.${user.id}`) ?? undefined) : undefined;
-      const team = await api.createTeam(routeId, user?.name ?? undefined, avatarEmoji);
-      navigate(`/team/${team.id}`);
-    } catch (e) {
-      setTeamError(e instanceof Error ? e.message : 'Could not create team');
-    } finally {
-      setTeamingRouteId(null);
-    }
-  }
-
-  function shareRoute(routeId: string) {
-    const url = `${window.location.origin}/play/${routeId}`;
-    if (navigator.share) {
-      navigator.share({ title: 'Find the Photos', url }).catch(() => undefined);
-    } else {
-      navigator.clipboard.writeText(url).then(() => {
-        setCopiedId(routeId);
-        setTimeout(() => setCopiedId(null), 2000);
-      });
     }
   }
 
@@ -88,8 +58,6 @@ export function Home() {
 
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
-        {teamError && <Banner tone="no">{teamError}</Banner>}
-
         {activeSessions.length > 0 && (
           <CollapsibleSection title={activeSessions.some((s) => s.pausedAt) ? 'Paused hunts' : 'Active hunts'}>
             {activeSessions.map((s) => {
@@ -164,11 +132,7 @@ export function Home() {
             <RouteCard
               key={r.id}
               route={r}
-              copied={copiedId === r.id}
-              teaming={teamingRouteId === r.id}
-              onPlay={() => navigate(`/play/${r.id}`)}
-              onTeamPlay={() => startTeam(r.id)}
-              onShare={() => shareRoute(r.id)}
+              onClick={() => navigate(`/hunt/${r.id}`)}
             />
           ))}
         </CollapsibleSection>
@@ -224,111 +188,52 @@ function CollapsibleSection({ title, children, defaultOpen = true }: { title: st
   );
 }
 
-function RouteCard({
-  route,
-  onPlay,
-  onTeamPlay,
-  onEdit,
-  onShare,
-  mine,
-  copied,
-  teaming,
-}: {
-  route: RouteSummary;
-  onPlay: () => void;
-  onTeamPlay?: () => void;
-  onEdit?: () => void;
-  onShare?: () => void;
-  mine?: boolean;
-  copied?: boolean;
-  teaming?: boolean;
-}) {
+function RouteCard({ route, onClick }: { route: RouteSummary; onClick: () => void }) {
   const hasCover = Boolean(route.coverPhotoUrl);
 
   return (
-    <Card style={{ padding: 0, overflow: 'hidden' }}>
-      {/* Hero — info only, no click-to-play (actions are in the button bar below) */}
-      <div
-        style={{
-          padding: 'var(--space-4)',
-          minHeight: hasCover ? 160 : undefined,
-          display: 'flex',
-          alignItems: hasCover ? 'flex-end' : undefined,
-          justifyContent: 'space-between',
-          backgroundImage: hasCover
-            ? `linear-gradient(rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.62) 100%), url(${mediaUrl(route.coverPhotoUrl!)})`
-            : undefined,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4, color: hasCover ? '#fff' : undefined }}>{route.title}</h3>
-          <p className="muted" style={{ margin: 0, color: hasCover ? 'rgba(255,255,255,0.78)' : undefined }}>
-            {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
-            {mine && route.status === 'draft' && ' · draft'}
-          </p>
-        </div>
-        {route.avgRating !== undefined && (
-          <div style={{ flexShrink: 0, marginLeft: 'var(--space-2)' }}>
-            <StarRating value={Math.round(route.avgRating)} />
+    <button
+      onClick={onClick}
+      style={{
+        display: 'block',
+        width: '100%',
+        textAlign: 'left',
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        cursor: 'pointer',
+        borderRadius: 'var(--radius-lg)',
+      }}
+    >
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: 'var(--space-4)',
+            minHeight: hasCover ? 160 : undefined,
+            display: 'flex',
+            alignItems: hasCover ? 'flex-end' : undefined,
+            justifyContent: 'space-between',
+            backgroundImage: hasCover
+              ? `linear-gradient(rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.62) 100%), url(${mediaUrl(route.coverPhotoUrl!)})`
+              : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <h3 style={{ marginBottom: 4, color: hasCover ? '#fff' : undefined }}>{route.title}</h3>
+            <p className="muted" style={{ margin: 0, color: hasCover ? 'rgba(255,255,255,0.78)' : undefined }}>
+              {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+            </p>
           </div>
-        )}
-      </div>
-
-      {/* Start / end location links */}
-      {(route.startLocation || route.endLocation) && (
-        <div className="row" style={{ padding: '4px var(--space-4) 4px', gap: 8, flexWrap: 'wrap' }}>
-          {route.startLocation && (
-            <a
-              href={googleMapsLink(route.startLocation.lat, route.startLocation.lng)}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn--ghost"
-              style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-            >
-              📍 Start
-            </a>
-          )}
-          {route.endLocation && (
-            <a
-              href={googleMapsLink(route.endLocation.lat, route.endLocation.lng)}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn--ghost"
-              style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-            >
-              🏁 End
-            </a>
+          {route.avgRating !== undefined && (
+            <div style={{ flexShrink: 0, marginLeft: 'var(--space-2)' }}>
+              <StarRating value={Math.round(route.avgRating)} />
+            </div>
           )}
         </div>
-      )}
-
-      {/* Action buttons — always present for ready routes */}
-      <div
-        className="row"
-        style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)', flexWrap: 'wrap', gap: 4 }}
-      >
-        <Button variant="happy" onClick={(e) => { e.stopPropagation(); onPlay(); }}>
-          ▶ Play solo
-        </Button>
-        {onTeamPlay && (
-          <Button variant="accent" disabled={teaming} onClick={(e) => { e.stopPropagation(); onTeamPlay(); }}>
-            {teaming ? '⏳' : '👥 Team'}
-          </Button>
-        )}
-          {onEdit && (
-            <Button variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-              ✏️ Edit
-            </Button>
-          )}
-          {onShare && (
-            <Button variant="ghost" onClick={(e) => { e.stopPropagation(); onShare(); }}>
-              {copied ? '✅ Copied!' : '🔗 Share'}
-            </Button>
-          )}
-        </div>
-    </Card>
+      </Card>
+    </button>
   );
 }
 
