@@ -210,10 +210,10 @@ function ItemBreakdown({
             .map((pos) => finalItem.answer[pos] ?? '')
             .filter(Boolean)
             .join('');
-          contributionLabel = isSolved ? `+${chars}` : chars;
+          contributionLabel = isSolved ? `+${chars}` : '?'.repeat(Math.max(1, positions.length));
         }
 
-        const icon = isSolved ? '✅' : '⏭';
+        const icon = isSolved ? '✅' : isSkipped ? '⏭' : '🔒';
         const textColor = isSolved ? 'var(--color-ok, #22c55e)' : 'var(--color-ink-soft, #9ca3af)';
 
         return (
@@ -228,7 +228,7 @@ function ItemBreakdown({
             }}
           >
             <span style={{ color: textColor, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {icon} {item.name} → {contributionLabel}
+              {icon} {isSolved ? item.name : `Step ${i + 1}`} → {contributionLabel}
             </span>
             {showRetry && (
               <button

@@ -161,7 +161,7 @@ export function ItemEditor({ initial, defaultKind, onSave, onCancel }: ItemEdito
               id="task-instruction"
               rows={3}
               value={item.taskInstruction ?? ''}
-              placeholder="e.g. Jump as high as you can! or Make a funny face."
+              placeholder="e.g. Make a funny face, or take a selfie with a stranger's pet."
               onChange={(e) => update({ taskInstruction: e.target.value })}
             />
           </div>

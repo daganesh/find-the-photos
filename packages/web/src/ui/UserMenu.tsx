@@ -90,6 +90,10 @@ export function UserMenu() {
             </div>
           </div>
 
+          <button className="usermenu__item" onClick={() => { setOpen(false); navigate('/report'); }}>
+            🐛 Report a bug / feature
+          </button>
+
           {pickingAvatar ? (
             <div className="stack" style={{ padding: '8px 12px', gap: 10 }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--color-ink-soft)', fontWeight: 600 }}>EMOJI</span>

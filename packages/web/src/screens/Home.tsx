@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { HuntSession, RouteSummary } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
@@ -13,11 +13,13 @@ export function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
-  const { data: myHunts } = useAsync(() => (user ? api.listMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
+  const { data: myHunts } = useAsync(() => (user ? api.listAllMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
+  const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [teamingRouteId, setTeamingRouteId] = useState<string | null>(null);
   const [teamError, setTeamError] = useState<string>();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function createRoute() {
     setCreating(true);
@@ -26,6 +28,16 @@ export function Home() {
       navigate(`/build/${route.id}`);
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function deleteDraft(routeId: string) {
+    setDeletingId(routeId);
+    try {
+      await api.deleteRoute(routeId);
+      reload();
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -56,8 +68,11 @@ export function Home() {
   }
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
-  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready') ?? []) : [];
-  const activeSessions = myHunts?.sessions ?? [];
+  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready' && r.itemCount > 0) ?? []) : [];
+  const allSessions = myHunts?.sessions ?? [];
+  const activeSessions = allSessions.filter((s) => !s.finishedAt);
+  const pastSessions = allSessions.filter((s) => !!s.finishedAt).slice(0, 10);
+  const activeTeams = myTeams?.teams ?? [];
 
   return (
     <Page>
@@ -76,8 +91,7 @@ export function Home() {
         {teamError && <Banner tone="no">{teamError}</Banner>}
 
         {activeSessions.length > 0 && (
-          <section className="stack">
-            <h2>{activeSessions.some((s) => s.pausedAt) ? 'Paused hunts' : 'Active hunts'}</h2>
+          <CollapsibleSection title={activeSessions.some((s) => s.pausedAt) ? 'Paused hunts' : 'Active hunts'}>
             {activeSessions.map((s) => {
               const route = routes?.find((r) => r.id === s.routeId);
               return (
@@ -89,24 +103,58 @@ export function Home() {
                 />
               );
             })}
-          </section>
+          </CollapsibleSection>
+        )}
+
+        {activeTeams.length > 0 && (
+          <CollapsibleSection title="Team hunts in progress">
+            {activeTeams.map((team) => {
+              const route = routes?.find((r) => r.id === team.routeId);
+              const isPaused = team.status === 'paused';
+              return (
+                <Card key={team.id}>
+                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ marginBottom: 4 }}>{route?.title ?? 'Hunt'}</h3>
+                      <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                        👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <span style={{
+                      display: 'inline-block', padding: '2px 10px',
+                      borderRadius: 'var(--radius-full, 999px)',
+                      background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
+                      color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
+                      fontSize: '0.78rem', fontWeight: 600, flexShrink: 0, marginLeft: 'var(--space-2)',
+                    }}>
+                      {isPaused ? '⏸ Paused' : '▶ Active'}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
+                    <Button variant="happy" onClick={() => navigate(`/team/${team.id}/play`)}>
+                      👥 Rejoin team hunt
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </CollapsibleSection>
         )}
 
         {user && myDrafts.length > 0 && (
-          <section className="stack">
-            <h2>My drafts</h2>
+          <CollapsibleSection title="My drafts">
             {myDrafts.map((r) => (
               <DraftCard
                 key={r.id}
                 route={r}
                 onContinue={() => navigate(`/build/${r.id}`)}
+                onDelete={() => deleteDraft(r.id)}
               />
             ))}
-          </section>
+          </CollapsibleSection>
         )}
 
-        <section className="stack">
-          <h2>Ready to play</h2>
+        <CollapsibleSection title="Ready to play">
           {ready.length === 0 && !loading && (
             <Card>
               <p className="center muted">No hunts yet — be the first to make one! 🎈</p>
@@ -123,7 +171,31 @@ export function Home() {
               onShare={() => shareRoute(r.id)}
             />
           ))}
-        </section>
+        </CollapsibleSection>
+
+        {pastSessions.length > 0 && (
+          <CollapsibleSection title="Past hunts" defaultOpen={false}>
+            {pastSessions.map((s) => {
+              const route = routes?.find((r) => r.id === s.routeId);
+              const found = s.steps.filter((st) => st.status === 'found').length;
+              return (
+                <Card key={s.id}>
+                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <strong>{route?.title ?? 'Hunt'}</strong>
+                      <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.82rem' }}>
+                        {found}/{s.steps.length} found · ⭐ {s.totalScore}
+                      </p>
+                    </div>
+                    <Button variant="ghost" onClick={() => navigate(`/results/${s.routeId}/${s.id}`)}>
+                      Results →
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </CollapsibleSection>
+        )}
 
         {!loading && (
           <Button variant="ghost" onClick={reload}>
@@ -132,6 +204,23 @@ export function Home() {
         )}
       </div>
     </Page>
+  );
+}
+
+function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="stack">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', width: '100%' }}
+      >
+        <h2 style={{ margin: 0 }}>{title}</h2>
+        <span style={{ fontSize: '0.85rem', color: 'var(--color-ink-soft)' }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && children}
+    </section>
   );
 }
 
@@ -155,15 +244,12 @@ function RouteCard({
   teaming?: boolean;
 }) {
   const hasCover = Boolean(route.coverPhotoUrl);
-  const hasActions = Boolean(onEdit ?? onShare ?? onTeamPlay);
 
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
-      {/* Hero / clickable area — cover photo fills this as a background */}
+      {/* Hero — info only, no click-to-play (actions are in the button bar below) */}
       <div
-        onClick={onPlay}
         style={{
-          cursor: 'pointer',
           padding: 'var(--space-4)',
           minHeight: hasCover ? 160 : undefined,
           display: 'flex',
@@ -183,10 +269,11 @@ function RouteCard({
             {mine && route.status === 'draft' && ' · draft'}
           </p>
         </div>
-        <div className="stack" style={{ alignItems: 'flex-end', gap: 4 }}>
-          {route.avgRating !== undefined && <StarRating value={Math.round(route.avgRating)} />}
-          <span style={{ fontSize: '1.6rem' }}>▶️</span>
-        </div>
+        {route.avgRating !== undefined && (
+          <div style={{ flexShrink: 0, marginLeft: 'var(--space-2)' }}>
+            <StarRating value={Math.round(route.avgRating)} />
+          </div>
+        )}
       </div>
 
       {/* Start / end location links */}
@@ -199,7 +286,6 @@ function RouteCard({
               rel="noreferrer"
               className="btn btn--ghost"
               style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-              onClick={(e) => e.stopPropagation()}
             >
               📍 Start
             </a>
@@ -211,7 +297,6 @@ function RouteCard({
               rel="noreferrer"
               className="btn btn--ghost"
               style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-              onClick={(e) => e.stopPropagation()}
             >
               🏁 End
             </a>
@@ -219,17 +304,19 @@ function RouteCard({
         </div>
       )}
 
-      {/* Action buttons */}
-      {hasActions && (
-        <div
-          className="row"
-          style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)', flexWrap: 'wrap', gap: 4 }}
-        >
-          {onTeamPlay && (
-            <Button variant="accent" disabled={teaming} onClick={(e) => { e.stopPropagation(); onTeamPlay(); }}>
-              {teaming ? '⏳' : '👥 Play as team'}
-            </Button>
-          )}
+      {/* Action buttons — always present for ready routes */}
+      <div
+        className="row"
+        style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)', flexWrap: 'wrap', gap: 4 }}
+      >
+        <Button variant="happy" onClick={(e) => { e.stopPropagation(); onPlay(); }}>
+          ▶ Play solo
+        </Button>
+        {onTeamPlay && (
+          <Button variant="accent" disabled={teaming} onClick={(e) => { e.stopPropagation(); onTeamPlay(); }}>
+            {teaming ? '⏳' : '👥 Team'}
+          </Button>
+        )}
           {onEdit && (
             <Button variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
               ✏️ Edit
@@ -241,7 +328,6 @@ function RouteCard({
             </Button>
           )}
         </div>
-      )}
     </Card>
   );
 }
@@ -293,7 +379,9 @@ function ActiveHuntCard({
   );
 }
 
-function DraftCard({ route, onContinue }: { route: RouteSummary; onContinue: () => void }) {
+function DraftCard({ route, onContinue, onDelete }: { route: RouteSummary; onContinue: () => void; onDelete: () => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   return (
     <Card>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -321,9 +409,18 @@ function DraftCard({ route, onContinue }: { route: RouteSummary; onContinue: () 
         </span>
       </div>
       <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        <Button variant="ghost" onClick={onContinue}>
-          ✏️ Continue editing
-        </Button>
+        {confirmDelete ? (
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this draft?</span>
+            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete}>🗑 Yes, delete</Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 8 }}>
+            <Button variant="ghost" onClick={onContinue}>✏️ Continue editing</Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+          </div>
+        )}
       </div>
     </Card>
   );

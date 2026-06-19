@@ -25,3 +25,4 @@ export { GuessToastOverlay } from './GuessToast.js';
 export type { GuessToastData } from './GuessToast.js';
 export { HuntTrail } from './HuntTrail.js';
 export type { HuntTrailItem } from './HuntTrail.js';
+export { ItemHistoryPanel } from './ItemHistoryPanel.js';

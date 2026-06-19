@@ -14,6 +14,7 @@ import {
   Fireworks,
   HintView,
   HuntTrail,
+  ItemHistoryPanel,
   JigsawView,
   Page,
   PhotoCapture,
@@ -32,6 +33,7 @@ export function HuntPlayer() {
   const hunt = useHunt(routeId, resumeSessionId);
 
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
+  const [historyItemId, setHistoryItemId] = useState<string | null>(null);
   const [reversed, setReversed] = useState(false);
   const prevFound = useRef(0);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
@@ -300,6 +302,23 @@ export function HuntPlayer() {
     );
   }
 
+  // ── Item history view (tap a found item in the trail) ────────────────────
+  if (historyItemId) {
+    const histStep = session.steps.find((s) => s.itemId === historyItemId);
+    const histItem = items.find((i) => i.id === historyItemId);
+    const histIdx = session.steps.findIndex((s) => s.itemId === historyItemId);
+    if (histStep && histItem) {
+      return (
+        <ItemHistoryPanel
+          step={histStep}
+          itemName={histItem.name}
+          stepNum={histIdx + 1}
+          onClose={() => setHistoryItemId(null)}
+        />
+      );
+    }
+  }
+
   const step = hunt.activeStep;
   const item = items.find((i) => i.id === step?.itemId);
   if (!step || !item) return <Page onBack title="Play"><Spinner /></Page>;
@@ -316,7 +335,9 @@ export function HuntPlayer() {
 
   function handleTrailSelect(idx: number) {
     const st = session.steps[idx];
-    if (st?.status === 'skipped') hunt.returnToSkipped(st.itemId);
+    if (!st) return;
+    if (st.status === 'skipped') hunt.returnToSkipped(st.itemId);
+    if (st.status === 'found') setHistoryItemId(st.itemId);
   }
 
   return (
@@ -345,14 +366,9 @@ export function HuntPlayer() {
             <div className="stack">
               <span className="field-label">🧩 Riddle</span>
               <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{item.hint.text}</p>
-              {(item.extraHints ?? []).filter((h) => h.text).length > 0 && (
-                <>
-                  <span className="field-label" style={{ marginTop: 'var(--space-1)' }}>Clues</span>
-                  {(item.extraHints ?? []).map((h, i) => (
-                    <p key={i} style={{ margin: 0, color: 'var(--color-ink-soft)' }}>• {h.text}</p>
-                  ))}
-                </>
-              )}
+              {(item.extraHints ?? []).slice(0, step.cluesUsed).filter((h) => h.text).map((h, i) => (
+                <p key={i} style={{ margin: 0, color: 'var(--color-ink-soft)' }}>• {h.text}</p>
+              ))}
             </div>
           </Card>
         ) : item.kind === 'jigsaw' ? (
@@ -412,11 +428,17 @@ export function HuntPlayer() {
                 {hunt.busy ? '…' : '›'}
               </Button>
             </div>
-            {canSkip(step) && (
-              <Button variant="ghost" onClick={(e) => { e.stopPropagation(); hunt.skip(); }} disabled={hunt.busy}>
-                ⏭ Skip
+            <div className="row" style={{ gap: 8 }}>
+              <Button variant="accent" onClick={hunt.useHelp}
+                disabled={hunt.busy || !item.extraHints?.length || step.cluesUsed >= (item.extraHints?.length ?? 0)}>
+                💡
               </Button>
-            )}
+              {canSkip(step) && (
+                <Button variant="ghost" onClick={(e) => { e.stopPropagation(); hunt.skip(); }} disabled={hunt.busy}>
+                  ⏭
+                </Button>
+              )}
+            </div>
           </>
         )}
 
@@ -459,20 +481,20 @@ export function HuntPlayer() {
             <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <Button variant="accent" onClick={hunt.useHelp}
                 disabled={hunt.busy || !item.extraHints?.length || step.cluesUsed >= (item.extraHints?.length ?? 0)}>
-                💡 Next clue
+                💡
               </Button>
               {item.location && (
                 <a href={googleMapsLink(item.location.lat, item.location.lng)} target="_blank" rel="noreferrer" className="btn btn--accent">
-                  📍 Location
+                  📍
                 </a>
               )}
               {hunt.lastVerdict && !hunt.lastVerdict.match && (
                 <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
-                  🙋 I really found it!
+                  🙋
                 </Button>
               )}
               {canSkip(step) && (
-                <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>⏭ Skip</Button>
+                <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>⏭</Button>
               )}
             </div>
           </>
@@ -527,21 +549,21 @@ export function HuntPlayer() {
             <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <Button variant="accent" onClick={hunt.useHelp}
                 disabled={hunt.busy || !item.extraHints?.length || step.cluesUsed >= (item.extraHints?.length ?? 0)}>
-                💡 Next clue
+                💡
               </Button>
               {item.location && (
                 <a href={googleMapsLink(item.location.lat, item.location.lng)} target="_blank" rel="noreferrer" className="btn btn--accent">
-                  📍 Location
+                  📍
                 </a>
               )}
               {hunt.lastVerdict && !hunt.lastVerdict.match && (
                 <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
-                  🙋 I really found it!
+                  🙋
                 </Button>
               )}
               {canSkip(step) && (
                 <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>
-                  ⏭ Skip
+                  ⏭
                 </Button>
               )}
             </div>

@@ -10,6 +10,7 @@ import { TeamLobby } from './screens/TeamLobby.js';
 import { TeamHuntPlayer } from './screens/TeamHuntPlayer.js';
 import { TeamResults } from './screens/TeamResults.js';
 import { Admin } from './screens/Admin.js';
+import { Report } from './screens/Report.js';
 import { AppBar } from './ui/index.js';
 
 /** Routes are gated by sign-in. The URL is preserved, so shared /play links
@@ -33,6 +34,7 @@ function AppRoutes() {
         <Route path="/team/:teamId/play" element={<TeamHuntPlayer />} />
         <Route path="/team/:teamId/results" element={<TeamResults />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/report" element={<Report />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

@@ -46,6 +46,11 @@ export async function initDb(): Promise<void> {
       mime_type TEXT NOT NULL,
       data BYTEA NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS reports (
+      id TEXT PRIMARY KEY,
+      data JSONB NOT NULL
+    );
   `);
   console.log('[db] tables ready');
 }

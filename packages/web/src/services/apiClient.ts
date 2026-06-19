@@ -1,4 +1,5 @@
 import type {
+  BugReport,
   CleanupResult,
   CreateRouteRequest,
   EscalateHelpRequest,
@@ -7,6 +8,8 @@ import type {
   ModerationResult,
   Rating,
   RateRouteRequest,
+  ReportSeverity,
+  ReportType,
   Route,
   RouteSummary,
   SessionResponse,
@@ -111,6 +114,9 @@ export class ApiClient {
   listMyHunts(): Promise<{ sessions: HuntSession[] }> {
     return this.request('/api/hunt/mine');
   }
+  listAllMyHunts(): Promise<{ sessions: HuntSession[] }> {
+    return this.request('/api/hunt/mine?finished=true');
+  }
   getHunt(sessionId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}`);
   }
@@ -171,6 +177,9 @@ export class ApiClient {
   getTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}`);
   }
+  listMyTeams(): Promise<{ teams: Team[] }> {
+    return this.request('/api/teams/my');
+  }
   joinTeamByCode(code: string, avatarEmoji?: string): Promise<Team> {
     return this.request(`/api/teams/join/${code}`, { method: 'POST', body: JSON.stringify({ avatarEmoji }) });
   }
@@ -182,6 +191,14 @@ export class ApiClient {
   }
   getTeamLeaderboard(routeId: string): Promise<TeamResult[]> {
     return this.request(`/api/teams/route/${routeId}/leaderboard`);
+  }
+
+  // --- Reports ---
+  listReports(): Promise<{ reports: BugReport[] }> {
+    return this.request('/api/reports');
+  }
+  submitReport(body: { description: string; type: ReportType; severity: ReportSeverity }): Promise<{ report: BugReport; merged: boolean }> {
+    return this.request('/api/reports', { method: 'POST', body: JSON.stringify(body) });
   }
 
   // --- Admin ---

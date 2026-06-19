@@ -62,5 +62,7 @@ export { isRoutePlayable, averageRating } from './logic/route.js';
 export { getJigsawGridSize, getFinalItemPositions } from './logic/finalItem.js';
 export { computeTeamResult, findBestBlooper } from './logic/teamScoring.js';
 
+export type { BugReport, Reporter, ReportType, ReportSeverity, ReportStatus } from './models/report.js';
+
 // Contracts
 export type * from './contracts/api.js';
