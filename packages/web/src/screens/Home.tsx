@@ -18,6 +18,7 @@ export function Home() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [teamingRouteId, setTeamingRouteId] = useState<string | null>(null);
   const [teamError, setTeamError] = useState<string>();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function createRoute() {
     setCreating(true);
@@ -26,6 +27,16 @@ export function Home() {
       navigate(`/build/${route.id}`);
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function deleteDraft(routeId: string) {
+    setDeletingId(routeId);
+    try {
+      await api.deleteRoute(routeId);
+      reload();
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -100,6 +111,7 @@ export function Home() {
                 key={r.id}
                 route={r}
                 onContinue={() => navigate(`/build/${r.id}`)}
+                onDelete={() => deleteDraft(r.id)}
               />
             ))}
           </section>
@@ -155,15 +167,12 @@ function RouteCard({
   teaming?: boolean;
 }) {
   const hasCover = Boolean(route.coverPhotoUrl);
-  const hasActions = Boolean(onEdit ?? onShare ?? onTeamPlay);
 
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
-      {/* Hero / clickable area — cover photo fills this as a background */}
+      {/* Hero — info only, no click-to-play (actions are in the button bar below) */}
       <div
-        onClick={onPlay}
         style={{
-          cursor: 'pointer',
           padding: 'var(--space-4)',
           minHeight: hasCover ? 160 : undefined,
           display: 'flex',
@@ -183,10 +192,11 @@ function RouteCard({
             {mine && route.status === 'draft' && ' · draft'}
           </p>
         </div>
-        <div className="stack" style={{ alignItems: 'flex-end', gap: 4 }}>
-          {route.avgRating !== undefined && <StarRating value={Math.round(route.avgRating)} />}
-          <span style={{ fontSize: '1.6rem' }}>▶️</span>
-        </div>
+        {route.avgRating !== undefined && (
+          <div style={{ flexShrink: 0, marginLeft: 'var(--space-2)' }}>
+            <StarRating value={Math.round(route.avgRating)} />
+          </div>
+        )}
       </div>
 
       {/* Start / end location links */}
@@ -199,7 +209,6 @@ function RouteCard({
               rel="noreferrer"
               className="btn btn--ghost"
               style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-              onClick={(e) => e.stopPropagation()}
             >
               📍 Start
             </a>
@@ -211,7 +220,6 @@ function RouteCard({
               rel="noreferrer"
               className="btn btn--ghost"
               style={{ fontSize: '0.78rem', padding: '4px 10px' }}
-              onClick={(e) => e.stopPropagation()}
             >
               🏁 End
             </a>
@@ -219,17 +227,19 @@ function RouteCard({
         </div>
       )}
 
-      {/* Action buttons */}
-      {hasActions && (
-        <div
-          className="row"
-          style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)', flexWrap: 'wrap', gap: 4 }}
-        >
-          {onTeamPlay && (
-            <Button variant="accent" disabled={teaming} onClick={(e) => { e.stopPropagation(); onTeamPlay(); }}>
-              {teaming ? '⏳' : '👥 Play as team'}
-            </Button>
-          )}
+      {/* Action buttons — always present for ready routes */}
+      <div
+        className="row"
+        style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)', flexWrap: 'wrap', gap: 4 }}
+      >
+        <Button variant="happy" onClick={(e) => { e.stopPropagation(); onPlay(); }}>
+          ▶ Play solo
+        </Button>
+        {onTeamPlay && (
+          <Button variant="accent" disabled={teaming} onClick={(e) => { e.stopPropagation(); onTeamPlay(); }}>
+            {teaming ? '⏳' : '👥 Team'}
+          </Button>
+        )}
           {onEdit && (
             <Button variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
               ✏️ Edit
@@ -241,7 +251,6 @@ function RouteCard({
             </Button>
           )}
         </div>
-      )}
     </Card>
   );
 }
@@ -293,7 +302,9 @@ function ActiveHuntCard({
   );
 }
 
-function DraftCard({ route, onContinue }: { route: RouteSummary; onContinue: () => void }) {
+function DraftCard({ route, onContinue, onDelete }: { route: RouteSummary; onContinue: () => void; onDelete: () => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   return (
     <Card>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -321,9 +332,18 @@ function DraftCard({ route, onContinue }: { route: RouteSummary; onContinue: () 
         </span>
       </div>
       <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        <Button variant="ghost" onClick={onContinue}>
-          ✏️ Continue editing
-        </Button>
+        {confirmDelete ? (
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this draft?</span>
+            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete}>🗑 Yes, delete</Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 8 }}>
+            <Button variant="ghost" onClick={onContinue}>✏️ Continue editing</Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+          </div>
+        )}
       </div>
     </Card>
   );
