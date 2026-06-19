@@ -14,10 +14,12 @@
     "start": "NODE_ENV=production node packages/server/dist/index.js",
     "dev": "npm run build --workspace @ftp/shared && concurrently -n server,web -c blue,magenta \"npm run dev --workspace @ftp/server\" \"npm run dev --workspace @ftp/web\"",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "parse-reports": "tsx scripts/parse-reports.ts"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.2"
   },
   "engines": {
     "node": ">=20"
