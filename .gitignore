@@ -9,6 +9,7 @@ build/
 *.local
 
 # server runtime data (routes + uploaded photos)
+data/
 packages/server/data/
 packages/server/uploads/
 

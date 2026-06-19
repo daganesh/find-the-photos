@@ -51,7 +51,7 @@ function formatReport(report: BugReport, index: number): string {
 
 async function main() {
   const dir = path.dirname(fileURLToPath(import.meta.url));
-  const defaultPath = path.resolve(dir, '../data/reports.json');
+  const defaultPath = path.resolve(dir, '../packages/server/data/reports.json');
   const filePath = process.argv[2] ?? defaultPath;
 
   let reports: BugReport[] = [];
