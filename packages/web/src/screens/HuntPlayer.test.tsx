@@ -88,7 +88,10 @@ describe('HuntPlayer – countdown', () => {
     expect(container.querySelector('.countdown-digit')!.className).toContain('countdown-digit');
   });
 
-  it('hides the digit after countdown ends — never leaves "0" on screen', async () => {
+  it('countdown completes and digit clears, then hunt UI is visible', async () => {
+    // Note: React's act() batches the 0→null state transition synchronously, so
+    // a single-frame "0" flash cannot be detected here — that requires an e2e test.
+    // This test verifies the countdown finishes cleanly and hands off to the hunt UI.
     vi.useFakeTimers();
     mockHunt.mockReturnValue({
       ...HUNT_BASE,
@@ -112,7 +115,9 @@ describe('HuntPlayer – countdown', () => {
       await act(async () => { vi.advanceTimersByTime(1000); });
     }
 
+    // Digit is gone and hunt UI has taken over
     expect(container.querySelector('.countdown-digit')).toBeNull();
+    expect(container.textContent).toContain('Clue 1');
   });
 
   it('skips the countdown when the session was resumed', async () => {
