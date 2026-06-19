@@ -15,6 +15,7 @@ import {
   GuessToastOverlay,
   HintView,
   HuntTrail,
+  ItemHistoryPanel,
   JigsawView,
   Page,
   PhotoCapture,
@@ -77,6 +78,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const [celebrateItemId, setCelebrateItemId] = useState<string | null>(null);
+  const [historyItemId, setHistoryItemId] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
   const [disputeDesc, setDisputeDesc] = useState('');
@@ -239,7 +241,9 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
   function handleTrailSelect(idx: number) {
     const st = session.steps[idx];
-    if (st?.status === 'active') setFocusedItemId(st.itemId);
+    if (!st) return;
+    if (st.status === 'active') setFocusedItemId(st.itemId);
+    if (st.status === 'found') setHistoryItemId(st.itemId);
   }
 
   /** Wraps any screen with the floating guess toast overlay. */
@@ -321,6 +325,24 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
         </Card>
       </Page>,
     );
+  }
+
+  // ── Item history (tap a found trail node) ─────────────────────────────────
+  if (historyItemId) {
+    const histStep = session.steps.find((s) => s.itemId === historyItemId);
+    const histItem = items.find((i) => i.id === historyItemId);
+    const histIdx = session.steps.findIndex((s) => s.itemId === historyItemId);
+    if (histStep && histItem) {
+      return withToast(
+        <ItemHistoryPanel
+          step={histStep}
+          itemName={histItem.name}
+          stepNum={histIdx + 1}
+          onClose={() => setHistoryItemId(null)}
+          members={team?.members}
+        />,
+      );
+    }
   }
 
   // ── Single-item hunt view ─────────────────────────────────────────────────

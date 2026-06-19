@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { HuntSession, RouteSummary } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
@@ -13,7 +13,7 @@ export function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
-  const { data: myHunts } = useAsync(() => (user ? api.listMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
+  const { data: myHunts } = useAsync(() => (user ? api.listAllMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
   const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -69,7 +69,9 @@ export function Home() {
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready') ?? []) : [];
-  const activeSessions = myHunts?.sessions ?? [];
+  const allSessions = myHunts?.sessions ?? [];
+  const activeSessions = allSessions.filter((s) => !s.finishedAt);
+  const pastSessions = allSessions.filter((s) => !!s.finishedAt).slice(0, 10);
   const activeTeams = myTeams?.teams ?? [];
 
   return (
@@ -89,8 +91,7 @@ export function Home() {
         {teamError && <Banner tone="no">{teamError}</Banner>}
 
         {activeSessions.length > 0 && (
-          <section className="stack">
-            <h2>{activeSessions.some((s) => s.pausedAt) ? 'Paused hunts' : 'Active hunts'}</h2>
+          <CollapsibleSection title={activeSessions.some((s) => s.pausedAt) ? 'Paused hunts' : 'Active hunts'}>
             {activeSessions.map((s) => {
               const route = routes?.find((r) => r.id === s.routeId);
               return (
@@ -102,12 +103,11 @@ export function Home() {
                 />
               );
             })}
-          </section>
+          </CollapsibleSection>
         )}
 
         {activeTeams.length > 0 && (
-          <section className="stack">
-            <h2>Team hunts in progress</h2>
+          <CollapsibleSection title="Team hunts in progress">
             {activeTeams.map((team) => {
               const route = routes?.find((r) => r.id === team.routeId);
               const isPaused = team.status === 'paused';
@@ -120,19 +120,13 @@ export function Home() {
                         👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
                       </p>
                     </div>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 10px',
-                        borderRadius: 'var(--radius-full, 999px)',
-                        background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
-                        color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        flexShrink: 0,
-                        marginLeft: 'var(--space-2)',
-                      }}
-                    >
+                    <span style={{
+                      display: 'inline-block', padding: '2px 10px',
+                      borderRadius: 'var(--radius-full, 999px)',
+                      background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
+                      color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
+                      fontSize: '0.78rem', fontWeight: 600, flexShrink: 0, marginLeft: 'var(--space-2)',
+                    }}>
                       {isPaused ? '⏸ Paused' : '▶ Active'}
                     </span>
                   </div>
@@ -144,12 +138,11 @@ export function Home() {
                 </Card>
               );
             })}
-          </section>
+          </CollapsibleSection>
         )}
 
         {user && myDrafts.length > 0 && (
-          <section className="stack">
-            <h2>My drafts</h2>
+          <CollapsibleSection title="My drafts">
             {myDrafts.map((r) => (
               <DraftCard
                 key={r.id}
@@ -158,11 +151,10 @@ export function Home() {
                 onDelete={() => deleteDraft(r.id)}
               />
             ))}
-          </section>
+          </CollapsibleSection>
         )}
 
-        <section className="stack">
-          <h2>Ready to play</h2>
+        <CollapsibleSection title="Ready to play">
           {ready.length === 0 && !loading && (
             <Card>
               <p className="center muted">No hunts yet — be the first to make one! 🎈</p>
@@ -179,7 +171,31 @@ export function Home() {
               onShare={() => shareRoute(r.id)}
             />
           ))}
-        </section>
+        </CollapsibleSection>
+
+        {pastSessions.length > 0 && (
+          <CollapsibleSection title="Past hunts" defaultOpen={false}>
+            {pastSessions.map((s) => {
+              const route = routes?.find((r) => r.id === s.routeId);
+              const found = s.steps.filter((st) => st.status === 'found').length;
+              return (
+                <Card key={s.id}>
+                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <strong>{route?.title ?? 'Hunt'}</strong>
+                      <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.82rem' }}>
+                        {found}/{s.steps.length} found · ⭐ {s.totalScore}
+                      </p>
+                    </div>
+                    <Button variant="ghost" onClick={() => navigate(`/results/${s.routeId}/${s.id}`)}>
+                      Results →
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </CollapsibleSection>
+        )}
 
         {!loading && (
           <Button variant="ghost" onClick={reload}>
@@ -188,6 +204,23 @@ export function Home() {
         )}
       </div>
     </Page>
+  );
+}
+
+function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="stack">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', width: '100%' }}
+      >
+        <h2 style={{ margin: 0 }}>{title}</h2>
+        <span style={{ fontSize: '0.85rem', color: 'var(--color-ink-soft)' }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && children}
+    </section>
   );
 }
 

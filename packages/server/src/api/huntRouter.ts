@@ -49,12 +49,14 @@ export function huntRouter(ctx: AppContext): Router {
     }
   });
 
-  // List the caller's unfinished (active or paused) sessions.
+  // List the caller's sessions.
+  // ?finished=true includes completed sessions (for the history pane).
   // Registered before /:sessionId so Express doesn't treat "mine" as a session ID.
   router.get('/mine', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const all = await ctx.hunts.listByHunter(req.user!.id);
-      const sessions = all.filter((s) => !s.finishedAt);
+      const includeFinished = req.query.finished === 'true';
+      const sessions = includeFinished ? all : all.filter((s) => !s.finishedAt);
       res.json({ sessions });
     } catch (err) {
       next(err);

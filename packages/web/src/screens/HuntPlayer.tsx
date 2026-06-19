@@ -14,6 +14,7 @@ import {
   Fireworks,
   HintView,
   HuntTrail,
+  ItemHistoryPanel,
   JigsawView,
   Page,
   PhotoCapture,
@@ -32,6 +33,7 @@ export function HuntPlayer() {
   const hunt = useHunt(routeId, resumeSessionId);
 
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
+  const [historyItemId, setHistoryItemId] = useState<string | null>(null);
   const [reversed, setReversed] = useState(false);
   const prevFound = useRef(0);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
@@ -300,6 +302,23 @@ export function HuntPlayer() {
     );
   }
 
+  // ── Item history view (tap a found item in the trail) ────────────────────
+  if (historyItemId) {
+    const histStep = session.steps.find((s) => s.itemId === historyItemId);
+    const histItem = items.find((i) => i.id === historyItemId);
+    const histIdx = session.steps.findIndex((s) => s.itemId === historyItemId);
+    if (histStep && histItem) {
+      return (
+        <ItemHistoryPanel
+          step={histStep}
+          itemName={histItem.name}
+          stepNum={histIdx + 1}
+          onClose={() => setHistoryItemId(null)}
+        />
+      );
+    }
+  }
+
   const step = hunt.activeStep;
   const item = items.find((i) => i.id === step?.itemId);
   if (!step || !item) return <Page onBack title="Play"><Spinner /></Page>;
@@ -316,7 +335,9 @@ export function HuntPlayer() {
 
   function handleTrailSelect(idx: number) {
     const st = session.steps[idx];
-    if (st?.status === 'skipped') hunt.returnToSkipped(st.itemId);
+    if (!st) return;
+    if (st.status === 'skipped') hunt.returnToSkipped(st.itemId);
+    if (st.status === 'found') setHistoryItemId(st.itemId);
   }
 
   return (

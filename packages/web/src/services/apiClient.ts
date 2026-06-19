@@ -111,6 +111,9 @@ export class ApiClient {
   listMyHunts(): Promise<{ sessions: HuntSession[] }> {
     return this.request('/api/hunt/mine');
   }
+  listAllMyHunts(): Promise<{ sessions: HuntSession[] }> {
+    return this.request('/api/hunt/mine?finished=true');
+  }
   getHunt(sessionId: string): Promise<{ session: HuntSession }> {
     return this.request(`/api/hunt/${sessionId}`);
   }
