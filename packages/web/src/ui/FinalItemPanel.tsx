@@ -94,6 +94,8 @@ export function FinalItemPanel({
 
   const cluesLabel = finalItem.kind === 'jigsaw'
     ? `${revealedPositions.size}/${totalPositions} pieces`
+    : !finalItem.answer
+    ? 'clues collecting…'
     : finalItem.kind === 'code'
     ? `${revealedPositions.size}/${totalPositions} characters collected`
     : `${revealedPositions.size}/${totalPositions} letters`;

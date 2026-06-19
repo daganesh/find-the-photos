@@ -572,6 +572,11 @@ export function RouteBuilder() {
                   placeholder={finalItem.kind === 'code' ? 'e.g. CASTLE or 2847' : 'The final answer…'}
                   onChange={(e) => updateFinalItem({ answer: e.target.value })}
                 />
+                {!finalItem.answer && finalItem.kind !== 'jigsaw' && (
+                  <p style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.8rem', margin: '4px 0 0' }}>
+                    ⚠️ Required — players can't complete this without an answer.
+                  </p>
+                )}
               </div>
 
               {route.items.length > 0 && finalItem.answer && finalItem.kind !== 'jigsaw' && (

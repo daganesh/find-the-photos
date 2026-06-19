@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { HuntSession } from '@ftp/shared';
-import { canSkip, isHuntComplete, scoreStep } from '@ftp/shared';
+import { canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { playSuccessSound } from '../services/sounds.js';
@@ -15,12 +15,14 @@ import {
   GuessToastOverlay,
   HintView,
   HuntTrail,
+  JigsawView,
   Page,
   PhotoCapture,
   ScorePill,
   Spinner,
   Timer,
 } from '../ui/index.js';
+import { mediaUrl } from '../services/media.js';
 import type { GuessToastData } from '../ui/index.js';
 import {
   TOAST_BG_COLORS,
@@ -331,11 +333,12 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
       return null;
     }
 
+    const stepNum = session.steps.findIndex((s) => s.itemId === focusedItemId) + 1;
     const verdict = hunt.lastVerdict?.itemId === focusedItemId ? hunt.lastVerdict.verdict : undefined;
 
     return withToast(<Page
         onBack={() => setFocusedItemId(null)}
-        title={item.name}
+        title={`Clue ${stepNum}`}
         right={
           <div className="row" style={{ gap: 8 }}>
             {team?.startedAt && <Timer startedAt={team.startedAt} paused={paused} />}
@@ -361,6 +364,24 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
                 )}
               </div>
             </Card>
+          ) : item.kind === 'jigsaw' ? (
+            <div className="stack">
+              {item.photos[0] && (
+                <JigsawView
+                  imageUrl={mediaUrl(item.photos[0].url)}
+                  gridSize={getJigsawGridSize(item.jigsawDifficulty ?? 1)}
+                  mode="scrambled"
+                  difficulty={item.jigsawDifficulty ?? 1}
+                  seed={item.id}
+                />
+              )}
+              <Card>
+                <div className="stack">
+                  <span className="field-label">Clue</span>
+                  <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} />
+                </div>
+              </Card>
+            </div>
           ) : item.kind === 'task' ? (
             <Card>
               <div className="stack">
@@ -372,7 +393,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             <Card>
               <div className="stack">
                 <span className="field-label">Your clue</span>
-                <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} />
+                <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} collapsible />
               </div>
             </Card>
           )}
@@ -385,21 +406,81 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
           {item.kind === 'riddle' ? (
             <>
-              <input
-                value={riddleAnswer}
-                onChange={(e) => setRiddleAnswer(e.target.value)}
-                placeholder="Your answer…"
-                disabled={hunt.busy}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
-              />
-              <Button variant="happy" block disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
-                {hunt.busy ? 'Checking…' : '✅ Submit answer'}
-              </Button>
+              <div className="row" style={{ gap: 4 }}>
+                <input
+                  value={riddleAnswer}
+                  onChange={(e) => setRiddleAnswer(e.target.value)}
+                  placeholder="Your answer…"
+                  disabled={hunt.busy}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
+                  style={{ flex: 1 }}
+                />
+                <Button variant="happy" disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
+                  {hunt.busy ? '…' : '›'}
+                </Button>
+              </div>
               {canSkip(step) && (
                 <Button variant="ghost" disabled={hunt.busy} onClick={(e) => { e.stopPropagation(); hunt.skip(focusedItemId); }}>
                   ⏭ Skip
                 </Button>
               )}
+            </>
+          ) : item.kind === 'jigsaw' ? (
+            <>
+              {verdict && !verdict.match && (
+                <Banner tone="no">🤔 {verdict.reason}</Banner>
+              )}
+              <div className="row" style={{ gap: 4 }}>
+                <input
+                  value={riddleAnswer}
+                  onChange={(e) => setRiddleAnswer(e.target.value)}
+                  placeholder="What do you think this shows?"
+                  disabled={hunt.busy}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
+                  style={{ flex: 1 }}
+                />
+                <Button variant="happy" disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
+                  {hunt.busy ? '…' : '›'}
+                </Button>
+              </div>
+              <PhotoCapture onCapture={(f) => hunt.submitPhoto(focusedItemId, f)} variant="accent" disabled={hunt.busy}>
+                📸
+              </PhotoCapture>
+              {disputeConfirm && (
+                <Card>
+                  <div className="stack">
+                    <strong>Describe what you found</strong>
+                    <input value={disputeDesc} onChange={(e) => setDisputeDesc(e.target.value)} placeholder="e.g. the old fountain…" />
+                    {disputeError && <Banner tone="no">{disputeError}</Banner>}
+                    <div className="row">
+                      <Button variant="happy" disabled={hunt.busy || !disputeDesc.trim()} onClick={handleDispute}>✅ That's it!</Button>
+                      <Button variant="ghost" onClick={() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }}>Cancel</Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
+              <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <Button variant="accent"
+                  disabled={hunt.busy || !item.extraHints?.length || step.cluesUsed >= (item.extraHints?.length ?? 0)}
+                  onClick={() => hunt.useHelp(focusedItemId)}>
+                  💡 Next clue
+                </Button>
+                {item.location && (
+                  <a href={googleMapsLink(item.location.lat, item.location.lng)} target="_blank" rel="noreferrer" className="btn btn--accent">
+                    📍 Location
+                  </a>
+                )}
+                {verdict && !verdict.match && (
+                  <Button variant="ghost" disabled={hunt.busy} onClick={() => setDisputeConfirm(true)}>
+                    🙋 I really found it!
+                  </Button>
+                )}
+                {canSkip(step) && (
+                  <Button variant="ghost" disabled={hunt.busy} onClick={() => hunt.skip(focusedItemId)}>
+                    ⏭ Skip
+                  </Button>
+                )}
+              </div>
             </>
           ) : (
             <>
@@ -429,7 +510,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
               )}
 
               <PhotoCapture onCapture={(f) => hunt.submitPhoto(focusedItemId, f)} variant="happy" disabled={hunt.busy}>
-                {hunt.busy ? '🔎 Checking…' : '📸 I found it — take a photo'}
+                📸
               </PhotoCapture>
 
               <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>

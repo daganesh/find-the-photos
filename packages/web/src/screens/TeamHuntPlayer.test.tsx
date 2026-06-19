@@ -139,7 +139,7 @@ describe('TeamHuntPlayer – riddle items', () => {
     await waitFor(() => screen.getAllByRole('button', { name: /Hunt this one/ }));
 
     // Click the first item button (riddle-1 — first in session.steps order)
-    const [firstHuntButton] = screen.getAllByRole('button', { name: /Hunt this one/ });
+    const firstHuntButton = screen.getAllByRole('button', { name: /Hunt this one/ })[0]!;
     await user.click(firstHuntButton);
 
     // Focused riddle view must show a text input
