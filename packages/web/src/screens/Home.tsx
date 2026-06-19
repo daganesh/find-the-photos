@@ -68,7 +68,7 @@ export function Home() {
   }
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
-  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready') ?? []) : [];
+  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready' && r.itemCount > 0) ?? []) : [];
   const allSessions = myHunts?.sessions ?? [];
   const activeSessions = allSessions.filter((s) => !s.finishedAt);
   const pastSessions = allSessions.filter((s) => !!s.finishedAt).slice(0, 10);
