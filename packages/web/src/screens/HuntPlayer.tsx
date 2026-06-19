@@ -384,7 +384,7 @@ export function HuntPlayer() {
           <Card>
             <div className="stack">
               <span className="field-label">Your clue</span>
-              <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} />
+              <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} collapsible />
             </div>
           </Card>
         )}
@@ -399,16 +399,19 @@ export function HuntPlayer() {
         {/* ── Riddle: text answer ─────────────────────────────────────────── */}
         {item.kind === 'riddle' && (
           <>
-            <input
-              value={riddleAnswer}
-              onChange={(e) => setRiddleAnswer(e.target.value)}
-              placeholder="Your answer…"
-              disabled={hunt.busy}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
-            />
-            <Button variant="happy" block disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
-              {hunt.busy ? 'Checking…' : '✅ Submit answer'}
-            </Button>
+            <div className="row" style={{ gap: 4 }}>
+              <input
+                value={riddleAnswer}
+                onChange={(e) => setRiddleAnswer(e.target.value)}
+                placeholder="Your answer…"
+                disabled={hunt.busy}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
+                style={{ flex: 1 }}
+              />
+              <Button variant="happy" disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
+                {hunt.busy ? '…' : '›'}
+              </Button>
+            </div>
             {canSkip(step) && (
               <Button variant="ghost" onClick={(e) => { e.stopPropagation(); hunt.skip(); }} disabled={hunt.busy}>
                 ⏭ Skip
@@ -424,18 +427,21 @@ export function HuntPlayer() {
             {hunt.lastVerdict && !hunt.lastVerdict.match && (
               <Banner tone="no">🤔 {hunt.lastVerdict.reason}</Banner>
             )}
-            <input
-              value={riddleAnswer}
-              onChange={(e) => setRiddleAnswer(e.target.value)}
-              placeholder="What do you think this shows?"
-              disabled={hunt.busy}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
-            />
-            <Button variant="happy" block disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
-              {hunt.busy ? 'Checking…' : '✅ Guess what it shows'}
-            </Button>
+            <div className="row" style={{ gap: 4 }}>
+              <input
+                value={riddleAnswer}
+                onChange={(e) => setRiddleAnswer(e.target.value)}
+                placeholder="What do you think this shows?"
+                disabled={hunt.busy}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
+                style={{ flex: 1 }}
+              />
+              <Button variant="happy" disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
+                {hunt.busy ? '…' : '›'}
+              </Button>
+            </div>
             <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="accent" disabled={hunt.busy}>
-              📸 Go find it — take a photo
+              📸
             </PhotoCapture>
             {disputeConfirm && (
               <Card>
@@ -515,7 +521,7 @@ export function HuntPlayer() {
             )}
 
             <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="happy" disabled={hunt.busy}>
-              {hunt.busy ? '🔎 Checking…' : '📸 I found it — take a photo'}
+              📸
             </PhotoCapture>
 
             <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>

@@ -65,7 +65,7 @@ export function HuntTrail({
   currentIndex = 0,
   defaultImage,
   maxHeight = 460,
-  pawsPerSegment = 3,
+  pawsPerSegment = 5,
   compact = false,
   onSelectItem,
 }: HuntTrailProps) {
