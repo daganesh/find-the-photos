@@ -13,6 +13,7 @@ interface TeamHuntController {
   /** Verdict from the most recent photo attempt for a specific item. */
   lastVerdict: { itemId: string; verdict: MatchVerdict } | undefined;
   submitPhoto: (itemId: string, photo: Blob) => Promise<void>;
+  submitRiddleAnswer: (itemId: string, answer: string) => Promise<void>;
   useHelp: (itemId: string) => Promise<void>;
   skip: (itemId: string) => Promise<void>;
   dispute: (itemId: string, description: string) => Promise<void>;
@@ -87,6 +88,10 @@ export function useTeamHunt(teamId: string, sessionId: string): TeamHuntControll
     }
   }, [sessionId]);
 
+  const submitRiddleAnswer = useCallback(async (itemId: string, answer: string) => {
+    await run(itemId, () => api.solveRiddle(sessionId, itemId, answer));
+  }, [sessionId, run]);
+
   const useHelp = useCallback(async (itemId: string) => {
     const location = await getCurrentLocation().catch(() => undefined);
     await run(itemId, () => api.useHelp(sessionId, itemId, location));
@@ -114,5 +119,5 @@ export function useTeamHunt(teamId: string, sessionId: string): TeamHuntControll
     }
   }, [teamId]);
 
-  return { session, team, busy, error, lastVerdict, submitPhoto, useHelp, skip, dispute, returnToSkipped, pauseOrResume };
+  return { session, team, busy, error, lastVerdict, submitPhoto, submitRiddleAnswer, useHelp, skip, dispute, returnToSkipped, pauseOrResume };
 }
