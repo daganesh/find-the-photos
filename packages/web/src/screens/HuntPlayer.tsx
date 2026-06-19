@@ -177,7 +177,7 @@ export function HuntPlayer() {
   }
 
   // ── Countdown before hunt begins ────────────────────────────────────────
-  if (countdown !== null) {
+  if (countdown !== null && countdown > 0) {
     return (
       <Page title="">
         <div className="countdown-wrap">
@@ -404,13 +404,13 @@ export function HuntPlayer() {
               onChange={(e) => setRiddleAnswer(e.target.value)}
               placeholder="Your answer…"
               disabled={hunt.busy}
-              onKeyDown={(e) => { if (e.key === 'Enter' && riddleAnswer.trim()) handleRiddleSubmit(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
             />
             <Button variant="happy" block disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
               {hunt.busy ? 'Checking…' : '✅ Submit answer'}
             </Button>
             {canSkip(step) && (
-              <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>
+              <Button variant="ghost" onClick={(e) => { e.stopPropagation(); hunt.skip(); }} disabled={hunt.busy}>
                 ⏭ Skip
               </Button>
             )}
@@ -429,7 +429,7 @@ export function HuntPlayer() {
               onChange={(e) => setRiddleAnswer(e.target.value)}
               placeholder="What do you think this shows?"
               disabled={hunt.busy}
-              onKeyDown={(e) => { if (e.key === 'Enter' && riddleAnswer.trim()) handleRiddleSubmit(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && riddleAnswer.trim()) { e.preventDefault(); handleRiddleSubmit(); } }}
             />
             <Button variant="happy" block disabled={hunt.busy || !riddleAnswer.trim()} onClick={handleRiddleSubmit}>
               {hunt.busy ? 'Checking…' : '✅ Guess what it shows'}
