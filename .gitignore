@@ -21,5 +21,5 @@ npm-debug.log*
 .vscode/
 .idea/
 
-# Claude Code local session data
-.claude/
+# Claude Code — ignore session data but track settings.json
+.claude/worktrees/

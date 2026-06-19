@@ -11,6 +11,7 @@ npm run typecheck    # all workspaces
 npm test             # vitest
 ```
 
-## Key constraint
+## Key constraints
 
-Never commit `DATABASE_URL` or any other secret. Railway injects all credentials as environment variables at runtime.
+- Never commit `DATABASE_URL` or any other secret to server config or code. Railway injects all production credentials as environment variables at runtime.
+- Exception: `.claude/settings.json` may contain the Railway TCP proxy URL for MCP database access. This is intentional — it is a dev tooling credential for Claude sessions, scoped to this private repo.
