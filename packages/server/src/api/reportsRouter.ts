@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
-import type { BugReport, ReportSeverity, ReportType } from '@ftp/shared';
+import type { BugReport, ReportSeverity, ReportStatus, ReportType } from '@ftp/shared';
 import type { AppContext } from '../context.js';
-import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
+import { requireAdmin, requireAuth, type AuthedRequest } from '../auth/middleware.js';
 
 function wordOverlap(a: string, b: string): number {
   const words = (s: string) => new Set(s.toLowerCase().match(/\b\w{4,}\b/g) ?? []);
@@ -67,6 +67,29 @@ export function reportsRouter(ctx: AppContext): Router {
       };
       await ctx.reports.upsert(report);
       res.status(201).json({ report, merged: false });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch('/:id', requireAdmin, async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = req.params as { id: string };
+      const { status, severity } = req.body as { status?: ReportStatus; severity?: ReportSeverity };
+
+      const existing = await ctx.reports.list();
+      const report = existing.find((r) => r.id === id);
+      if (!report) {
+        res.status(404).json({ error: 'Report not found' });
+        return;
+      }
+
+      if (status !== undefined) report.status = status;
+      if (severity !== undefined) report.severity = severity;
+      report.updatedAt = new Date().toISOString();
+
+      await ctx.reports.upsert(report);
+      res.json({ report });
     } catch (err) {
       next(err);
     }
