@@ -14,6 +14,7 @@ export function Home() {
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
   const { data: myHunts } = useAsync(() => (user ? api.listMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
+  const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [teamingRouteId, setTeamingRouteId] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export function Home() {
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready') ?? []) : [];
   const activeSessions = myHunts?.sessions ?? [];
+  const activeTeams = myTeams?.teams ?? [];
 
   return (
     <Page>
@@ -98,6 +100,48 @@ export function Home() {
                   routeTitle={route?.title}
                   onResume={() => navigate(`/play/${s.routeId}/resume/${s.id}`)}
                 />
+              );
+            })}
+          </section>
+        )}
+
+        {activeTeams.length > 0 && (
+          <section className="stack">
+            <h2>Team hunts in progress</h2>
+            {activeTeams.map((team) => {
+              const route = routes?.find((r) => r.id === team.routeId);
+              const isPaused = team.status === 'paused';
+              return (
+                <Card key={team.id}>
+                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ marginBottom: 4 }}>{route?.title ?? 'Hunt'}</h3>
+                      <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                        👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 10px',
+                        borderRadius: 'var(--radius-full, 999px)',
+                        background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
+                        color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        flexShrink: 0,
+                        marginLeft: 'var(--space-2)',
+                      }}
+                    >
+                      {isPaused ? '⏸ Paused' : '▶ Active'}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
+                    <Button variant="happy" onClick={() => navigate(`/team/${team.id}/play`)}>
+                      👥 Rejoin team hunt
+                    </Button>
+                  </div>
+                </Card>
               );
             })}
           </section>

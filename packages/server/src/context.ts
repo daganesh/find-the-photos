@@ -14,6 +14,8 @@ export interface TeamRepository {
   get(id: string): Promise<Team | undefined>;
   getByJoinCode(code: string): Promise<Team | undefined>;
   listByRoute(routeId: string): Promise<Team[]>;
+  /** Return teams that are currently playing or paused where userId is a member. */
+  listByMember(userId: string): Promise<Team[]>;
   create(team: Team): Promise<Team>;
   update(id: string, patch: Partial<Team>): Promise<Team>;
 }

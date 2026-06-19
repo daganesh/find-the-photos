@@ -171,6 +171,9 @@ export class ApiClient {
   getTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}`);
   }
+  listMyTeams(): Promise<{ teams: Team[] }> {
+    return this.request('/api/teams/my');
+  }
   joinTeamByCode(code: string, avatarEmoji?: string): Promise<Team> {
     return this.request(`/api/teams/join/${code}`, { method: 'POST', body: JSON.stringify({ avatarEmoji }) });
   }

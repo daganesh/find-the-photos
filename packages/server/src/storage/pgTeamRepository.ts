@@ -26,6 +26,20 @@ export class PgTeamRepository {
     return rows.map((r) => r.data);
   }
 
+  async listByMember(userId: string): Promise<Team[]> {
+    const { rows } = await getPool().query<{ data: Team }>(
+      `SELECT data FROM teams
+       WHERE EXISTS (
+         SELECT 1 FROM jsonb_array_elements(data->'members') elem
+         WHERE elem->>'userId' = $1
+       )
+       AND data->>'status' = ANY(ARRAY['playing', 'paused'])
+       ORDER BY (data->>'createdAt') DESC`,
+      [userId],
+    );
+    return rows.map((r) => r.data);
+  }
+
   async create(team: Team): Promise<Team> {
     await getPool().query(
       'INSERT INTO teams (id, route_id, join_code, data) VALUES ($1, $2, $3, $4)',

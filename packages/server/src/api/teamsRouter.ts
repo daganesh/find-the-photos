@@ -54,6 +54,14 @@ export function teamsRouter(ctx: AppContext): Router {
     } catch (err) { next(err); }
   });
 
+  /** List active/paused teams the current user is a member of. */
+  router.get('/my', requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const teams = await ctx.teams.listByMember(req.user!.id);
+      res.json({ teams });
+    } catch (err) { next(err); }
+  });
+
   /** Join via 6-char join code. */
   router.post('/join/:code', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
