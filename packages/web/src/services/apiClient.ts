@@ -1,4 +1,5 @@
 import type {
+  BugReport,
   CleanupResult,
   CreateRouteRequest,
   EscalateHelpRequest,
@@ -7,6 +8,8 @@ import type {
   ModerationResult,
   Rating,
   RateRouteRequest,
+  ReportSeverity,
+  ReportType,
   Route,
   RouteSummary,
   SessionResponse,
@@ -188,6 +191,14 @@ export class ApiClient {
   }
   getTeamLeaderboard(routeId: string): Promise<TeamResult[]> {
     return this.request(`/api/teams/route/${routeId}/leaderboard`);
+  }
+
+  // --- Reports ---
+  listReports(): Promise<{ reports: BugReport[] }> {
+    return this.request('/api/reports');
+  }
+  submitReport(body: { description: string; type: ReportType; severity: ReportSeverity }): Promise<{ report: BugReport; merged: boolean }> {
+    return this.request('/api/reports', { method: 'POST', body: JSON.stringify(body) });
   }
 
   // --- Admin ---
