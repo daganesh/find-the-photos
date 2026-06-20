@@ -60,10 +60,11 @@ export function FinalItemPanel({
     return revealed;
   }, [items, solvedItemIds, totalPositions]);
 
-  // For code/riddle kinds: pre-fill the answer with collected characters
-  // in position so the player only needs to fill in the blanks.
+  // For code kind only: pre-fill collected characters so the player fills in blanks.
+  // Riddle kind is intentionally excluded — the player must type the full answer
+  // themselves; pre-filling would hand them the answer as they collect letters.
   useEffect(() => {
-    if (finalItem.kind !== 'code' && finalItem.kind !== 'riddle') return;
+    if (finalItem.kind !== 'code') return;
     if (revealedPositions.size === 0) return;
     setAnswer(
       finalItem.answer.split('').map((char, i) =>
@@ -206,11 +207,10 @@ function ItemBreakdown({
           const count = positions.length;
           contributionLabel = isSolved ? `+${count} pieces` : `${count} pieces`;
         } else {
-          const chars = positions
-            .map((pos) => finalItem.answer[pos] ?? '')
-            .filter(Boolean)
-            .join('');
-          contributionLabel = isSolved ? `+${chars}` : '?'.repeat(Math.max(1, positions.length));
+          const count = positions.filter((pos) => finalItem.answer[pos] && finalItem.answer[pos] !== ' ').length;
+          contributionLabel = isSolved
+            ? `+${count} char${count !== 1 ? 's' : ''}`
+            : '?'.repeat(Math.max(1, count));
         }
 
         const icon = isSolved ? '✅' : isSkipped ? '⏭' : '🔒';
