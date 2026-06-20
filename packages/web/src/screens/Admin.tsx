@@ -153,7 +153,7 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
 function ReportsPanel() {
   const reports = useAsync(() => api.listReports(), []);
   const [typeFilter, setTypeFilter] = useState<'all' | 'bug' | 'feature'>('all');
-  const [showDone, setShowDone] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | ReportStatus>('all');
   const [saving, setSaving] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -173,7 +173,7 @@ function ReportsPanel() {
   const all = reports.data?.reports ?? [];
   const visible = all
     .filter((r) => typeFilter === 'all' || r.type === typeFilter)
-    .filter((r) => showDone || (r.status !== 'done' && r.status !== 'dismissed'))
+    .filter((r) => statusFilter === 'all' || r.status === statusFilter)
     .sort((a, b) => {
       if (b.severity !== a.severity) return b.severity - a.severity;
       return b.createdAt.localeCompare(a.createdAt);
@@ -182,8 +182,32 @@ function ReportsPanel() {
   const activeCount = (type: 'bug' | 'feature') =>
     all.filter((r) => r.type === type && r.status !== 'done' && r.status !== 'dismissed').length;
 
+  function exportCsv() {
+    const header = ['id', 'type', 'severity', 'status', 'description', 'reporters', 'created_at'];
+    const rows = visible.map((r) => [
+      r.id,
+      r.type,
+      String(r.severity),
+      r.status,
+      `"${r.description.replace(/"/g, '""')}"`,
+      `"${r.reporters.map((rep) => rep.name).join('; ')}"`,
+      new Date(r.createdAt).toISOString(),
+    ]);
+    const csv = [header, ...rows].map((row) => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reports-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="stack">
+      {/* Type filter */}
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         {(['all', 'bug', 'feature'] as const).map((t) => (
           <Button key={t} variant={typeFilter === t ? 'happy' : 'ghost'} onClick={() => setTypeFilter(t)}>
@@ -194,9 +218,18 @@ function ReportsPanel() {
               : `✨ Features (${activeCount('feature')})`}
           </Button>
         ))}
-        <Button variant={showDone ? 'happy' : 'ghost'} onClick={() => setShowDone((v) => !v)}>
-          {showDone ? 'Hide done/dismissed' : 'Show done/dismissed'}
+      </div>
+
+      {/* Status filter */}
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <Button variant={statusFilter === 'all' ? 'accent' : 'ghost'} onClick={() => setStatusFilter('all')}>
+          Any status
         </Button>
+        {STATUS_OPTIONS.map((s) => (
+          <Button key={s} variant={statusFilter === s ? 'accent' : 'ghost'} onClick={() => setStatusFilter(s)}>
+            {STATUS_LABELS[s]}
+          </Button>
+        ))}
       </div>
 
       {reports.loading && <Spinner label="Loading reports…" />}
@@ -204,7 +237,15 @@ function ReportsPanel() {
       {saveError && <Banner tone="no">{saveError}</Banner>}
 
       {!reports.loading && visible.length === 0 && (
-        <Banner tone="ok">No active reports{typeFilter !== 'all' ? ` for ${typeFilter}s` : ''}.</Banner>
+        <Banner tone="ok">No reports match the current filters.</Banner>
+      )}
+
+      {visible.length > 0 && (
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <Button variant="ghost" onClick={exportCsv}>
+            📥 Export CSV ({visible.length})
+          </Button>
+        </div>
       )}
 
       {visible.map((r) => (
