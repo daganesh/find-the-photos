@@ -53,6 +53,14 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 |--------|------|------|-------------|
 | POST | `/api/photos` | Required | Upload image or audio (multipart `file`, max 15 MB); runs image moderation before saving → `{ url }` |
 
+## Reports (`/api/reports`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/reports` | Required | List all reports |
+| POST | `/api/reports` | Required | Submit a bug/feature report; deduplicates via word-overlap |
+| PATCH | `/api/reports/:id` | Admin | Update `status` and/or `severity` of a report |
+
 ## Admin (`/api/admin`) — `ADMIN_EMAILS` gate
 
 | Method | Path | Auth | Description |

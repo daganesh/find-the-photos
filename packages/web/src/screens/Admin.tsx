@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CleanupResult, StorageStats } from '@ftp/shared';
+import type { BugReport, CleanupResult, ReportSeverity, ReportStatus, StorageStats } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { useAsync } from '../hooks/useAsync.js';
@@ -34,6 +34,9 @@ export function Admin() {
   return (
     <Page onBack title="Admin">
       <div className="stack">
+        <h2>Reports</h2>
+        <ReportsPanel />
+
         <h2>Storage</h2>
 
         {stats.loading && <Spinner label="Loading stats…" />}
@@ -126,6 +129,180 @@ function StatsCard({ stats }: { stats: StorageStats }) {
         {stats.warnings.length === 0 && (
           <Banner tone="ok">✅ Storage looks healthy</Banner>
         )}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Reports panel ────────────────────────────────────────────────────────────
+
+const STATUS_OPTIONS: ReportStatus[] = ['new', 'in_progress', 'done', 'dismissed'];
+const STATUS_LABELS: Record<ReportStatus, string> = {
+  new: 'New',
+  in_progress: 'In progress',
+  done: 'Done',
+  dismissed: 'Dismissed',
+};
+const STATUS_COLORS: Record<ReportStatus, string> = {
+  new: '#2563eb',
+  in_progress: '#d97706',
+  done: '#16a34a',
+  dismissed: '#9ca3af',
+};
+
+function ReportsPanel() {
+  const reports = useAsync(() => api.listReports(), []);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'bug' | 'feature'>('all');
+  const [showDone, setShowDone] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleChange(report: BugReport, patch: { status?: ReportStatus; severity?: ReportSeverity }) {
+    setSaving(report.id);
+    setSaveError(null);
+    try {
+      await api.updateReport(report.id, patch);
+      reports.reload();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  const all = reports.data?.reports ?? [];
+  const visible = all
+    .filter((r) => typeFilter === 'all' || r.type === typeFilter)
+    .filter((r) => showDone || (r.status !== 'done' && r.status !== 'dismissed'))
+    .sort((a, b) => {
+      if (b.severity !== a.severity) return b.severity - a.severity;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
+
+  const activeCount = (type: 'bug' | 'feature') =>
+    all.filter((r) => r.type === type && r.status !== 'done' && r.status !== 'dismissed').length;
+
+  return (
+    <div className="stack">
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        {(['all', 'bug', 'feature'] as const).map((t) => (
+          <Button key={t} variant={typeFilter === t ? 'happy' : 'ghost'} onClick={() => setTypeFilter(t)}>
+            {t === 'all'
+              ? `All (${activeCount('bug') + activeCount('feature')})`
+              : t === 'bug'
+              ? `🐛 Bugs (${activeCount('bug')})`
+              : `✨ Features (${activeCount('feature')})`}
+          </Button>
+        ))}
+        <Button variant={showDone ? 'happy' : 'ghost'} onClick={() => setShowDone((v) => !v)}>
+          {showDone ? 'Hide done/dismissed' : 'Show done/dismissed'}
+        </Button>
+      </div>
+
+      {reports.loading && <Spinner label="Loading reports…" />}
+      {reports.error && <Banner tone="no">{String(reports.error)}</Banner>}
+      {saveError && <Banner tone="no">{saveError}</Banner>}
+
+      {!reports.loading && visible.length === 0 && (
+        <Banner tone="ok">No active reports{typeFilter !== 'all' ? ` for ${typeFilter}s` : ''}.</Banner>
+      )}
+
+      {visible.map((r) => (
+        <ReportCard
+          key={r.id}
+          report={r}
+          isSaving={saving === r.id}
+          onChange={(patch) => handleChange(r, patch)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ReportCard({
+  report,
+  isSaving,
+  onChange,
+}: {
+  report: BugReport;
+  isSaving: boolean;
+  onChange: (patch: { status?: ReportStatus; severity?: ReportSeverity }) => void;
+}) {
+  const date = new Date(report.createdAt).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+
+  return (
+    <Card>
+      <div className="stack" style={{ gap: 8 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+              <span style={{
+                display: 'inline-block', padding: '1px 8px', borderRadius: 999,
+                fontSize: '0.75rem', fontWeight: 600,
+                background: STATUS_COLORS[report.status] + '22',
+                color: STATUS_COLORS[report.status],
+              }}>
+                {STATUS_LABELS[report.status]}
+              </span>
+              <span className="muted" style={{ fontSize: '0.75rem' }}>
+                {report.type === 'bug' ? '🐛 Bug' : '✨ Feature'}
+              </span>
+              <span className="muted" style={{ fontSize: '0.75rem' }}>
+                {report.reporters.length} reporter{report.reporters.length !== 1 ? 's' : ''}
+              </span>
+              <span className="muted" style={{ fontSize: '0.75rem' }}>{date}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>{report.description}</p>
+            {report.reporters.length > 0 && (
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: '0.75rem' }}>
+                {report.reporters.map((r) => r.name).join(', ')}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span className="field-label" style={{ fontSize: '0.7rem' }}>Status</span>
+            <select
+              disabled={isSaving}
+              value={report.status}
+              onChange={(e) => onChange({ status: e.target.value as ReportStatus })}
+              style={{ fontSize: '0.85rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db' }}
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span className="field-label" style={{ fontSize: '0.7rem' }}>Severity</span>
+            <div className="row" style={{ gap: 4 }}>
+              {([1, 2, 3] as ReportSeverity[]).map((s) => (
+                <button
+                  key={s}
+                  disabled={isSaving}
+                  onClick={() => onChange({ severity: s })}
+                  style={{
+                    padding: '3px 10px', borderRadius: 6, border: '1px solid', cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    borderColor: report.severity === s ? '#2563eb' : '#d1d5db',
+                    background: report.severity === s ? '#eff6ff' : 'transparent',
+                    color: report.severity === s ? '#2563eb' : 'inherit',
+                    fontWeight: report.severity === s ? 600 : 400,
+                  }}
+                >
+                  {s === 1 ? 'Low' : s === 2 ? 'Med' : 'High'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {isSaving && <span className="muted" style={{ fontSize: '0.8rem' }}>Saving…</span>}
+        </div>
       </div>
     </Card>
   );

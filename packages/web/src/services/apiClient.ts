@@ -9,6 +9,7 @@ import type {
   Rating,
   RateRouteRequest,
   ReportSeverity,
+  ReportStatus,
   ReportType,
   Route,
   RouteSummary,
@@ -199,6 +200,9 @@ export class ApiClient {
   }
   submitReport(body: { description: string; type: ReportType; severity: ReportSeverity }): Promise<{ report: BugReport; merged: boolean }> {
     return this.request('/api/reports', { method: 'POST', body: JSON.stringify(body) });
+  }
+  updateReport(id: string, body: { status?: ReportStatus; severity?: ReportSeverity }): Promise<{ report: BugReport }> {
+    return this.request(`/api/reports/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   }
 
   // --- Admin ---
