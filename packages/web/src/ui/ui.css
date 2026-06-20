@@ -225,3 +225,8 @@
 }
 .usermenu__emoji:hover { background: var(--tint-accent); }
 .usermenu__emoji--clear { font-size: 0.75rem; font-weight: 700; color: var(--color-ink-soft); }
+
+@keyframes chat-glow {
+  from { filter: drop-shadow(0 0 3px #f59e0b); }
+  to   { filter: drop-shadow(0 0 10px #f59e0b); }
+}
