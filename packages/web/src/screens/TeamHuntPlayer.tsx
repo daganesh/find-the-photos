@@ -11,6 +11,7 @@ import {
   Banner,
   Button,
   Card,
+  FinalItemPanel,
   Fireworks,
   GuessToastOverlay,
   HintView,
@@ -87,6 +88,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const [riddleAnswer, setRiddleAnswer] = useState('');
   const [riddleError, setRiddleError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [finalItemSkipped, setFinalItemSkipped] = useState(false);
 
   // Guard the browser back button while the team hunt is active.
   const isHuntActive = Boolean(
@@ -315,6 +317,31 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
       </Page>,
       true,
     );
+  }
+
+  // Final challenge gate — shown after all steps are complete, before results.
+  if (complete && !celebrateItemId) {
+    const hasFinalItem = Boolean(route.data.finalItem);
+    const finalDone = !hasFinalItem || !!session.finalItemSolved || finalItemSkipped;
+    if (hasFinalItem && !finalDone) {
+      return withToast(
+        <Page title="🏆 Final challenge!">
+          <FinalItemPanel
+            finalItem={route.data.finalItem!}
+            items={items}
+            solvedItemIds={new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId))}
+            onSolve={hunt.solveFinalItem}
+            solved={!!session.finalItemSolved}
+            busy={hunt.busy}
+            defaultExpanded
+          />
+          <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
+            Skip final challenge
+          </Button>
+        </Page>,
+        true,
+      );
+    }
   }
 
   // Navigate to results when done (after user dismisses celebration).

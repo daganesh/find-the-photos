@@ -18,6 +18,7 @@ interface TeamHuntController {
   skip: (itemId: string) => Promise<void>;
   dispute: (itemId: string, description: string) => Promise<void>;
   returnToSkipped: (itemId: string) => Promise<void>;
+  solveFinalItem: (answer: string) => Promise<void>;
   pauseOrResume: () => Promise<void>;
 }
 
@@ -109,6 +110,19 @@ export function useTeamHunt(teamId: string, sessionId: string): TeamHuntControll
     await run(itemId, () => api.returnToSkipped(sessionId, itemId));
   }, [sessionId, run]);
 
+  const solveFinalItem = useCallback(async (answer: string) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const { session: s } = await api.solveFinalItem(sessionId, answer);
+      if (!cancelRef.current) setSession(s);
+    } catch (e) {
+      if (!cancelRef.current) setError(e instanceof Error ? e.message : 'Something went wrong');
+    } finally {
+      if (!cancelRef.current) setBusy(false);
+    }
+  }, [sessionId]);
+
   const pauseOrResume = useCallback(async () => {
     setError(undefined);
     try {
@@ -119,5 +133,5 @@ export function useTeamHunt(teamId: string, sessionId: string): TeamHuntControll
     }
   }, [teamId]);
 
-  return { session, team, busy, error, lastVerdict, submitPhoto, submitRiddleAnswer, useHelp, skip, dispute, returnToSkipped, pauseOrResume };
+  return { session, team, busy, error, lastVerdict, submitPhoto, submitRiddleAnswer, useHelp, skip, dispute, returnToSkipped, solveFinalItem, pauseOrResume };
 }
