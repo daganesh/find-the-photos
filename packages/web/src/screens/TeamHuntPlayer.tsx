@@ -456,7 +456,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           {item.kind === 'riddle' ? (
             <Card>
               <div className="stack">
-                <span className="field-label">🧩 Riddle</span>
+                <span className="field-label">💭 Riddle</span>
                 <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{item.hint.text}</p>
                 {step.cluesUsed > 0 && (item.extraHints ?? []).slice(0, step.cluesUsed).filter((h) => h.text).length > 0 && (
                   <>
