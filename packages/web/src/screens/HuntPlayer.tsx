@@ -382,12 +382,7 @@ export function HuntPlayer() {
                 seed={item.id}
               />
             )}
-            <Card>
-              <div className="stack">
-                <span className="field-label">Clue</span>
-                <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} />
-              </div>
-            </Card>
+            <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} collapsible hideIfEmpty />
           </div>
         ) : item.kind === 'task' ? (
           <Card>

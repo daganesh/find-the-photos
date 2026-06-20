@@ -21,6 +21,7 @@ import {
   PhotoCapture,
   ScorePill,
   Spinner,
+  TeamChat,
   Timer,
 } from '../ui/index.js';
 import { mediaUrl } from '../services/media.js';
@@ -246,14 +247,17 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
     if (st.status === 'found') setHistoryItemId(st.itemId);
   }
 
-  /** Wraps any screen with the floating guess toast overlay. */
-  const withToast = (el: React.ReactElement) => (
+  /** Wraps an active hunt screen with the guess toast overlay and team chat. */
+  const withToast = (el: React.ReactElement, showChat = false) => (
     <>
       {currentToast && (
         <GuessToastOverlay
           toast={currentToast}
           onDismiss={() => setToastQueue((q) => q.slice(1))}
         />
+      )}
+      {showChat && team && (
+        <TeamChat teamId={teamId} members={team.members} />
       )}
       {el}
     </>
@@ -369,7 +373,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           </div>
         }
       >
-        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start', paddingBottom: 68 }}>
         <div className="stack" style={{ flex: 1, minWidth: 0 }}>
           {item.kind === 'riddle' ? (
             <Card>
@@ -397,12 +401,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
                   seed={item.id}
                 />
               )}
-              <Card>
-                <div className="stack">
-                  <span className="field-label">Clue</span>
-                  <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} />
-                </div>
-              </Card>
+              <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} collapsible hideIfEmpty />
             </div>
           ) : item.kind === 'task' ? (
             <Card>
@@ -579,7 +578,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           />
         </div>
         </div>
-      </Page>);
+      </Page>, true);
   }
 
   // ── Active items grid ─────────────────────────────────────────────────────
@@ -598,7 +597,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
         </div>
       }
     >
-      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start', paddingBottom: 68 }}>
       <div className="stack" style={{ flex: 1, minWidth: 0 }}>
         {/* Team progress summary */}
         <Card>
@@ -702,6 +701,6 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
         />
       </div>
       </div>
-    </Page>);
+    </Page>, true);
 }
 

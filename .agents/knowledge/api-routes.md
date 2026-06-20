@@ -61,6 +61,15 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 | POST | `/api/reports` | Required | Submit a bug/feature report; deduplicates via word-overlap |
 | PATCH | `/api/reports/:id` | Admin | Update `status` and/or `severity` of a report |
 
+## Team Chat (`/api/teams/:teamId/chat`)
+
+In-memory only — messages are lost when the server restarts. Buffer capped at 100 messages per team.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/teams/:teamId/chat?since=<iso>` | Required | Get messages, optionally only those after `since` |
+| POST | `/api/teams/:teamId/chat` | Required | Send a message; body: `{ text: string }` |
+
 ## Admin (`/api/admin`) — `ADMIN_EMAILS` gate
 
 | Method | Path | Auth | Description |

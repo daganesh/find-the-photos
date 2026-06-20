@@ -22,12 +22,15 @@ function SingleHint({ hint }: { hint: Hint }) {
 /** Show one or more clues for an item.
  *  When `revealedCount` is given, only that many extraHints are shown (progressive reveal).
  *  When omitted, all extraHints are shown (backwards-compatible for non-player UIs).
- *  When `collapsible` is true, the main hint starts hidden behind a "Show clue" button. */
-export function HintView({ hint, extraHints, revealedCount, collapsible }: { hint: Hint; extraHints?: Hint[]; revealedCount?: number; collapsible?: boolean }) {
+ *  When `collapsible` is true, the main hint starts hidden behind a "Show clue" button.
+ *  When `hideIfEmpty` is true, renders nothing if the hint has no text and no extraHints. */
+export function HintView({ hint, extraHints, revealedCount, collapsible, hideIfEmpty }: { hint: Hint; extraHints?: Hint[]; revealedCount?: number; collapsible?: boolean; hideIfEmpty?: boolean }) {
+  const hasContent = !!(hint.text?.trim() || hint.audioUrl || extraHints?.length);
   const [mainRevealed, setMainRevealed] = useState(!collapsible);
   const visible = revealedCount !== undefined
     ? (extraHints?.slice(0, revealedCount) ?? [])
     : (extraHints ?? []);
+  if (hideIfEmpty && !hasContent) return null;
   return (
     <div className="stack">
       {collapsible && !mainRevealed ? (

@@ -1,5 +1,6 @@
 import type {
   BugReport,
+  ChatMessage,
   CleanupResult,
   CreateRouteRequest,
   EscalateHelpRequest,
@@ -203,6 +204,15 @@ export class ApiClient {
   }
   updateReport(id: string, body: { status?: ReportStatus; severity?: ReportSeverity }): Promise<{ report: BugReport }> {
     return this.request(`/api/reports/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  }
+
+  // --- Chat ---
+  getTeamChat(teamId: string, since?: string): Promise<{ messages: ChatMessage[] }> {
+    const qs = since ? `?since=${encodeURIComponent(since)}` : '';
+    return this.request(`/api/teams/${teamId}/chat${qs}`);
+  }
+  postTeamChat(teamId: string, text: string): Promise<{ message: ChatMessage }> {
+    return this.request(`/api/teams/${teamId}/chat`, { method: 'POST', body: JSON.stringify({ text }) });
   }
 
   // --- Admin ---
