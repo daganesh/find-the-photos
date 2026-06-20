@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { HuntSession } from '@ftp/shared';
-import { canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
+import { SCORING, canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { playSuccessSound } from '../services/sounds.js';
@@ -88,6 +88,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const [riddleAnswer, setRiddleAnswer] = useState('');
   const [riddleError, setRiddleError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [jigsawDisplayDifficulty, setJigsawDisplayDifficulty] = useState<1 | 2 | 3>(3);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
 
   // Guard the browser back button while the team hunt is active.
@@ -212,8 +213,13 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   // Reset dispute confirm when verdict or focused item changes.
   useEffect(() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }, [hunt.lastVerdict, focusedItemId]);
 
-  // Reset riddle state when focused item changes.
-  useEffect(() => { setRiddleAnswer(''); setRiddleError(''); }, [focusedItemId]);
+  // Reset riddle state and jigsaw difficulty when focused item changes.
+  useEffect(() => {
+    setRiddleAnswer('');
+    setRiddleError('');
+    const step = hunt.session?.steps.find((s) => s.itemId === focusedItemId);
+    setJigsawDisplayDifficulty(Math.max(1, 3 - (step?.cluesUsed ?? 0)) as 1 | 2 | 3);
+  }, [focusedItemId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleRiddleSubmit() {
     if (!focusedItemId) return;
@@ -467,9 +473,9 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
               {item.photos[0] && (
                 <JigsawView
                   imageUrl={mediaUrl(item.photos[0].url)}
-                  gridSize={getJigsawGridSize(item.jigsawDifficulty ?? 1)}
+                  gridSize={getJigsawGridSize(jigsawDisplayDifficulty)}
                   mode="scrambled"
-                  difficulty={item.jigsawDifficulty ?? 1}
+                  difficulty={jigsawDisplayDifficulty}
                   seed={item.id}
                 />
               )}
@@ -560,11 +566,17 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
                 </Card>
               )}
               <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                <Button variant="accent"
-                  disabled={hunt.busy || !item.extraHints?.length || step.cluesUsed >= (item.extraHints?.length ?? 0)}
-                  onClick={() => hunt.useHelp(focusedItemId)}>
-                  💡
-                </Button>
+                {jigsawDisplayDifficulty > 1 ? (
+                  <Button variant="ghost" disabled={hunt.busy}
+                    onClick={() => {
+                      setJigsawDisplayDifficulty((d) => Math.max(1, d - 1) as 1 | 2 | 3);
+                      hunt.useHelp(focusedItemId);
+                    }}>
+                    🔽 Easier (−{SCORING.perHelpLevel}pts)
+                  </Button>
+                ) : (
+                  <span className="muted" style={{ fontSize: '0.8rem' }}>Lowest difficulty</span>
+                )}
                 {item.location && (
                   <a href={googleMapsLink(item.location.lat, item.location.lng)} target="_blank" rel="noreferrer" className="btn btn--accent">
                     📍
