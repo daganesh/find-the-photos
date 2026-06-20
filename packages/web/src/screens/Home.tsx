@@ -16,6 +16,8 @@ export function Home() {
   const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
 
   async function createRoute() {
     setCreating(true);
@@ -65,6 +67,33 @@ export function Home() {
         <Button size="lg" block variant="happy" onClick={createRoute} disabled={creating}>
           ➕ {creating ? 'Creating…' : 'Make a new hunt'}
         </Button>
+
+        {joinOpen ? (
+          <div className="row" style={{ gap: 8 }}>
+            <input
+              autoFocus
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="Enter join code…"
+              maxLength={8}
+              style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && joinCode.trim()) navigate(`/join/${joinCode.trim()}`);
+                if (e.key === 'Escape') { setJoinOpen(false); setJoinCode(''); }
+              }}
+            />
+            <Button variant="happy" disabled={!joinCode.trim()} onClick={() => navigate(`/join/${joinCode.trim()}`)}>
+              Join
+            </Button>
+            <Button variant="ghost" onClick={() => { setJoinOpen(false); setJoinCode(''); }}>
+              ✕
+            </Button>
+          </div>
+        ) : (
+          <Button block variant="ghost" onClick={() => setJoinOpen(true)}>
+            👥 Join a team hunt
+          </Button>
+        )}
 
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
