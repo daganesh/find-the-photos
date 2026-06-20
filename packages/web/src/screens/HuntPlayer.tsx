@@ -407,7 +407,7 @@ export function HuntPlayer() {
         {item.kind === 'riddle' ? (
           <Card>
             <div className="stack">
-              <span className="field-label">🧩 Riddle</span>
+              <span className="field-label">💭 Riddle</span>
               <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{item.hint.text}</p>
               {(item.extraHints ?? []).slice(0, step.cluesUsed).filter((h) => h.text).map((h, i) => (
                 <p key={i} style={{ margin: 0, color: 'var(--color-ink-soft)' }}>• {h.text}</p>
