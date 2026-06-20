@@ -113,6 +113,9 @@ export class ApiClient {
   startHunt(routeId: string, location?: GeoPoint, reversed?: boolean): Promise<{ session: HuntSession }> {
     return this.request('/api/hunt/start', { method: 'POST', body: JSON.stringify({ routeId, location, reversed }) });
   }
+  deleteHunt(sessionId: string): Promise<void> {
+    return this.request(`/api/hunt/${sessionId}`, { method: 'DELETE' });
+  }
   listMyHunts(): Promise<{ sessions: HuntSession[] }> {
     return this.request('/api/hunt/mine');
   }

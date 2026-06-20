@@ -12,7 +12,7 @@ export function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
-  const { data: myHunts } = useAsync(() => (user ? api.listAllMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
+  const { data: myHunts, reload: reloadHunts } = useAsync(() => (user ? api.listAllMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
   const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -32,6 +32,16 @@ export function Home() {
     try {
       await api.deleteRoute(routeId);
       reload();
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function deleteSession(sessionId: string) {
+    setDeletingId(sessionId);
+    try {
+      await api.deleteHunt(sessionId);
+      reloadHunts();
     } finally {
       setDeletingId(null);
     }
@@ -68,6 +78,8 @@ export function Home() {
                   session={s}
                   routeTitle={route?.title}
                   onResume={() => navigate(`/play/${s.routeId}/resume/${s.id}`)}
+                  onDelete={() => deleteSession(s.id)}
+                  deleting={deletingId === s.id}
                 />
               );
             })}
@@ -143,19 +155,16 @@ export function Home() {
               const route = routes?.find((r) => r.id === s.routeId);
               const found = s.steps.filter((st) => st.status === 'found').length;
               return (
-                <Card key={s.id}>
-                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <strong>{route?.title ?? 'Hunt'}</strong>
-                      <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.82rem' }}>
-                        {found}/{s.steps.length} found · ⭐ {s.totalScore}
-                      </p>
-                    </div>
-                    <Button variant="ghost" onClick={() => navigate(`/results/${s.routeId}/${s.id}`)}>
-                      Results →
-                    </Button>
-                  </div>
-                </Card>
+                <PastHuntCard
+                  key={s.id}
+                  title={route?.title ?? 'Hunt'}
+                  found={found}
+                  total={s.steps.length}
+                  score={s.totalScore}
+                  onResults={() => navigate(`/results/${s.routeId}/${s.id}`)}
+                  onDelete={() => deleteSession(s.id)}
+                  deleting={deletingId === s.id}
+                />
               );
             })}
           </CollapsibleSection>
@@ -241,11 +250,16 @@ function ActiveHuntCard({
   session,
   routeTitle,
   onResume,
+  onDelete,
+  deleting,
 }: {
   session: HuntSession;
   routeTitle?: string;
   onResume: () => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const found = session.steps.filter((s) => s.status === 'found').length;
   const total = session.steps.length;
   const isPaused = Boolean(session.pausedAt);
@@ -276,9 +290,66 @@ function ActiveHuntCard({
         </span>
       </div>
       <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        <Button variant="happy" onClick={onResume}>
-          ▶ Resume hunt
-        </Button>
+        {confirmDelete ? (
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Abandon this hunt?</span>
+            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
+              {deleting ? '…' : '🗑 Yes'}
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 8 }}>
+            <Button variant="happy" onClick={onResume}>▶ Resume hunt</Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function PastHuntCard({
+  title,
+  found,
+  total,
+  score,
+  onResults,
+  onDelete,
+  deleting,
+}: {
+  title: string;
+  found: number;
+  total: number;
+  score: number;
+  onResults: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  return (
+    <Card>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <strong>{title}</strong>
+          <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.82rem' }}>
+            {found}/{total} found · ⭐ {score}
+          </p>
+        </div>
+        {confirmDelete ? (
+          <div className="row" style={{ gap: 6 }}>
+            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.85rem' }} onClick={onDelete} disabled={deleting}>
+              {deleting ? '…' : 'Delete'}
+            </Button>
+            <Button variant="ghost" style={{ fontSize: '0.85rem' }} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 6 }}>
+            <Button variant="ghost" onClick={onResults}>Results →</Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+          </div>
+        )}
       </div>
     </Card>
   );
