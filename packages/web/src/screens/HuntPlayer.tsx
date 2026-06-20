@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useBlocker, useNavigate, useParams } from 'react-router-dom';
 import type { Item } from '@ftp/shared';
 import { canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
@@ -43,6 +43,16 @@ export function HuntPlayer() {
   const [riddleAnswer, setRiddleAnswer] = useState('');
   const [riddleError, setRiddleError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
+
+  // Block browser/router navigation (back button, address bar, etc.) while a
+  // hunt session is in progress so players can't accidentally leave.
+  const isHuntActive = Boolean(
+    hunt.session && !isHuntComplete(hunt.session.steps) && !hunt.notStarted,
+  );
+  const blocker = useBlocker(isHuntActive);
+  useEffect(() => {
+    if (blocker.state === 'blocked') setConfirmLeave(true);
+  }, [blocker.state]);
 
   // Countdown: 3 → 2 → 1 → null (hunt becomes visible after)
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -330,10 +340,12 @@ export function HuntPlayer() {
             <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
               Your progress is saved. Resume from the home screen anytime.
             </p>
-            <Button block variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={() => navigate('/')}>
+            <Button block variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }}
+              onClick={() => blocker.state === 'blocked' ? blocker.proceed() : navigate('/')}>
               Leave hunt
             </Button>
-            <Button block variant="happy" onClick={() => setConfirmLeave(false)}>
+            <Button block variant="happy"
+              onClick={() => { setConfirmLeave(false); if (blocker.state === 'blocked') blocker.reset(); }}>
               Keep playing
             </Button>
           </div>
@@ -365,7 +377,7 @@ export function HuntPlayer() {
 
   return (
     <Page
-      onBack={() => setConfirmLeave(true)}
+      onBack={() => navigate('/')}
       title={`Clue ${stepNumber} / ${items.length}`}
       right={
         <div className="row" style={{ gap: 8 }}>

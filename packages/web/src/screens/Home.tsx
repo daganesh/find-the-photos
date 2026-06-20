@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { HuntSession, RouteSummary } from '@ftp/shared';
+import type { HuntSession, RouteSummary, Team } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
@@ -68,8 +68,8 @@ export function Home() {
 
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
-        {activeSessions.length > 0 && (
-          <CollapsibleSection title={activeSessions.some((s) => s.pausedAt) ? 'Paused hunts' : 'Active hunts'}>
+        {(activeSessions.length > 0 || activeTeams.length > 0) && (
+          <CollapsibleSection title="Active hunts">
             {activeSessions.map((s) => {
               const route = routes?.find((r) => r.id === s.routeId);
               return (
@@ -83,39 +83,15 @@ export function Home() {
                 />
               );
             })}
-          </CollapsibleSection>
-        )}
-
-        {activeTeams.length > 0 && (
-          <CollapsibleSection title="Team hunts in progress">
             {activeTeams.map((team) => {
               const route = routes?.find((r) => r.id === team.routeId);
-              const isPaused = team.status === 'paused';
               return (
-                <Card key={team.id}>
-                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ marginBottom: 4 }}>{route?.title ?? 'Hunt'}</h3>
-                      <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-                        👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    <span style={{
-                      display: 'inline-block', padding: '2px 10px',
-                      borderRadius: 'var(--radius-full, 999px)',
-                      background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
-                      color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
-                      fontSize: '0.78rem', fontWeight: 600, flexShrink: 0, marginLeft: 'var(--space-2)',
-                    }}>
-                      {isPaused ? '⏸ Paused' : '▶ Active'}
-                    </span>
-                  </div>
-                  <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-                    <Button variant="happy" onClick={() => navigate(`/team/${team.id}/play`)}>
-                      👥 Rejoin team hunt
-                    </Button>
-                  </div>
-                </Card>
+                <ActiveTeamHuntCard
+                  key={team.id}
+                  team={team}
+                  routeTitle={route?.title}
+                  onRejoin={() => navigate(`/team/${team.id}/play`)}
+                />
               );
             })}
           </CollapsibleSection>
@@ -350,6 +326,42 @@ function PastHuntCard({
             <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
           </div>
         )}
+      </div>
+    </Card>
+  );
+}
+
+function ActiveTeamHuntCard({
+  team,
+  routeTitle,
+  onRejoin,
+}: {
+  team: Team;
+  routeTitle?: string;
+  onRejoin: () => void;
+}) {
+  const isPaused = team.status === 'paused';
+  return (
+    <Card>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ marginBottom: 4 }}>{routeTitle ?? 'Hunt'}</h3>
+          <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+            👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <span style={{
+          display: 'inline-block', padding: '2px 10px',
+          borderRadius: 'var(--radius-full, 999px)',
+          background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
+          color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
+          fontSize: '0.78rem', fontWeight: 600, flexShrink: 0, marginLeft: 'var(--space-2)',
+        }}>
+          {isPaused ? '⏸ Paused' : '▶ Active'}
+        </span>
+      </div>
+      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
+        <Button variant="happy" onClick={onRejoin}>👥 Rejoin team hunt</Button>
       </div>
     </Card>
   );
