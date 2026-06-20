@@ -113,8 +113,10 @@ export function TeamChat({ teamId, members }: { teamId: string; members: TeamMem
           cursor: 'pointer',
         }}
         onClick={() => {
-          setExpanded((v) => !v);
+          const opening = !expanded;
+          setExpanded(opening);
           setGlow(false);
+          if (opening) setTimeout(() => inputRef.current?.focus(), 50);
         }}
       >
         <span

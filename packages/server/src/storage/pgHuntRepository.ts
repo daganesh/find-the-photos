@@ -39,6 +39,10 @@ export class PgHuntRepository implements HuntRepository {
     return rows.map((r) => r.data);
   }
 
+  async delete(id: string): Promise<void> {
+    await getPool().query('DELETE FROM hunt_sessions WHERE id = $1', [id]);
+  }
+
   async listByHunter(hunterId: string): Promise<HuntSession[]> {
     const { rows } = await getPool().query<{ data: HuntSession }>(
       "SELECT data FROM hunt_sessions WHERE data->>'hunterId' = $1",

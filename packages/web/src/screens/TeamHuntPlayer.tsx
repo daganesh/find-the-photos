@@ -86,6 +86,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const [disputeError, setDisputeError] = useState('');
   const [riddleAnswer, setRiddleAnswer] = useState('');
   const [riddleError, setRiddleError] = useState('');
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   // ── Guess toast queue ──────────────────────────────────────────────────
   const [toastQueue, setToastQueue] = useState<GuessToastData[]>([]);
@@ -263,6 +264,28 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
     </>
   );
 
+  if (confirmLeave) {
+    return (
+      <Page title="Leave hunt?">
+        <Card>
+          <div className="stack center">
+            <div style={{ fontSize: '2.5rem' }}>🚪</div>
+            <h3 style={{ margin: 0 }}>Leave the team hunt?</h3>
+            <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
+              Your team can continue without you. Rejoin anytime from the home screen.
+            </p>
+            <Button block variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={() => navigate('/')}>
+              Leave hunt
+            </Button>
+            <Button block variant="happy" onClick={() => setConfirmLeave(false)}>
+              Keep playing
+            </Button>
+          </div>
+        </Card>
+      </Page>
+    );
+  }
+
   if (countdown > 0) {
     return withToast(
       <Page title="Get ready!">
@@ -274,6 +297,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           <p className="muted" style={{ margin: 0 }}>Hunt starts in…</p>
         </div>
       </Page>,
+      true,
     );
   }
 
@@ -294,6 +318,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           </div>
         </Card>
       </Page>,
+      true,
     );
   }
 
@@ -313,6 +338,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           </div>
         </Card>
       </Page>,
+      true,
     );
   }
 
@@ -328,6 +354,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           </div>
         </Card>
       </Page>,
+      true,
     );
   }
 
@@ -368,6 +395,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
         right={
           <div className="row" style={{ gap: 8 }}>
             {team?.startedAt && <Timer startedAt={team.startedAt} paused={paused} />}
+            <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
+              onClick={() => setConfirmLeave(true)} aria-label="Leave hunt">🚪</button>
             <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
               onClick={hunt.pauseOrResume} aria-label="Pause hunt">⏸</button>
           </div>
@@ -592,6 +621,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
       right={
         <div className="row" style={{ gap: 8 }}>
           {team?.startedAt && <Timer startedAt={team.startedAt} paused={paused} />}
+          <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
+            onClick={() => setConfirmLeave(true)} aria-label="Leave hunt">🚪</button>
           <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
             onClick={hunt.pauseOrResume} aria-label="Pause hunt">⏸</button>
         </div>

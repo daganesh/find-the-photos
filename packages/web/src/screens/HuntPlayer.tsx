@@ -42,6 +42,7 @@ export function HuntPlayer() {
   const [disputeError, setDisputeError] = useState('');
   const [riddleAnswer, setRiddleAnswer] = useState('');
   const [riddleError, setRiddleError] = useState('');
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   // Countdown: 3 → 2 → 1 → null (hunt becomes visible after)
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -319,6 +320,28 @@ export function HuntPlayer() {
     }
   }
 
+  if (confirmLeave) {
+    return (
+      <Page title="Leave hunt?">
+        <Card>
+          <div className="stack center">
+            <div style={{ fontSize: '2.5rem' }}>🚪</div>
+            <h3 style={{ margin: 0 }}>Leave this hunt?</h3>
+            <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
+              Your progress is saved. Resume from the home screen anytime.
+            </p>
+            <Button block variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={() => navigate('/')}>
+              Leave hunt
+            </Button>
+            <Button block variant="happy" onClick={() => setConfirmLeave(false)}>
+              Keep playing
+            </Button>
+          </div>
+        </Card>
+      </Page>
+    );
+  }
+
   const step = hunt.activeStep;
   const item = items.find((i) => i.id === step?.itemId);
   if (!step || !item) return <Page onBack title="Play"><Spinner /></Page>;
@@ -342,7 +365,7 @@ export function HuntPlayer() {
 
   return (
     <Page
-      onBack
+      onBack={() => setConfirmLeave(true)}
       title={`Clue ${stepNumber} / ${items.length}`}
       right={
         <div className="row" style={{ gap: 8 }}>

@@ -8,6 +8,7 @@ export interface HuntRepository {
   get(id: string): Promise<HuntSession | undefined>;
   create(session: HuntSession): Promise<HuntSession>;
   update(id: string, patch: Partial<HuntSession>): Promise<HuntSession | undefined>;
+  delete(id: string): Promise<void>;
   listByRoute(routeId: string): Promise<HuntSession[]>;
   listByHunter(hunterId: string): Promise<HuntSession[]>;
 }
@@ -35,6 +36,13 @@ export class JsonHuntRepository implements HuntRepository {
       const next: HuntSession = { ...rows[i]!, ...patch, id: rows[i]!.id };
       rows[i] = next;
       return next;
+    });
+  }
+
+  delete(id: string): Promise<void> {
+    return this.store.mutate((rows) => {
+      const i = rows.findIndex((s) => s.id === id);
+      if (i !== -1) rows.splice(i, 1);
     });
   }
 

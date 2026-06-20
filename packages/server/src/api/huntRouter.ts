@@ -100,6 +100,18 @@ export function huntRouter(ctx: AppContext): Router {
     }
   });
 
+  router.delete('/:sessionId', requireAuth, async (req: AuthedRequest, res, next) => {
+    try {
+      const session = await ctx.hunts.get(req.params.sessionId);
+      if (!session) return void res.status(404).json({ error: 'Hunt not found' });
+      if (session.hunterId !== req.user!.id) return void res.status(403).json({ error: 'Not your session' });
+      await ctx.hunts.delete(req.params.sessionId);
+      res.status(204).end();
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // Submit a photo for the active item; the AI judges it.
   router.post(
     '/:sessionId/steps/:itemId/photo',
