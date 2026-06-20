@@ -5,7 +5,7 @@ import { computeTeamResult } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { renderScoreCard, shareScore } from '../services/scoreCard.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { Banner, Button, Card, Page, ScorePill, Spinner, formatDuration } from '../ui/index.js';
+import { Banner, Button, Card, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
 
 /** Team results screen: per-member leaderboard, MVP badge, total score + time. */
 export function TeamResults() {
@@ -23,6 +23,10 @@ export function TeamResults() {
   const [sharing, setSharing] = useState(false);
   const [summaryUrl, setSummaryUrl] = useState<string | null>(null);
   const [renderingCard, setRenderingCard] = useState(false);
+  const [stars, setStars] = useState(0);
+  const [comment, setComment] = useState('');
+  const [rated, setRated] = useState(false);
+  const [rating, setRating] = useState(false);
 
   const route = useAsync(() => routeId ? api.getRoute(routeId) : Promise.resolve(undefined), [routeId]);
 
@@ -48,6 +52,17 @@ export function TeamResults() {
     load();
     return () => { cancelled = true; };
   }, [teamId]);
+
+  async function submitRating() {
+    if (!routeId) return;
+    setRating(true);
+    try {
+      await api.rateRoute(routeId, { stars, comment: comment.trim() || undefined });
+      setRated(true);
+    } finally {
+      setRating(false);
+    }
+  }
 
   async function handleShowSummary() {
     if (!result || !session || !route.data) return;
@@ -163,6 +178,26 @@ export function TeamResults() {
             </div>
           </Card>
         ))}
+
+        <h2>Rate this hunt</h2>
+        <Card>
+          {rated ? (
+            <p className="center">Thanks for the feedback! 💛</p>
+          ) : (
+            <div className="stack center">
+              <StarRating value={stars} onChange={setStars} />
+              <textarea
+                rows={2}
+                placeholder="Leave a note for the hider (optional)"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+              <Button block disabled={stars === 0 || rating} onClick={submitRating}>
+                {rating ? 'Sending…' : 'Send rating'}
+              </Button>
+            </div>
+          )}
+        </Card>
 
         <Button variant="ghost" block onClick={() => navigate('/')}>🏠 Back home</Button>
       </div>
