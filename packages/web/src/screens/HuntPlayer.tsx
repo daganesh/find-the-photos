@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useBlocker, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { Item } from '@ftp/shared';
 import { canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
@@ -44,15 +44,24 @@ export function HuntPlayer() {
   const [riddleError, setRiddleError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
 
-  // Block browser/router navigation (back button, address bar, etc.) while a
-  // hunt session is in progress so players can't accidentally leave.
+  // Guard the browser back button while a hunt is in progress.
+  // useBlocker requires a data router (createBrowserRouter); this app uses
+  // <BrowserRouter>, so we use the pushState+popstate trick instead.
   const isHuntActive = Boolean(
     hunt.session && !isHuntComplete(hunt.session.steps) && !hunt.notStarted,
   );
-  const blocker = useBlocker(isHuntActive);
   useEffect(() => {
-    if (blocker.state === 'blocked') setConfirmLeave(true);
-  }, [blocker.state]);
+    if (!isHuntActive) return;
+    // Push an extra history entry so pressing back lands here rather than leaving.
+    window.history.pushState({ huntGuard: true }, '');
+    const onPop = () => {
+      // Re-push so the next back press is also caught, then show confirmation.
+      window.history.pushState({ huntGuard: true }, '');
+      setConfirmLeave(true);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [isHuntActive]);
 
   // Countdown: 3 → 2 → 1 → null (hunt becomes visible after)
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -341,11 +350,10 @@ export function HuntPlayer() {
               Your progress is saved. Resume from the home screen anytime.
             </p>
             <Button block variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }}
-              onClick={() => blocker.state === 'blocked' ? blocker.proceed() : navigate('/')}>
+              onClick={() => navigate('/')}>
               Leave hunt
             </Button>
-            <Button block variant="happy"
-              onClick={() => { setConfirmLeave(false); if (blocker.state === 'blocked') blocker.reset(); }}>
+            <Button block variant="happy" onClick={() => setConfirmLeave(false)}>
               Keep playing
             </Button>
           </div>
@@ -377,7 +385,7 @@ export function HuntPlayer() {
 
   return (
     <Page
-      onBack={() => navigate('/')}
+      onBack={() => setConfirmLeave(true)}
       title={`Clue ${stepNumber} / ${items.length}`}
       right={
         <div className="row" style={{ gap: 8 }}>

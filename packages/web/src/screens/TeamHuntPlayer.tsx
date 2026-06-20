@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useBlocker, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { HuntSession } from '@ftp/shared';
 import { canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
@@ -88,14 +88,20 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const [riddleError, setRiddleError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
 
-  // Block browser/router navigation while the team hunt is active.
+  // Guard the browser back button while the team hunt is active.
   const isHuntActive = Boolean(
     hunt.session && !isHuntComplete(hunt.session.steps),
   );
-  const blocker = useBlocker(isHuntActive);
   useEffect(() => {
-    if (blocker.state === 'blocked') setConfirmLeave(true);
-  }, [blocker.state]);
+    if (!isHuntActive) return;
+    window.history.pushState({ huntGuard: true }, '');
+    const onPop = () => {
+      window.history.pushState({ huntGuard: true }, '');
+      setConfirmLeave(true);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [isHuntActive]);
 
   // ── Guess toast queue ──────────────────────────────────────────────────
   const [toastQueue, setToastQueue] = useState<GuessToastData[]>([]);
@@ -284,11 +290,10 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
               Your team can continue without you. Rejoin anytime from the home screen.
             </p>
             <Button block variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }}
-              onClick={() => blocker.state === 'blocked' ? blocker.proceed() : navigate('/')}>
+              onClick={() => navigate('/')}>
               Leave hunt
             </Button>
-            <Button block variant="happy"
-              onClick={() => { setConfirmLeave(false); if (blocker.state === 'blocked') blocker.reset(); }}>
+            <Button block variant="happy" onClick={() => setConfirmLeave(false)}>
               Keep playing
             </Button>
           </div>
@@ -407,7 +412,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           <div className="row" style={{ gap: 8 }}>
             {team?.startedAt && <Timer startedAt={team.startedAt} paused={paused} />}
             <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
-              onClick={() => navigate('/')} aria-label="Leave hunt">🚪</button>
+              onClick={() => setConfirmLeave(true)} aria-label="Leave hunt">🚪</button>
             <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
               onClick={hunt.pauseOrResume} aria-label="Pause hunt">⏸</button>
           </div>
@@ -633,7 +638,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
         <div className="row" style={{ gap: 8 }}>
           {team?.startedAt && <Timer startedAt={team.startedAt} paused={paused} />}
           <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
-            onClick={() => navigate('/')} aria-label="Leave hunt">🚪</button>
+            onClick={() => setConfirmLeave(true)} aria-label="Leave hunt">🚪</button>
           <button className="btn btn--ghost" style={{ minWidth: 40, padding: '0 10px', fontSize: '1.1rem' }}
             onClick={hunt.pauseOrResume} aria-label="Pause hunt">⏸</button>
         </div>
