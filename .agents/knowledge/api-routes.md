@@ -60,6 +60,7 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 | GET | `/api/reports` | Required | List all reports |
 | POST | `/api/reports` | Required | Submit a bug/feature report; deduplicates via word-overlap |
 | PATCH | `/api/reports/:id` | Admin | Update `status` and/or `severity` of a report |
+| POST | `/api/reports/:id/github-issue` | Admin | File the report as a GitHub issue; body `{ assignToAgent?: boolean }` (default `true`) posts an `@claude` comment to hand it to Claude. Idempotent (returns the existing issue if already filed); flips `new` → `in_progress` and records `report.github`. Returns 503 if `GITHUB_TOKEN` is unset. |
 
 ## Team Chat (`/api/teams/:teamId/chat`)
 

@@ -20,6 +20,12 @@ VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-2.0-flash          # default
 
+# GitHub (server only) — admin "Create GitHub issue" button.
+# Fine-grained PAT scoped to this repo with Issues: Read & write.
+GITHUB_TOKEN=github_pat_...
+GITHUB_OWNER=daganesh                   # default
+GITHUB_REPO=find-the-photos            # default
+
 # Google Maps (web only)
 GOOGLE_MAPS_API_KEY=your-maps-browser-key
 VITE_GOOGLE_MAPS_API_KEY=your-maps-browser-key
@@ -80,6 +86,18 @@ Railway injects `DATABASE_URL`, `GEMINI_API_KEY`, `GOOGLE_CLIENT_ID`, etc. as en
 
 ## No-credentials dev mode
 
-Without `GEMINI_API_KEY` the app uses stub AI services (photo match always returns "tap I found it!" stub).  
+Without `GEMINI_API_KEY` the app uses stub AI services (photo match always returns "tap I found it!" stub).
+Without `GITHUB_TOKEN` the GitHub client is a stub and `POST /api/reports/:id/github-issue` returns 503.
+
+## Report → GitHub → Claude flow
+
+The admin panel can turn a triaged report into a GitHub issue and hand it to Claude:
+
+1. Admin clicks **Create GitHub issue** on a report (with **Send to agent** checked by default).
+2. Server (`packages/server/src/github/`) files the issue via the GitHub REST API and, when "send to agent" is on, posts an `@claude` comment.
+3. The `.github/workflows/claude.yml` workflow (trigger: `@claude` mention) runs `anthropics/claude-code-action`, which branches, plans, implements, and opens a PR.
+4. A human reviews and merges.
+
+Requires on the **repo** side: the Claude GitHub App installed and an `ANTHROPIC_API_KEY` Actions secret (or run `/install-github-app` from Claude Code). On the **server** side: `GITHUB_TOKEN`/`GITHUB_OWNER`/`GITHUB_REPO`.  
 Without `GOOGLE_CLIENT_ID` sign-in uses a dev stub that accepts any credential.  
 Without `DATABASE_URL` data is stored in `data/*.json` and photos in `uploads/` (ephemeral between deploys).
