@@ -9,6 +9,7 @@ import { PgReportRepository } from './storage/pgReportRepository.js';
 import { PhotoStore } from './photos/photoStore.js';
 import { createImageMatchService, type ImageMatchService } from './gemini/imageMatch.js';
 import { createModerationService, type ModerationService } from './gemini/moderationService.js';
+import { createGitHubService, type GitHubService } from './github/githubClient.js';
 import { config } from './config.js';
 import type { BugReport, Team } from '@ftp/shared';
 
@@ -35,6 +36,7 @@ export interface AppContext {
   photos: PhotoStore;
   imageMatch: ImageMatchService;
   moderation: ModerationService;
+  github: GitHubService;
 }
 
 export function createAppContext(): AppContext {
@@ -47,5 +49,6 @@ export function createAppContext(): AppContext {
     photos: new PhotoStore(),
     imageMatch: createImageMatchService(),
     moderation: createModerationService(),
+    github: createGitHubService(),
   };
 }

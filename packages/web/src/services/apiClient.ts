@@ -208,6 +208,9 @@ export class ApiClient {
   updateReport(id: string, body: { status?: ReportStatus; severity?: ReportSeverity }): Promise<{ report: BugReport }> {
     return this.request(`/api/reports/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   }
+  createGithubIssue(id: string, body: { assignToAgent: boolean }): Promise<{ report: BugReport }> {
+    return this.request(`/api/reports/${id}/github-issue`, { method: 'POST', body: JSON.stringify(body) });
+  }
 
   // --- Chat ---
   getTeamChat(teamId: string, since?: string): Promise<{ messages: ChatMessage[] }> {

@@ -8,6 +8,15 @@ export interface Reporter {
   reportedAt: string;
 }
 
+/** Link to the GitHub issue filed from a report, plus whether Claude was asked to work it. */
+export interface GithubIssueRef {
+  issueNumber: number;
+  issueUrl: string;
+  createdAt: string;
+  /** True when an @claude comment was posted to hand the issue to the agent. */
+  assignedToAgent: boolean;
+}
+
 export interface BugReport {
   id: string;
   type: ReportType;
@@ -17,4 +26,6 @@ export interface BugReport {
   reporters: Reporter[];
   createdAt: string;
   updatedAt: string;
+  /** Set once an admin files this report as a GitHub issue. */
+  github?: GithubIssueRef;
 }

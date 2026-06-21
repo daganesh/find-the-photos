@@ -44,6 +44,13 @@ export const config = {
     model: optional('GEMINI_MODEL', 'gemini-2.0-flash'),
   },
 
+  /** GitHub integration: file admin-triaged reports as issues and hand them to Claude. */
+  github: {
+    token: optional('GITHUB_TOKEN'),
+    owner: optional('GITHUB_OWNER', 'daganesh'),
+    repo: optional('GITHUB_REPO', 'find-the-photos'),
+  },
+
   paths: {
     dataDir: path.join(packageRoot, 'data'),
     uploadsDir: path.join(packageRoot, 'uploads'),
@@ -60,3 +67,6 @@ export const isGoogleAuthConfigured = (): boolean => config.google.clientId !== 
 
 /** True when Gemini is configured; otherwise image matching uses a dev stub. */
 export const isGeminiConfigured = (): boolean => config.gemini.apiKey !== '';
+
+/** True when a GitHub token is configured; otherwise issue creation uses a dev stub. */
+export const isGithubConfigured = (): boolean => config.github.token !== '';
