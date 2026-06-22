@@ -22,6 +22,7 @@ export interface BugReport {
   type: ReportType;
   severity: ReportSeverity;
   status: ReportStatus;
+  title?: string;
   description: string;
   reporters: Reporter[];
   createdAt: string;

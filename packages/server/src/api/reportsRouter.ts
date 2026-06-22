@@ -29,8 +29,9 @@ export function reportsRouter(ctx: AppContext): Router {
 
   router.post('/', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const { description, type, severity } = req.body as {
+      const { description, title, type, severity } = req.body as {
         description: string;
+        title?: string;
         type: ReportType;
         severity: ReportSeverity;
       };
@@ -62,6 +63,7 @@ export function reportsRouter(ctx: AppContext): Router {
         type,
         severity,
         status: 'new',
+        ...(title ? { title: title.trim() } : {}),
         description,
         reporters: [{ userId: user.id, name: user.name, reportedAt: now }],
         createdAt: now,

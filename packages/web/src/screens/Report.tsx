@@ -22,6 +22,7 @@ export function Report() {
   const reports = useAsync(() => api.listReports(), []);
   const [type, setType] = useState<ReportType>('bug');
   const [severity, setSeverity] = useState<ReportSeverity>(2);
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -35,7 +36,7 @@ export function Report() {
     setSubmitting(true);
     setError('');
     try {
-      const { merged } = await api.submitReport({ description: description.trim(), type, severity });
+      const { merged } = await api.submitReport({ title: title.trim() || undefined, description: description.trim(), type, severity });
       setSuccessMsg(merged ? 'Thanks — your report was merged with an existing one!' : 'Report submitted!');
       setDescription('');
       reports.reload();
@@ -55,14 +56,14 @@ export function Report() {
       <div className="stack">
         <Card>
           <div className="stack">
-            <span className="field-label">Type</span>
-            <div className="row" style={{ gap: 8 }}>
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="field-label" style={{ minWidth: 60 }}>Type</span>
               <Button variant={type === 'bug' ? 'happy' : 'ghost'} onClick={() => setType('bug')}>🐛 Bug</Button>
               <Button variant={type === 'feature' ? 'happy' : 'ghost'} onClick={() => setType('feature')}>✨ Feature</Button>
             </div>
 
-            <span className="field-label">Severity</span>
-            <div className="row" style={{ gap: 8 }}>
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="field-label" style={{ minWidth: 60 }}>Severity</span>
               {([1, 2, 3] as ReportSeverity[]).map((s) => (
                 <Button key={s} variant={severity === s ? 'happy' : 'ghost'} onClick={() => setSeverity(s)}>
                   {s === 1 ? '1 Low' : s === 2 ? '2 Medium' : '3 High'}
@@ -70,11 +71,17 @@ export function Report() {
               ))}
             </div>
 
-            <span className="field-label">Description</span>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Feature/Report Title"
+              disabled={submitting}
+              style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.95rem', color: title ? undefined : '#9ca3af' }}
+            />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={type === 'bug' ? 'What went wrong? What did you expect?' : 'What would you like to see?'}
+              placeholder="Feature/Report Description"
               rows={4}
               style={{ resize: 'vertical' }}
               disabled={submitting}
