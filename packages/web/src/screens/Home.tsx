@@ -6,9 +6,18 @@ import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { getCurrentLocation } from '../services/geolocation.js';
-import { Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
+import { Button, Card, MapView, Page, Spinner, StarRating } from '../ui/index.js';
 import { filterHunts, hasActiveFilters } from './huntFilters.js';
 import type { DateFilter } from './huntFilters.js';
+
+type FilterDraft = {
+  name: string;
+  creator: string;
+  distanceKm: number | null;
+  dateFilter: DateFilter | null;
+};
+
+const EMPTY_FILTERS: FilterDraft = { name: '', creator: '', distanceKm: null, dateFilter: null };
 
 /** The hub: greet the player, list playable routes, and start building. */
 export function Home() {
@@ -22,11 +31,10 @@ export function Home() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState('');
 
-  // Filter state
-  const [nameFilter, setNameFilter] = useState('');
-  const [creatorFilter, setCreatorFilter] = useState('');
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
+  // Filter state — draft is the in-popup edit, applied is what's actually filtering
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draft, setDraft] = useState<FilterDraft>(EMPTY_FILTERS);
+  const [applied, setApplied] = useState<FilterDraft>(EMPTY_FILTERS);
   const [myLocation, setMyLocation] = useState<GeoPoint | undefined>();
   const [locating, setLocating] = useState(false);
 
@@ -60,14 +68,30 @@ export function Home() {
     }
   }
 
-  async function handleDistanceChange(km: number | null) {
-    setDistanceKm(km);
+  /** Called when distance filter changes inside the popup — triggers geolocation if needed. */
+  async function handleDraftDistanceGeo(km: number | null) {
     if (km !== null && !myLocation) {
       setLocating(true);
       const loc = await getCurrentLocation();
       setMyLocation(loc);
       setLocating(false);
     }
+  }
+
+  function openFilterPopup() {
+    setDraft(applied);
+    setFilterOpen(true);
+  }
+
+  function applyFilters() {
+    setApplied(draft);
+    setFilterOpen(false);
+  }
+
+  function clearFilters() {
+    setDraft(EMPTY_FILTERS);
+    setApplied(EMPTY_FILTERS);
+    setFilterOpen(false);
   }
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
@@ -77,9 +101,15 @@ export function Home() {
   const pastSessions = allSessions.filter((s) => !!s.finishedAt).slice(0, 10);
   const activeTeams = myTeams?.teams ?? [];
 
-  const filterOpts = { name: nameFilter, creator: creatorFilter, distanceKm, dateFilter, myLocation };
+  const filterOpts = { ...applied, myLocation };
   const filteredReady = filterHunts(ready, filterOpts);
-  const filtersActive = hasActiveFilters(filterOpts);
+  const filtersActive = hasActiveFilters(applied);
+  const activeFilterCount = [
+    applied.name.trim(),
+    applied.creator.trim(),
+    applied.distanceKm !== null ? '1' : '',
+    applied.dateFilter ?? '',
+  ].filter(Boolean).length;
 
   return (
     <Page>
@@ -165,17 +195,20 @@ export function Home() {
         )}
 
         <CollapsibleSection title="Available Hunts">
-          <HuntFilters
-            name={nameFilter}
-            creator={creatorFilter}
-            distanceKm={distanceKm}
-            dateFilter={dateFilter}
-            locating={locating}
-            onNameChange={setNameFilter}
-            onCreatorChange={setCreatorFilter}
-            onDistanceChange={handleDistanceChange}
-            onDateFilterChange={setDateFilter}
-          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <FilterButton active={filtersActive} count={activeFilterCount} onClick={openFilterPopup} />
+          </div>
+          {filterOpen && (
+            <FilterPopup
+              draft={draft}
+              onChange={setDraft}
+              onDistanceChange={handleDraftDistanceGeo}
+              onApply={applyFilters}
+              onClear={clearFilters}
+              onClose={() => setFilterOpen(false)}
+              locating={locating}
+            />
+          )}
           {filteredReady.length === 0 && !loading && (
             <Card>
               <p className="center muted">
@@ -223,76 +256,200 @@ export function Home() {
   );
 }
 
-function HuntFilters({
-  name,
-  creator,
-  distanceKm,
-  dateFilter,
-  locating,
-  onNameChange,
-  onCreatorChange,
+function FilterButton({ active, count, onClick }: { active: boolean; count: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={active ? `Filters (${count} active)` : 'Open filters'}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        background: active ? 'var(--color-accent)' : 'var(--color-surface)',
+        color: active ? 'var(--color-accent-ink)' : 'var(--color-ink)',
+        border: 'none',
+        borderRadius: 'var(--radius-pill)',
+        padding: '8px 16px',
+        fontFamily: 'inherit',
+        fontWeight: 700,
+        fontSize: '0.95rem',
+        cursor: 'pointer',
+        boxShadow: 'var(--shadow)',
+      }}
+    >
+      🔽 Filters
+      {active && (
+        <span
+          style={{
+            background: 'rgba(255,255,255,0.35)',
+            borderRadius: '50%',
+            width: 20,
+            height: 20,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.75rem',
+            lineHeight: 1,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function FilterPopup({
+  draft,
+  onChange,
   onDistanceChange,
-  onDateFilterChange,
+  onApply,
+  onClear,
+  onClose,
+  locating,
 }: {
-  name: string;
-  creator: string;
-  distanceKm: number | null;
-  dateFilter: DateFilter | null;
-  locating: boolean;
-  onNameChange: (v: string) => void;
-  onCreatorChange: (v: string) => void;
+  draft: FilterDraft;
+  onChange: (d: FilterDraft) => void;
   onDistanceChange: (km: number | null) => void;
-  onDateFilterChange: (v: DateFilter | null) => void;
+  onApply: () => void;
+  onClear: () => void;
+  onClose: () => void;
+  locating: boolean;
 }) {
   return (
-    <div className="stack" style={{ gap: 'var(--space-2)' }}>
-      <input
-        type="search"
-        placeholder="Search by name…"
-        value={name}
-        onChange={(e) => onNameChange(e.target.value)}
-        aria-label="Search hunts by name"
-        style={{ width: '100%' }}
+    <>
+      {/* Backdrop */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 300,
+          background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(2px)',
+        }}
+        onClick={onClose}
+        aria-hidden="true"
       />
-      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-        <input
-          type="search"
-          placeholder="Creator…"
-          value={creator}
-          onChange={(e) => onCreatorChange(e.target.value)}
-          aria-label="Filter by creator"
-          style={{ flex: 1, minWidth: 100 }}
-        />
-        <select
-          value={distanceKm ?? ''}
-          onChange={(e) => onDistanceChange(e.target.value ? Number(e.target.value) : null)}
-          aria-label="Filter by distance from my location"
-          style={{ flex: 1, minWidth: 120 }}
+
+      {/* Popup */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Filter hunts"
+        className="pop-in"
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 301,
+          width: 'min(90vw, 400px)',
+          background: 'var(--color-surface)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-lg)',
+          padding: 'var(--space-4)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 'var(--space-3)',
+          }}
         >
-          <option value="">Any distance</option>
-          <option value="1">≤ 1 km</option>
-          <option value="5">≤ 5 km</option>
-          <option value="10">≤ 10 km</option>
-          <option value="25">≤ 25 km</option>
-        </select>
-        <select
-          value={dateFilter ?? ''}
-          onChange={(e) => onDateFilterChange((e.target.value as DateFilter) || null)}
-          aria-label="Filter by date created"
-          style={{ flex: 1, minWidth: 120 }}
-        >
-          <option value="">Any time</option>
-          <option value="24h">Last 24 hours</option>
-          <option value="7d">Last week</option>
-          <option value="30d">Last month</option>
-        </select>
+          <h3 style={{ margin: 0 }}>Filter hunts</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close filter popup"
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '1.2rem',
+              cursor: 'pointer',
+              color: 'var(--color-ink-soft)',
+              lineHeight: 1,
+              padding: 4,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <label style={{ display: 'block' }}>
+            <span className="field-label">Name</span>
+            <input
+              type="search"
+              placeholder="Search by name…"
+              value={draft.name}
+              onChange={(e) => onChange({ ...draft, name: e.target.value })}
+              aria-label="Search hunts by name"
+            />
+          </label>
+
+          <label style={{ display: 'block' }}>
+            <span className="field-label">Creator</span>
+            <input
+              type="search"
+              placeholder="Filter by creator…"
+              value={draft.creator}
+              onChange={(e) => onChange({ ...draft, creator: e.target.value })}
+              aria-label="Filter by creator"
+            />
+          </label>
+
+          <label style={{ display: 'block' }}>
+            <span className="field-label">Distance</span>
+            <select
+              value={draft.distanceKm ?? ''}
+              onChange={(e) => {
+                const km = e.target.value ? Number(e.target.value) : null;
+                onChange({ ...draft, distanceKm: km });
+                onDistanceChange(km);
+              }}
+              aria-label="Filter by distance from my location"
+            >
+              <option value="">Any distance</option>
+              <option value="1">≤ 1 km</option>
+              <option value="5">≤ 5 km</option>
+              <option value="10">≤ 10 km</option>
+              <option value="25">≤ 25 km</option>
+            </select>
+            {locating && (
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: '0.82rem' }}>
+                📍 Getting your location…
+              </p>
+            )}
+          </label>
+
+          <label style={{ display: 'block' }}>
+            <span className="field-label">Date added</span>
+            <select
+              value={draft.dateFilter ?? ''}
+              onChange={(e) => onChange({ ...draft, dateFilter: (e.target.value as DateFilter) || null })}
+              aria-label="Filter by date created"
+            >
+              <option value="">Any time</option>
+              <option value="24h">Last 24 hours</option>
+              <option value="7d">Last week</option>
+              <option value="30d">Last month</option>
+            </select>
+          </label>
+        </div>
+
+        <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
+          <Button variant="ghost" onClick={onClear} style={{ flex: 1 }}>
+            Clear all
+          </Button>
+          <Button variant="happy" onClick={onApply} style={{ flex: 1 }}>
+            Apply
+          </Button>
+        </div>
       </div>
-      {locating && (
-        <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-          📍 Getting your location…
-        </p>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -318,56 +475,103 @@ function formatRouteDate(isoString: string): string {
 }
 
 function RouteCard({ route, onClick }: { route: RouteSummary; onClick: () => void }) {
+  const [showMap, setShowMap] = useState(false);
   const hasCover = Boolean(route.coverPhotoUrl);
+  const hasLocation = Boolean(route.startLocation);
 
   return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'block',
-        width: '100%',
-        textAlign: 'left',
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        cursor: 'pointer',
-        borderRadius: 'var(--radius-lg)',
-      }}
-    >
-      <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <div
+    <div style={{ position: 'relative' }}>
+      {/* Main clickable card */}
+      <button
+        onClick={onClick}
+        style={{
+          display: 'block',
+          width: '100%',
+          textAlign: 'left',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
+          borderRadius: 'var(--radius-lg)',
+        }}
+      >
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          <div
+            style={{
+              padding: 'var(--space-4)',
+              minHeight: hasCover ? 160 : undefined,
+              display: 'flex',
+              alignItems: hasCover ? 'flex-end' : undefined,
+              justifyContent: 'space-between',
+              backgroundImage: hasCover
+                ? `linear-gradient(rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.62) 100%), url(${mediaUrl(route.coverPhotoUrl!)})`
+                : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <h3 style={{ marginBottom: 2, color: hasCover ? '#fff' : undefined }}>{route.title}</h3>
+              <p
+                className="muted"
+                style={{
+                  margin: '0 0 4px',
+                  fontSize: '0.82rem',
+                  color: hasCover ? 'rgba(255,255,255,0.85)' : undefined,
+                }}
+              >
+                {route.authorName ? `by ${route.authorName}` : 'by Unknown'}
+                {' · '}
+                {formatRouteDate(route.createdAt)}
+              </p>
+              <p className="muted" style={{ margin: 0, color: hasCover ? 'rgba(255,255,255,0.78)' : undefined }}>
+                {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+              </p>
+            </div>
+            {route.avgRating !== undefined && (
+              <div style={{ flexShrink: 0, marginLeft: 'var(--space-2)' }}>
+                <StarRating value={Math.round(route.avgRating)} />
+              </div>
+            )}
+          </div>
+        </Card>
+      </button>
+
+      {/* Location pin — sibling of the main button, positioned over the card */}
+      {hasLocation && (
+        <button
+          type="button"
+          onClick={() => setShowMap((v) => !v)}
+          aria-label={showMap ? 'Hide map' : 'Show hunt start location on map'}
           style={{
-            padding: 'var(--space-4)',
-            minHeight: hasCover ? 160 : undefined,
+            position: 'absolute',
+            bottom: 12,
+            right: 12,
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            background: showMap ? 'var(--color-accent)' : 'rgba(255,255,255,0.92)',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '1.1rem',
             display: 'flex',
-            alignItems: hasCover ? 'flex-end' : undefined,
-            justifyContent: 'space-between',
-            backgroundImage: hasCover
-              ? `linear-gradient(rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.62) 100%), url(${mediaUrl(route.coverPhotoUrl!)})`
-              : undefined,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'var(--shadow)',
+            zIndex: 1,
           }}
         >
-          <div style={{ flex: 1 }}>
-            <h3 style={{ marginBottom: 2, color: hasCover ? '#fff' : undefined }}>{route.title}</h3>
-            <p className="muted" style={{ margin: '0 0 4px', fontSize: '0.82rem', color: hasCover ? 'rgba(255,255,255,0.78)' : undefined }}>
-              {route.authorName ? `by ${route.authorName}` : null}
-              {route.authorName ? ' · ' : null}
-              {formatRouteDate(route.createdAt)}
-            </p>
-            <p className="muted" style={{ margin: 0, color: hasCover ? 'rgba(255,255,255,0.78)' : undefined }}>
-              {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
-            </p>
-          </div>
-          {route.avgRating !== undefined && (
-            <div style={{ flexShrink: 0, marginLeft: 'var(--space-2)' }}>
-              <StarRating value={Math.round(route.avgRating)} />
-            </div>
-          )}
+          📍
+        </button>
+      )}
+
+      {/* Inline map — shown below the card when pin is active */}
+      {showMap && route.startLocation && (
+        <div style={{ marginTop: 'var(--space-2)' }}>
+          <MapView target={route.startLocation} />
         </div>
-      </Card>
-    </button>
+      )}
+    </div>
   );
 }
 
