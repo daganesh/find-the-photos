@@ -367,7 +367,7 @@ function ReportCard({
         </div>
 
         {/* GitHub issue: file the report and (optionally) hand it to Claude. */}
-        <div
+        {report.status !== 'done' && report.status !== 'new' && <div
           className="row"
           style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid #f0f0f0', paddingTop: 8 }}
         >
@@ -410,7 +410,7 @@ function ReportCard({
               </Button>
             </>
           )}
-        </div>
+        </div>}
       </div>
     </Card>
   );

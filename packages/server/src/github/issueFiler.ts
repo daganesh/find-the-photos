@@ -34,15 +34,16 @@ export function buildIssueContent(report: BugReport): {
   body: string;
   labels: string[];
 } {
-  const firstLine = report.description.split('\n')[0]!.trim();
-  const short = firstLine.length > 70 ? `${firstLine.slice(0, 67)}…` : firstLine;
+  const rawTitle = report.title ?? report.description.split('\n')[0]!.trim();
+  const short = rawTitle.length > 70 ? `${rawTitle.slice(0, 67)}…` : rawTitle;
   const prefix = report.type === 'bug' ? '[Bug]' : '[Feature]';
   const reporterNames = report.reporters.map((r) => r.name).join(', ') || 'unknown';
   const created = new Date(report.createdAt).toISOString().slice(0, 10);
+  const escapedDescription = report.description.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const body = [
     '## Description',
-    report.description,
+    escapedDescription,
     '',
     '## Details',
     `- **Severity:** ${SEVERITY_NAME[report.severity]}`,
