@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import type { BugReport, ReportSeverity, ReportStatus, ReportType } from '@ftp/shared';
 import type { AppContext } from '../context.js';
 import { requireAdmin, requireAuth, type AuthedRequest } from '../auth/middleware.js';
+import { isGithubConfigured } from '../config.js';
+import { fileReportIssue } from '../github/issueFiler.js';
 
 function wordOverlap(a: string, b: string): number {
   const words = (s: string) => new Set(s.toLowerCase().match(/\b\w{4,}\b/g) ?? []);
@@ -90,6 +92,32 @@ export function reportsRouter(ctx: AppContext): Router {
 
       await ctx.reports.upsert(report);
       res.json({ report });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Admin: file a report as a GitHub issue and (optionally) hand it to Claude.
+  router.post('/:id/github-issue', requireAdmin, async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = req.params as { id: string };
+      const { assignToAgent = true } = (req.body ?? {}) as { assignToAgent?: boolean };
+
+      if (!isGithubConfigured()) {
+        res.status(503).json({ error: 'GitHub integration is not configured. Set GITHUB_TOKEN on the server.' });
+        return;
+      }
+
+      const existing = await ctx.reports.list();
+      const report = existing.find((r) => r.id === id);
+      if (!report) {
+        res.status(404).json({ error: 'Report not found' });
+        return;
+      }
+
+      const alreadyFiled = Boolean(report.github);
+      const updated = await fileReportIssue(ctx, report, assignToAgent);
+      res.status(alreadyFiled ? 200 : 201).json({ report: updated });
     } catch (err) {
       next(err);
     }

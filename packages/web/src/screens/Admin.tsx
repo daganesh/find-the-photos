@@ -156,6 +156,7 @@ function ReportsPanel() {
   const [statusFilter, setStatusFilter] = useState<'all' | ReportStatus>('all');
   const [saving, setSaving] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [creatingIssue, setCreatingIssue] = useState<string | null>(null);
 
   async function handleChange(report: BugReport, patch: { status?: ReportStatus; severity?: ReportSeverity }) {
     setSaving(report.id);
@@ -167,6 +168,19 @@ function ReportsPanel() {
       setSaveError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setSaving(null);
+    }
+  }
+
+  async function handleCreateIssue(report: BugReport, assignToAgent: boolean) {
+    setCreatingIssue(report.id);
+    setSaveError(null);
+    try {
+      await api.createGithubIssue(report.id, { assignToAgent });
+      reports.reload();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to create GitHub issue');
+    } finally {
+      setCreatingIssue(null);
     }
   }
 
@@ -253,7 +267,9 @@ function ReportsPanel() {
           key={r.id}
           report={r}
           isSaving={saving === r.id}
+          isCreatingIssue={creatingIssue === r.id}
           onChange={(patch) => handleChange(r, patch)}
+          onCreateIssue={(assignToAgent) => handleCreateIssue(r, assignToAgent)}
         />
       ))}
     </div>
@@ -263,12 +279,17 @@ function ReportsPanel() {
 function ReportCard({
   report,
   isSaving,
+  isCreatingIssue,
   onChange,
+  onCreateIssue,
 }: {
   report: BugReport;
   isSaving: boolean;
+  isCreatingIssue: boolean;
   onChange: (patch: { status?: ReportStatus; severity?: ReportSeverity }) => void;
+  onCreateIssue: (assignToAgent: boolean) => void;
 }) {
+  const [assignToAgent, setAssignToAgent] = useState(true);
   const date = new Date(report.createdAt).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   });
@@ -343,6 +364,52 @@ function ReportCard({
           </div>
 
           {isSaving && <span className="muted" style={{ fontSize: '0.8rem' }}>Saving…</span>}
+        </div>
+
+        {/* GitHub issue: file the report and (optionally) hand it to Claude. */}
+        <div
+          className="row"
+          style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid #f0f0f0', paddingTop: 8 }}
+        >
+          {report.github ? (
+            <>
+              <a
+                href={report.github.issueUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: '0.85rem', fontWeight: 600 }}
+              >
+                🐙 Issue #{report.github.issueNumber}
+              </a>
+              {report.github.assignedToAgent && (
+                <span style={{
+                  display: 'inline-block', padding: '1px 8px', borderRadius: 999,
+                  fontSize: '0.75rem', fontWeight: 600, background: '#7c3aed22', color: '#7c3aed',
+                }}>
+                  🤖 Sent to Claude
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <label className="row" style={{ gap: 6, fontSize: '0.8rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={assignToAgent}
+                  disabled={isCreatingIssue}
+                  onChange={(e) => setAssignToAgent(e.target.checked)}
+                />
+                Send to agent
+              </label>
+              <Button
+                variant="accent"
+                disabled={isCreatingIssue}
+                onClick={() => onCreateIssue(assignToAgent)}
+              >
+                {isCreatingIssue ? '⏳ Creating…' : '🐙 Create GitHub issue'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Card>
