@@ -83,6 +83,8 @@ export interface Route {
   /** Optional hero image shown on the route card and play screen. */
   coverPhotoUrl?: string;
   authorId: string;
+  /** Display name of the route author, captured at creation time. */
+  authorName?: string;
   items: Item[];
   status: RouteStatus;
   createdAt: string; // ISO timestamp
