@@ -49,6 +49,8 @@ export interface RouteSummary {
   description?: string;
   coverPhotoUrl?: string;
   authorId: string;
+  /** Display name of the route author. */
+  authorName?: string;
   itemCount: number;
   status: Route['status'];
   avgRating?: number;

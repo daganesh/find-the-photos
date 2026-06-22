@@ -1,11 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { HuntSession, RouteSummary, Team } from '@ftp/shared';
+import type { GeoPoint, HuntSession, RouteSummary, Team } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
+import { getCurrentLocation } from '../services/geolocation.js';
 import { Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
+import { filterHunts, hasActiveFilters } from './huntFilters.js';
+import type { DateFilter } from './huntFilters.js';
 
 /** The hub: greet the player, list playable routes, and start building. */
 export function Home() {
@@ -18,6 +21,14 @@ export function Home() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+
+  // Filter state
+  const [nameFilter, setNameFilter] = useState('');
+  const [creatorFilter, setCreatorFilter] = useState('');
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
+  const [myLocation, setMyLocation] = useState<GeoPoint | undefined>();
+  const [locating, setLocating] = useState(false);
 
   async function createRoute() {
     setCreating(true);
@@ -49,12 +60,26 @@ export function Home() {
     }
   }
 
+  async function handleDistanceChange(km: number | null) {
+    setDistanceKm(km);
+    if (km !== null && !myLocation) {
+      setLocating(true);
+      const loc = await getCurrentLocation();
+      setMyLocation(loc);
+      setLocating(false);
+    }
+  }
+
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready' && r.itemCount > 0) ?? []) : [];
   const allSessions = myHunts?.sessions ?? [];
   const activeSessions = allSessions.filter((s) => !s.finishedAt);
   const pastSessions = allSessions.filter((s) => !!s.finishedAt).slice(0, 10);
   const activeTeams = myTeams?.teams ?? [];
+
+  const filterOpts = { name: nameFilter, creator: creatorFilter, distanceKm, dateFilter, myLocation };
+  const filteredReady = filterHunts(ready, filterOpts);
+  const filtersActive = hasActiveFilters(filterOpts);
 
   return (
     <Page>
@@ -139,13 +164,26 @@ export function Home() {
           </CollapsibleSection>
         )}
 
-        <CollapsibleSection title="Ready to play">
-          {ready.length === 0 && !loading && (
+        <CollapsibleSection title="Available Hunts">
+          <HuntFilters
+            name={nameFilter}
+            creator={creatorFilter}
+            distanceKm={distanceKm}
+            dateFilter={dateFilter}
+            locating={locating}
+            onNameChange={setNameFilter}
+            onCreatorChange={setCreatorFilter}
+            onDistanceChange={handleDistanceChange}
+            onDateFilterChange={setDateFilter}
+          />
+          {filteredReady.length === 0 && !loading && (
             <Card>
-              <p className="center muted">No hunts yet — be the first to make one! 🎈</p>
+              <p className="center muted">
+                {filtersActive ? 'No hunts match your filters.' : 'No hunts yet — be the first to make one! 🎈'}
+              </p>
             </Card>
           )}
-          {ready.map((r) => (
+          {filteredReady.map((r) => (
             <RouteCard
               key={r.id}
               route={r}
@@ -185,6 +223,79 @@ export function Home() {
   );
 }
 
+function HuntFilters({
+  name,
+  creator,
+  distanceKm,
+  dateFilter,
+  locating,
+  onNameChange,
+  onCreatorChange,
+  onDistanceChange,
+  onDateFilterChange,
+}: {
+  name: string;
+  creator: string;
+  distanceKm: number | null;
+  dateFilter: DateFilter | null;
+  locating: boolean;
+  onNameChange: (v: string) => void;
+  onCreatorChange: (v: string) => void;
+  onDistanceChange: (km: number | null) => void;
+  onDateFilterChange: (v: DateFilter | null) => void;
+}) {
+  return (
+    <div className="stack" style={{ gap: 'var(--space-2)' }}>
+      <input
+        type="search"
+        placeholder="Search by name…"
+        value={name}
+        onChange={(e) => onNameChange(e.target.value)}
+        aria-label="Search hunts by name"
+        style={{ width: '100%' }}
+      />
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <input
+          type="search"
+          placeholder="Creator…"
+          value={creator}
+          onChange={(e) => onCreatorChange(e.target.value)}
+          aria-label="Filter by creator"
+          style={{ flex: 1, minWidth: 100 }}
+        />
+        <select
+          value={distanceKm ?? ''}
+          onChange={(e) => onDistanceChange(e.target.value ? Number(e.target.value) : null)}
+          aria-label="Filter by distance from my location"
+          style={{ flex: 1, minWidth: 120 }}
+        >
+          <option value="">Any distance</option>
+          <option value="1">≤ 1 km</option>
+          <option value="5">≤ 5 km</option>
+          <option value="10">≤ 10 km</option>
+          <option value="25">≤ 25 km</option>
+        </select>
+        <select
+          value={dateFilter ?? ''}
+          onChange={(e) => onDateFilterChange((e.target.value as DateFilter) || null)}
+          aria-label="Filter by date created"
+          style={{ flex: 1, minWidth: 120 }}
+        >
+          <option value="">Any time</option>
+          <option value="24h">Last 24 hours</option>
+          <option value="7d">Last week</option>
+          <option value="30d">Last month</option>
+        </select>
+      </div>
+      {locating && (
+        <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+          📍 Getting your location…
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -200,6 +311,10 @@ function CollapsibleSection({ title, children, defaultOpen = true }: { title: st
       {open && children}
     </section>
   );
+}
+
+function formatRouteDate(isoString: string): string {
+  return new Date(isoString).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function RouteCard({ route, onClick }: { route: RouteSummary; onClick: () => void }) {
@@ -235,7 +350,12 @@ function RouteCard({ route, onClick }: { route: RouteSummary; onClick: () => voi
           }}
         >
           <div style={{ flex: 1 }}>
-            <h3 style={{ marginBottom: 4, color: hasCover ? '#fff' : undefined }}>{route.title}</h3>
+            <h3 style={{ marginBottom: 2, color: hasCover ? '#fff' : undefined }}>{route.title}</h3>
+            <p className="muted" style={{ margin: '0 0 4px', fontSize: '0.82rem', color: hasCover ? 'rgba(255,255,255,0.78)' : undefined }}>
+              {route.authorName ? `by ${route.authorName}` : null}
+              {route.authorName ? ' · ' : null}
+              {formatRouteDate(route.createdAt)}
+            </p>
             <p className="muted" style={{ margin: 0, color: hasCover ? 'rgba(255,255,255,0.78)' : undefined }}>
               {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
             </p>
