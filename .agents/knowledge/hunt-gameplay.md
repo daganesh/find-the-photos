@@ -8,6 +8,7 @@ Route                            the authored game
   items: Item[]                  ordered list of things to find
   status: 'draft' | 'ready'
   ratings: Rating[]
+  finalItem?: FinalItem          optional bonus challenge (see below)
 
 Item
   kind: 'photo' | 'task'         photo = match reference photos; task = perform an action
@@ -74,3 +75,14 @@ Team
 | `task` | No references | `scoreTask()` — score performance 0–100 | No |
 
 Dispute verification: `verifyDispute(description, itemName)` — player must name the item correctly before override is accepted.
+
+## FinalItem (code kind)
+
+`FinalItem` with `kind: 'code'` has two distinct fields:
+
+| Field | Role |
+|-------|------|
+| `answer` | The code players enter (letters/digits collected from solved items, verified server-side) |
+| `revealAnswer?` | The real final solution revealed to the player **after** the correct code is entered (optional) |
+
+The `answer` acts as a **key** to the lock; `revealAnswer` is what is inside. If `revealAnswer` is not set, the success message is generic. The route author configures both in the `RouteBuilder` under the "Final item" section.
