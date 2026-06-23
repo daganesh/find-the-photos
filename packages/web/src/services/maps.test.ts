@@ -6,7 +6,8 @@ vi.mock('./env.js', () => ({
 }));
 
 describe('loadGoogleMaps', () => {
-  let appendChildSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let appendChildSpy: ReturnType<typeof vi.spyOn<any, any>>;
   let createdScript: HTMLScriptElement | null = null;
 
   beforeEach(() => {
@@ -20,8 +21,8 @@ describe('loadGoogleMaps', () => {
   afterEach(() => {
     appendChildSpy.mockRestore();
     createdScript = null;
-    delete (window as Record<string, unknown>)['__googleMapsInit__'];
-    delete (window as Record<string, unknown>)['google'];
+    delete (window as unknown as Record<string, unknown>)['__googleMapsInit__'];
+    delete (window as unknown as Record<string, unknown>)['google'];
   });
 
   it('rejects immediately when no Maps key is configured', async () => {
@@ -46,7 +47,7 @@ describe('loadGoogleMaps', () => {
 
     // Resolve the pending promise via the registered callback
     Object.assign(window, { google: { maps: fakeMaps } });
-    const cb = (window as Record<string, unknown>)['__googleMapsInit__'] as (() => void);
+    const cb = (window as unknown as Record<string, unknown>)['__googleMapsInit__'] as (() => void);
     cb();
 
     await expect(promise).resolves.toBe(fakeMaps);
@@ -58,7 +59,7 @@ describe('loadGoogleMaps', () => {
     const promise = loadGoogleMaps();
 
     Object.assign(window, { google: { maps: fakeMaps } });
-    const cb = (window as Record<string, unknown>)['__googleMapsInit__'] as (() => void);
+    const cb = (window as unknown as Record<string, unknown>)['__googleMapsInit__'] as (() => void);
     cb();
 
     await expect(promise).resolves.toBe(fakeMaps);
@@ -81,7 +82,7 @@ describe('loadGoogleMaps', () => {
     expect(p1).toBe(p2);
 
     Object.assign(window, { google: { maps: fakeMaps } });
-    const cb = (window as Record<string, unknown>)['__googleMapsInit__'] as (() => void);
+    const cb = (window as unknown as Record<string, unknown>)['__googleMapsInit__'] as (() => void);
     cb();
     await p1;
   });

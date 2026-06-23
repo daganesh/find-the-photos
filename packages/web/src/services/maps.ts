@@ -18,8 +18,8 @@ export function loadGoogleMaps(): Promise<typeof google.maps> {
     // the script is loaded asynchronously, otherwise it shows the "Oops!
     // Something went wrong" error overlay.
     const callbackName = '__googleMapsInit__';
-    (window as Record<string, unknown>)[callbackName] = () => {
-      delete (window as Record<string, unknown>)[callbackName];
+    (window as unknown as Record<string, unknown>)[callbackName] = () => {
+      delete (window as unknown as Record<string, unknown>)[callbackName];
       window.google?.maps ? resolve(window.google.maps) : reject(new Error('Maps failed to load'));
     };
 
@@ -27,7 +27,7 @@ export function loadGoogleMaps(): Promise<typeof google.maps> {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${env.googleMapsApiKey}&libraries=marker&callback=${callbackName}&loading=async`;
     script.async = true;
     script.onerror = () => {
-      delete (window as Record<string, unknown>)[callbackName];
+      delete (window as unknown as Record<string, unknown>)[callbackName];
       reject(new Error('Maps failed to load'));
     };
     document.head.appendChild(script);
