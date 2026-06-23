@@ -24,6 +24,8 @@ interface FinalItemPanelProps {
   skippedItemIds?: Set<string>;
   /** Called when the player retries a skipped item. */
   onRetry?: (itemId: string) => void;
+  /** Called when the player taps "Continue to results" on the prize screen. */
+  onPrizeContinue?: () => void;
 }
 
 /** Reveals final-item clues progressively as hunt items are solved. */
@@ -38,6 +40,7 @@ export function FinalItemPanel({
   showBreakdown,
   skippedItemIds,
   onRetry,
+  onPrizeContinue,
 }: FinalItemPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [answer, setAnswer] = useState('');
@@ -60,9 +63,7 @@ export function FinalItemPanel({
     return revealed;
   }, [items, solvedItemIds, totalPositions]);
 
-  // For code kind only: pre-fill collected characters so the player fills in blanks.
-  // Riddle kind is intentionally excluded — the player must type the full answer
-  // themselves; pre-filling would hand them the answer as they collect letters.
+  // Pre-fill collected characters for code kind.
   useEffect(() => {
     if (finalItem.kind !== 'code') return;
     if (revealedPositions.size === 0) return;
@@ -82,31 +83,152 @@ export function FinalItemPanel({
     }
   }
 
+  // ── Code kind: solved — open chest with prize ──────────────────────────────
+  if (solved && finalItem.kind === 'code') {
+    const hasPrize = finalItem.prizeImageUrl || finalItem.revealAnswer;
+    return (
+      <div className="stack center" style={{ alignItems: 'center' }}>
+        <div style={{ position: 'relative', display: 'inline-block', maxWidth: 280, width: '100%' }}>
+          <img
+            src="/chest-open.png"
+            alt="Open treasure chest"
+            style={{ width: '100%', display: 'block' }}
+          />
+          {hasPrize && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '36%',
+                left: '50%',
+                transform: 'translate(-50%, 0)',
+                width: '54%',
+                textAlign: 'center',
+                pointerEvents: 'none',
+              }}
+            >
+              {finalItem.prizeImageUrl ? (
+                <img
+                  src={mediaUrl(finalItem.prizeImageUrl)}
+                  alt="Prize"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: 90,
+                    objectFit: 'contain',
+                    borderRadius: 6,
+                    filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))',
+                  }}
+                />
+              ) : (
+                <p
+                  style={{
+                    margin: 0,
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    color: '#fff',
+                    textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+                    lineHeight: 1.3,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {finalItem.revealAnswer}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        {onPrizeContinue && (
+          <Button variant="happy" block onClick={onPrizeContinue}>
+            ✨ Continue to results
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // ── Non-code solved (shouldn't normally render, but keep a fallback) ───────
   if (solved) {
     return (
       <Card>
         <div className="stack center">
           <div style={{ fontSize: '2.5rem' }}>🏆</div>
           <strong>Final challenge solved!</strong>
-          {finalItem.kind === 'code' && finalItem.revealAnswer && (
-            <>
-              <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>The answer is:</p>
-              <p style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>
-                {finalItem.revealAnswer}
-              </p>
-            </>
-          )}
         </div>
       </Card>
     );
   }
 
+  // ── Code kind: not solved — locked chest UI ────────────────────────────────
+  if (finalItem.kind === 'code') {
+    const cluesLabel = !finalItem.answer
+      ? 'collecting clues…'
+      : `${revealedPositions.size}/${totalPositions} characters collected`;
+
+    return (
+      <div className="stack">
+        {/* Locked chest — tap to open code entry */}
+        <div style={{ textAlign: 'center' }}>
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              display: 'inline-block',
+            }}
+            aria-label={expanded ? 'Hide code entry' : 'Tap to enter the code'}
+          >
+            <img
+              src="/chest-locked.png"
+              alt="Locked treasure chest"
+              style={{ width: 200, maxWidth: '70vw', display: 'block', margin: '0 auto' }}
+            />
+          </button>
+          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'var(--color-ink-soft)' }}>
+            {expanded ? '▲ Hide code entry' : '🔒 Tap to enter the code'}
+          </p>
+          <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--color-ink-soft)' }}>
+            {cluesLabel}
+          </p>
+        </div>
+
+        {expanded && (
+          <>
+            <CodeAssemblyDisplay answer={finalItem.answer} revealed={revealedPositions} />
+
+            <ItemBreakdown
+              finalItem={finalItem}
+              items={items}
+              solvedItemIds={solvedItemIds}
+              skippedItemIds={skippedItemIds}
+              onRetry={onRetry}
+              totalPositions={totalPositions}
+            />
+
+            {error && <Banner tone="no">{error}</Banner>}
+
+            <input
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              placeholder="Fill in the blanks and enter the full code…"
+              disabled={busy}
+              onKeyDown={(e) => { if (e.key === 'Enter' && answer.trim()) handleSubmit(); }}
+              style={{ fontFamily: 'monospace', letterSpacing: '0.15em', textTransform: 'uppercase' }}
+            />
+            <Button variant="happy" block disabled={busy || !answer.trim()} onClick={handleSubmit}>
+              {busy ? 'Checking…' : '🔓 Unlock'}
+            </Button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── Riddle / jigsaw (legacy) ───────────────────────────────────────────────
   const cluesLabel = finalItem.kind === 'jigsaw'
     ? `${revealedPositions.size}/${totalPositions} pieces`
     : !finalItem.answer
     ? 'clues collecting…'
-    : finalItem.kind === 'code'
-    ? `${revealedPositions.size}/${totalPositions} characters collected`
     : `${revealedPositions.size}/${totalPositions} letters`;
 
   return (
@@ -146,8 +268,6 @@ export function FinalItemPanel({
                 seed={finalItem.answer}
                 difficulty={finalItem.difficulty ?? 1}
               />
-            ) : finalItem.kind === 'code' ? (
-              <CodeAssemblyDisplay answer={finalItem.answer} revealed={revealedPositions} />
             ) : (
               <AnswerMask answer={finalItem.answer} revealed={revealedPositions} />
             )}
@@ -167,13 +287,11 @@ export function FinalItemPanel({
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               placeholder={
-                finalItem.kind === 'code' ? 'Fill in the blanks and enter the full code…' :
                 finalItem.kind === 'riddle' && revealedPositions.size > 0 ? 'Fill in the blanks…' :
                 'Your answer…'
               }
               disabled={busy}
               onKeyDown={(e) => { if (e.key === 'Enter' && answer.trim()) handleSubmit(); }}
-              style={finalItem.kind === 'code' ? { fontFamily: 'monospace', letterSpacing: '0.15em', textTransform: 'uppercase' } : undefined}
             />
             <Button variant="happy" block disabled={busy || !answer.trim()} onClick={handleSubmit}>
               {busy ? 'Checking…' : '✅ Submit'}

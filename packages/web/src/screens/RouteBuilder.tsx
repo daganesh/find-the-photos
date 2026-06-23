@@ -135,6 +135,8 @@ export function RouteBuilder() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverError, setCoverError] = useState('');
   const [uploadingFinalPhoto, setUploadingFinalPhoto] = useState(false);
+  const [uploadingPrizeImage, setUploadingPrizeImage] = useState(false);
+  const [prizeTypeOverride, setPrizeTypeOverride] = useState<'text' | 'image' | null>(null);
   const [blockedIssues, setBlockedIssues] = useState<ModerationIssue[]>([]);
   const [flaggedIssues, setFlaggedIssues] = useState<ModerationIssue[]>([]);
   const [flagOverride, setFlagOverride] = useState('');
@@ -257,7 +259,7 @@ export function RouteBuilder() {
   }
 
   async function updateFinalItem(patch: Partial<FinalItem>) {
-    const next: Route = { ...route!, finalItem: { ...(route!.finalItem ?? { kind: 'riddle', answer: '' }), ...patch } };
+    const next: Route = { ...route!, finalItem: { ...(route!.finalItem ?? { kind: 'code', answer: '' }), ...patch } };
     await persist(next);
   }
 
@@ -268,6 +270,17 @@ export function RouteBuilder() {
       await updateFinalItem({ photoUrl: url });
     } finally {
       setUploadingFinalPhoto(false);
+    }
+  }
+
+  async function addPrizeImage(file: File) {
+    setUploadingPrizeImage(true);
+    try {
+      const { url } = await api.uploadFile(file, file.name);
+      await updateFinalItem({ prizeImageUrl: url });
+      setPrizeTypeOverride(null);
+    } finally {
+      setUploadingPrizeImage(false);
     }
   }
 
@@ -508,99 +521,78 @@ export function RouteBuilder() {
 
         {/* ── Final item ─────────────────────────────────────────────────── */}
         <h2>Final item (optional)</h2>
-        <p className="muted">A bonus challenge unlocked only after all items are found — players use clues collected along the way to solve it.</p>
+        <p className="muted">A code-lock bonus challenge unlocked after all items are found — players use characters collected along the way to crack it.</p>
         {finalItem ? (
           <Card>
             <div className="stack">
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong>🏆 Final item</strong>
-                <Button variant="ghost" onClick={() => persist({ ...route, finalItem: undefined })}>Remove</Button>
+                <strong>🔒 Code lock</strong>
+                <Button variant="ghost" onClick={() => { setPrizeTypeOverride(null); persist({ ...route, finalItem: undefined }); }}>Remove</Button>
               </div>
-
-              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                {(['riddle', 'code', 'jigsaw'] as const).map((k) => (
-                  <Button
-                    key={k}
-                    variant={finalItem.kind === k ? 'primary' : 'ghost'}
-                    onClick={() => updateFinalItem({ kind: k })}
-                  >
-                    {k === 'riddle' ? '❓ Riddle' : k === 'code' ? '🔢 Code' : '🧩 Jigsaw'}
-                  </Button>
-                ))}
-              </div>
-
-              {finalItem.kind === 'riddle' && (
-                <div>
-                  <label className="field-label">Riddle question</label>
-                  <textarea
-                    rows={2}
-                    value={finalItem.riddleQuestion ?? ''}
-                    placeholder="Shown to players from the start…"
-                    onChange={(e) => updateFinalItem({ riddleQuestion: e.target.value })}
-                  />
-                </div>
-              )}
-
-              {finalItem.kind === 'jigsaw' && (
-                <>
-                  <div>
-                    <span className="field-label">Puzzle photo</span>
-                    {finalItem.photoUrl && (
-                      <img src={mediaUrl(finalItem.photoUrl)} alt="" style={{ width: '100%', borderRadius: 'var(--radius)', maxHeight: 160, objectFit: 'cover', marginBottom: 'var(--space-2)' }} />
-                    )}
-                    <PhotoCapture onCapture={addFinalItemPhoto} variant="accent" disabled={uploadingFinalPhoto}>
-                      📷 {finalItem.photoUrl ? 'Change photo' : 'Add photo'}
-                    </PhotoCapture>
-                  </div>
-                  <div>
-                    <span className="field-label">Difficulty</span>
-                    <div className="row" style={{ gap: 8 }}>
-                      {([1, 2, 3] as const).map((d) => (
-                        <Button key={d} variant={finalItem.difficulty === d ? 'primary' : 'ghost'} onClick={() => updateFinalItem({ difficulty: d })}>
-                          {d === 1 ? '3×3' : d === 2 ? '5×5' : '10×10'}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
 
               <div>
-                <label className="field-label">{finalItem.kind === 'code' ? 'Code' : 'Answer'}</label>
+                <label className="field-label">Code</label>
                 <input
                   value={finalItem.answer}
-                  placeholder={finalItem.kind === 'code' ? 'e.g. CASTLE or 2847' : 'The final answer…'}
+                  placeholder="e.g. CASTLE or 2847"
                   onChange={(e) => updateFinalItem({ answer: e.target.value })}
+                  style={{ fontFamily: 'monospace', letterSpacing: '0.1em', textTransform: 'uppercase' }}
                 />
-                {!finalItem.answer && finalItem.kind !== 'jigsaw' && (
+                {!finalItem.answer && (
                   <p style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.8rem', margin: '4px 0 0' }}>
-                    ⚠️ Required — players can't complete this without an answer.
+                    ⚠️ Required — players can't open the chest without a code.
                   </p>
                 )}
               </div>
 
-              {finalItem.kind === 'code' && (
-                <div>
-                  <label className="field-label">Real answer (revealed after code is entered)</label>
+              {/* Prize */}
+              <div>
+                <span className="field-label">Prize (revealed inside the open chest)</span>
+                <div className="row" style={{ gap: 8, marginBottom: 'var(--space-2)' }}>
+                  <Button
+                    variant={(prizeTypeOverride ?? (finalItem.prizeImageUrl ? 'image' : 'text')) === 'text' ? 'primary' : 'ghost'}
+                    onClick={() => {
+                      setPrizeTypeOverride('text');
+                      updateFinalItem({ prizeImageUrl: undefined });
+                    }}
+                  >
+                    📝 Text
+                  </Button>
+                  <Button
+                    variant={(prizeTypeOverride ?? (finalItem.prizeImageUrl ? 'image' : 'text')) === 'image' ? 'primary' : 'ghost'}
+                    onClick={() => setPrizeTypeOverride('image')}
+                  >
+                    🖼️ Image
+                  </Button>
+                </div>
+                {(prizeTypeOverride ?? (finalItem.prizeImageUrl ? 'image' : 'text')) === 'image' ? (
+                  <div>
+                    {finalItem.prizeImageUrl && (
+                      <img
+                        src={mediaUrl(finalItem.prizeImageUrl)}
+                        alt="Prize"
+                        style={{ width: 120, borderRadius: 8, objectFit: 'cover', marginBottom: 8, display: 'block' }}
+                      />
+                    )}
+                    <PhotoCapture onCapture={addPrizeImage} variant="accent" disabled={uploadingPrizeImage}>
+                      📷 {finalItem.prizeImageUrl ? 'Change prize image' : 'Upload prize image'}
+                    </PhotoCapture>
+                  </div>
+                ) : (
                   <input
                     value={finalItem.revealAnswer ?? ''}
                     placeholder="e.g. The treasure is under the old oak tree"
                     onChange={(e) => updateFinalItem({ revealAnswer: e.target.value || undefined })}
                   />
-                  <p className="muted" style={{ fontSize: '0.8rem', margin: '4px 0 0' }}>
-                    Optional. Displayed to players after they enter the correct code.
-                  </p>
-                </div>
-              )}
-
-              {route.items.length > 0 && finalItem.answer && finalItem.kind !== 'jigsaw' && (
-                <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>
-                  Each solved item reveals ~{chunkSize} character{chunkSize !== 1 ? 's' : ''} of the {finalItem.kind === 'code' ? 'code' : 'answer'}.
+                )}
+                <p className="muted" style={{ fontSize: '0.8rem', margin: '4px 0 0' }}>
+                  Optional. Shown inside the open chest after the correct code is entered.
                 </p>
-              )}
-              {route.items.length > 0 && finalItem.kind === 'jigsaw' && (
+              </div>
+
+              {route.items.length > 0 && finalItem.answer && (
                 <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>
-                  Each solved item reveals ~{chunkSize} of {totalPositions} puzzle piece{totalPositions !== 1 ? 's' : ''}.
+                  Each solved item reveals ~{chunkSize} character{chunkSize !== 1 ? 's' : ''} of the code.
                 </p>
               )}
             </div>
@@ -609,9 +601,9 @@ export function RouteBuilder() {
           <Button
             variant="ghost"
             block
-            onClick={() => persist({ ...route, finalItem: { kind: 'riddle', answer: '', riddleQuestion: '' } })}
+            onClick={() => persist({ ...route, finalItem: { kind: 'code', answer: '' } })}
           >
-            🏆 Add a final item
+            🔒 Add a code-lock finale
           </Button>
         )}
 

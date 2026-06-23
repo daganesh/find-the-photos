@@ -64,10 +64,15 @@ export interface FinalItem {
   /** For jigsaw: puzzle complexity (1=3×3, 2=5×5, 3=10×10). */
   difficulty?: 1 | 2 | 3;
   /**
-   * For code kind: the real final answer revealed to the player after they
-   * enter the correct code. The code itself is the key; this is the solution.
+   * For code kind: prize text revealed inside the open chest after the correct
+   * code is entered. Mutually exclusive with prizeImageUrl — image takes precedence.
    */
   revealAnswer?: string;
+  /**
+   * For code kind: URL of a prize image revealed inside the open chest after
+   * the correct code is entered. Takes precedence over revealAnswer when set.
+   */
+  prizeImageUrl?: string;
 }
 
 export type RouteStatus = 'draft' | 'ready';

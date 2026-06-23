@@ -37,6 +37,7 @@ export function HuntPlayer() {
   const [reversed, setReversed] = useState(false);
   const prevFound = useRef(0);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
+  const [prizeAcknowledged, setPrizeAcknowledged] = useState(false);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeError, setDisputeError] = useState('');
@@ -232,33 +233,38 @@ export function HuntPlayer() {
     const skippedIds = new Set(session.steps.filter((s) => s.status === 'skipped').map((s) => s.itemId));
     const goToResults = () => navigate(`/results/${routeId}/${session.id}`, { state: { session } });
     const hasFinalItem = Boolean(routeData.finalItem);
-    const finalDone = !hasFinalItem || !!session.finalItemSolved || finalItemSkipped;
+    const finalDone = !hasFinalItem || (!!session.finalItemSolved && prizeAcknowledged) || finalItemSkipped;
 
     // ── 1. Final item gate — shown BEFORE fireworks/score ─────────────
     if (hasFinalItem && !finalDone) {
       return (
-        <Page title="🏆 Final challenge!">
+        <Page title={session.finalItemSolved ? '🎁 Your prize!' : '🏆 Final challenge!'}>
           <div className="stack">
-            <Card>
-              <p className="muted center" style={{ margin: 0 }}>
-                You found {solvedIds.size} of {items.length} items. Now for the grand finale!
-              </p>
-            </Card>
+            {!session.finalItemSolved && (
+              <Card>
+                <p className="muted center" style={{ margin: 0 }}>
+                  You found {solvedIds.size} of {items.length} items. Now for the grand finale!
+                </p>
+              </Card>
+            )}
             <FinalItemPanel
               finalItem={routeData.finalItem!}
               items={items}
               solvedItemIds={solvedIds}
               onSolve={hunt.solveFinalItem}
-              solved={false}
+              solved={!!session.finalItemSolved}
               busy={hunt.busy}
               defaultExpanded
               showBreakdown
               skippedItemIds={skippedIds}
               onRetry={(itemId) => hunt.returnToSkipped(itemId)}
+              onPrizeContinue={() => setPrizeAcknowledged(true)}
             />
-            <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
-              ⏭ Give up on the final item
-            </Button>
+            {!session.finalItemSolved && (
+              <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
+                ⏭ Give up on the final item
+              </Button>
+            )}
           </div>
         </Page>
       );
@@ -274,14 +280,6 @@ export function HuntPlayer() {
               <div className="stack center">
                 <div style={{ fontSize: '2.5rem' }}>🏆</div>
                 <strong>Final item solved! +100 bonus points!</strong>
-                {routeData.finalItem?.kind === 'code' && routeData.finalItem?.revealAnswer && (
-                  <>
-                    <p className="muted" style={{ margin: 0 }}>The answer is:</p>
-                    <p style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>
-                      {routeData.finalItem.revealAnswer}
-                    </p>
-                  </>
-                )}
               </div>
             </Card>
           )}
