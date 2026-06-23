@@ -92,7 +92,7 @@ const riddleRoute: Route = {
 const codeRoute: Route = {
   ...route,
   id: 'r3',
-  finalItem: { kind: 'code', answer: 'CASTLE', difficulty: 1 },
+  finalItem: { kind: 'code', answer: 'CASTLE', difficulty: 1, revealAnswer: 'The treasure is in the garden' },
 };
 
 const riddleFinalRoute: Route = {
@@ -256,6 +256,15 @@ describe('solveFinalItem — code kind', () => {
     await solveFinalItem(ctx, s.id, 'castle');
     const result = await solveFinalItem(ctx, s.id, 'castle');
     expect('error' in result).toBe(true);
+  });
+
+  it('preserves revealAnswer on the route after solving', async () => {
+    const { ctx } = fakeContext(codeRoute);
+    const s = await ctx.hunts.create(buildSession(codeRoute, 'hunter'));
+
+    await solveFinalItem(ctx, s.id, 'CASTLE');
+    const route = await ctx.routes.get(codeRoute.id);
+    expect(route?.finalItem?.revealAnswer).toBe('The treasure is in the garden');
   });
 });
 

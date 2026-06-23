@@ -63,6 +63,11 @@ export interface FinalItem {
   photoUrl?: string;
   /** For jigsaw: puzzle complexity (1=3×3, 2=5×5, 3=10×10). */
   difficulty?: 1 | 2 | 3;
+  /**
+   * For code kind: the real final answer revealed to the player after they
+   * enter the correct code. The code itself is the key; this is the solution.
+   */
+  revealAnswer?: string;
 }
 
 export type RouteStatus = 'draft' | 'ready';

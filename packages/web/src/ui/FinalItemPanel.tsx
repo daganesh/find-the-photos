@@ -87,7 +87,15 @@ export function FinalItemPanel({
       <Card>
         <div className="stack center">
           <div style={{ fontSize: '2.5rem' }}>🏆</div>
-          <strong>Final item solved!</strong>
+          <strong>Final challenge solved!</strong>
+          {finalItem.kind === 'code' && finalItem.revealAnswer && (
+            <>
+              <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>The answer is:</p>
+              <p style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>
+                {finalItem.revealAnswer}
+              </p>
+            </>
+          )}
         </div>
       </Card>
     );

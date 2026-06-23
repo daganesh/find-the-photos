@@ -352,6 +352,9 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
   // Navigate to results when done (after user dismisses celebration).
   if (complete && !celebrateItemId) {
+    const codeReveal = session.finalItemSolved &&
+      route.data.finalItem?.kind === 'code' &&
+      route.data.finalItem?.revealAnswer;
     return withToast(
       <Page title="Done!">
         <Fireworks />
@@ -359,6 +362,14 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           <div className="stack center pop-in">
             <div style={{ fontSize: '3.5rem' }}>🏆</div>
             <h2>Hunt complete!</h2>
+            {codeReveal && (
+              <>
+                <p className="muted" style={{ margin: 0 }}>The answer is:</p>
+                <p style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>
+                  {route.data.finalItem!.revealAnswer}
+                </p>
+              </>
+            )}
             <ScorePill score={session.totalScore} />
             <Button size="lg" block variant="happy"
               onClick={() => navigate(`/team/${teamId}/results`, { state: { session, teamId } })}>

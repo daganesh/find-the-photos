@@ -579,6 +579,20 @@ export function RouteBuilder() {
                 )}
               </div>
 
+              {finalItem.kind === 'code' && (
+                <div>
+                  <label className="field-label">Real answer (revealed after code is entered)</label>
+                  <input
+                    value={finalItem.revealAnswer ?? ''}
+                    placeholder="e.g. The treasure is under the old oak tree"
+                    onChange={(e) => updateFinalItem({ revealAnswer: e.target.value || undefined })}
+                  />
+                  <p className="muted" style={{ fontSize: '0.8rem', margin: '4px 0 0' }}>
+                    Optional. Displayed to players after they enter the correct code.
+                  </p>
+                </div>
+              )}
+
               {route.items.length > 0 && finalItem.answer && finalItem.kind !== 'jigsaw' && (
                 <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>
                   Each solved item reveals ~{chunkSize} character{chunkSize !== 1 ? 's' : ''} of the {finalItem.kind === 'code' ? 'code' : 'answer'}.
