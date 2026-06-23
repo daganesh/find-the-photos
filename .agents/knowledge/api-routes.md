@@ -14,10 +14,10 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/routes` | Optional | List all `ready` routes + caller's own drafts |
-| POST | `/api/routes` | Required | Create a draft route; body: `{ title, description? }` |
-| GET | `/api/routes/:id` | Optional | Get full route (drafts visible to owner only) |
-| PATCH | `/api/routes/:id` | Owner | Update title/description/coverPhotoUrl/items |
+| GET | `/api/routes` | Optional | List all `ready` + `public` routes + caller's own routes (any visibility/status) |
+| POST | `/api/routes` | Required | Create a draft route; body: `{ title, description?, visibility?: 'public'\|'private' }` |
+| GET | `/api/routes/:id` | Optional | Get full route; private routes require authentication; drafts visible to owner only |
+| PATCH | `/api/routes/:id` | Owner | Update title/description/coverPhotoUrl/items/visibility |
 | DELETE | `/api/routes/:id` | Owner | Delete route |
 | POST | `/api/routes/:id/moderate` | Owner | AI text moderation check → `ModerationResult` |
 | POST | `/api/routes/:id/finalize` | Owner | Mark draft `→ ready`; validates playability |
@@ -57,7 +57,7 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/reports` | Required | List all reports |
+| GET | `/api/reports` | Admin | List all reports (includes reporter PII — admin only) |
 | POST | `/api/reports` | Required | Submit a bug/feature report; deduplicates via word-overlap |
 | PATCH | `/api/reports/:id` | Admin | Update `status` and/or `severity` of a report |
 | POST | `/api/reports/:id/github-issue` | Admin | File the report as a GitHub issue; body `{ assignToAgent?: boolean }` (default `true`) posts an `@claude` comment to hand it to Claude. Idempotent (returns the existing issue if already filed); flips `new` → `in_progress` and records `report.github`. Returns 503 if `GITHUB_TOKEN` is unset. |
@@ -65,11 +65,12 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 ## Team Chat (`/api/teams/:teamId/chat`)
 
 In-memory only — messages are lost when the server restarts. Buffer capped at 100 messages per team.
+**Access requires team membership** — both GET and POST return 403 for non-members.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/teams/:teamId/chat?since=<iso>` | Required | Get messages, optionally only those after `since` |
-| POST | `/api/teams/:teamId/chat` | Required | Send a message; body: `{ text: string }` |
+| GET | `/api/teams/:teamId/chat?since=<iso>` | Team member | Get messages, optionally only those after `since` |
+| POST | `/api/teams/:teamId/chat` | Team member | Send a message; body: `{ text: string }` |
 
 ## Admin (`/api/admin`) — `ADMIN_EMAILS` gate
 

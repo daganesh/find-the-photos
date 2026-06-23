@@ -36,13 +36,13 @@ export async function verifyGoogleCredential(credential: string): Promise<User> 
 
 /** Issue a signed session token the client sends back on each request. */
 export function issueSession(user: User): string {
-  return jwt.sign(user, config.sessionSecret, { expiresIn: SESSION_TTL });
+  return jwt.sign(user, config.sessionSecret, { expiresIn: SESSION_TTL, algorithm: 'HS256' });
 }
 
 /** Verify a session token and return the user, or undefined if invalid. */
 export function readSession(token: string): User | undefined {
   try {
-    const decoded = jwt.verify(token, config.sessionSecret) as jwt.JwtPayload & User;
+    const decoded = jwt.verify(token, config.sessionSecret, { algorithms: ['HS256'] }) as jwt.JwtPayload & User;
     return {
       id: decoded.id,
       name: decoded.name,

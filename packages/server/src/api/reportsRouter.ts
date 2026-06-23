@@ -18,7 +18,7 @@ function wordOverlap(a: string, b: string): number {
 export function reportsRouter(ctx: AppContext): Router {
   const router = Router();
 
-  router.get('/', requireAuth, async (_req, res, next) => {
+  router.get('/', requireAdmin, async (_req, res, next) => {
     try {
       const reports = await ctx.reports.list();
       res.json({ reports });

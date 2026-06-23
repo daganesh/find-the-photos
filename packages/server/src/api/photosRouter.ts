@@ -4,9 +4,15 @@ import type { UploadedPhotoResponse } from '@ftp/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth } from '../auth/middleware.js';
 
+const ALLOWED_MIMES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+  'audio/webm', 'audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/wav',
+]);
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 }, // 15MB per photo/clip
+  fileFilter: (_req, file, cb) => cb(null, ALLOWED_MIMES.has(file.mimetype)),
 });
 
 /** `/api/photos` — upload item photos and audio hints. */

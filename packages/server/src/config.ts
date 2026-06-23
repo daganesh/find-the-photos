@@ -38,7 +38,7 @@ export const config = {
   },
 
   /** Emails allowed to access /api/admin endpoints. Comma-separated in env. */
-  adminEmails: optional('ADMIN_EMAILS', 'dagane@gmail.com').split(',').map((e) => e.trim()).filter(Boolean),
+  adminEmails: optional('ADMIN_EMAILS').split(',').map((e) => e.trim()).filter(Boolean),
   gemini: {
     apiKey: optional('GEMINI_API_KEY'),
     model: optional('GEMINI_MODEL', 'gemini-2.0-flash'),

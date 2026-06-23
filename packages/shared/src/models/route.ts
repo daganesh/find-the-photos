@@ -66,6 +66,7 @@ export interface FinalItem {
 }
 
 export type RouteStatus = 'draft' | 'ready';
+export type RouteVisibility = 'public' | 'private';
 
 /** A player's star rating of a route they finished. */
 export interface Rating {
@@ -87,6 +88,8 @@ export interface Route {
   authorName?: string;
   items: Item[];
   status: RouteStatus;
+  /** Controls whether the route appears in public browse listings. Defaults to 'public'. */
+  visibility?: RouteVisibility;
   createdAt: string; // ISO timestamp
   ratings: Rating[];
   /** Average of ratings.stars, or undefined when unrated. */

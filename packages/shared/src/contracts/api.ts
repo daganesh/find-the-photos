@@ -1,4 +1,4 @@
-import type { FinalItem, Hint, Item, Route, Rating } from '../models/route.js';
+import type { FinalItem, Hint, Item, Route, Rating, RouteVisibility } from '../models/route.js';
 import type { GeoPoint } from '../models/geo.js';
 import type { HuntSession, MatchVerdict, StepProgress } from '../models/hunt.js';
 import type { User } from '../models/user.js';
@@ -22,6 +22,7 @@ export interface SessionResponse {
 export interface CreateRouteRequest {
   title: string;
   description?: string;
+  visibility?: RouteVisibility;
 }
 
 export interface ItemInput {
@@ -37,6 +38,7 @@ export interface UpdateRouteRequest {
   title?: string;
   description?: string;
   coverPhotoUrl?: string;
+  visibility?: RouteVisibility;
   /** Replace the full ordered item list (handles add/edit/reorder/remove). */
   items?: Item[];
   /** Set or clear the optional final item. Pass null to remove. */
@@ -53,6 +55,7 @@ export interface RouteSummary {
   authorName?: string;
   itemCount: number;
   status: Route['status'];
+  visibility?: RouteVisibility;
   avgRating?: number;
   createdAt: string;
   /** GPS of the first item that has a location — shown as "Start" on cards. */

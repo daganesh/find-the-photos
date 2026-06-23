@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import type { DisputeRequest, EscalateHelpRequest, SolveFinalItemRequest, SolveRiddleRequest, StepProgress, SubmitPhotoResponse } from '@ftp/shared';
+import type { DisputeRequest, EscalateHelpRequest, HuntSession, SolveFinalItemRequest, SolveRiddleRequest, StepProgress, SubmitPhotoResponse } from '@ftp/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import {
@@ -15,13 +15,26 @@ import {
   useHelp,
 } from '../hunt/huntService.js';
 
+const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, ALLOWED_IMAGE_MIMES.has(file.mimetype)),
 });
 
 const lastStep = (steps: StepProgress[], itemId: string): StepProgress =>
   steps.find((s) => s.itemId === itemId)!;
+
+/** Returns true when userId may act on this session (owner or team member). */
+async function canAccessSession(ctx: AppContext, session: HuntSession, userId: string): Promise<boolean> {
+  if (session.hunterId === userId) return true;
+  if (session.teamId) {
+    const team = await ctx.teams.get(session.teamId);
+    return team?.members.some((m) => m.userId === userId) ?? false;
+  }
+  return false;
+}
 
 /** `/api/hunt` — start a play-through and act on each step. */
 export function huntRouter(ctx: AppContext): Router {
@@ -90,10 +103,12 @@ export function huntRouter(ctx: AppContext): Router {
     }
   });
 
-  router.get('/:sessionId', requireAuth, async (req, res, next) => {
+  router.get('/:sessionId', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const session = await ctx.hunts.get(req.params.sessionId);
       if (!session) return void res.status(404).json({ error: 'Hunt not found' });
+      if (!await canAccessSession(ctx, session, req.user!.id))
+        return void res.status(403).json({ error: 'Not your session' });
       res.json({ session });
     } catch (err) {
       next(err);
@@ -122,6 +137,8 @@ export function huntRouter(ctx: AppContext): Router {
         if (!req.file) return void res.status(400).json({ error: 'No photo uploaded' });
         const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
         if ('error' in found) return void res.status(found.status).json({ error: found.error });
+        if (!await canAccessSession(ctx, found.session, req.user!.id))
+          return void res.status(403).json({ error: 'Not your session' });
 
         const session = await submitPhoto(ctx, found, {
           base64: req.file.buffer.toString('base64'),
@@ -141,10 +158,12 @@ export function huntRouter(ctx: AppContext): Router {
   );
 
   // Ask for the next level of help.
-  router.post('/:sessionId/steps/:itemId/help', requireAuth, async (req, res, next) => {
+  router.post('/:sessionId/steps/:itemId/help', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
       if ('error' in found) return void res.status(found.status).json({ error: found.error });
+      if (!await canAccessSession(ctx, found.session, req.user!.id))
+        return void res.status(403).json({ error: 'Not your session' });
       const { hunterLocation } = req.body as EscalateHelpRequest;
       const session = await useHelp(ctx, found, hunterLocation);
       res.json({ session, step: lastStep(session.steps, req.params.itemId) });
@@ -154,10 +173,12 @@ export function huntRouter(ctx: AppContext): Router {
   });
 
   // Give up on this item.
-  router.post('/:sessionId/steps/:itemId/skip', requireAuth, async (req, res, next) => {
+  router.post('/:sessionId/steps/:itemId/skip', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
       if ('error' in found) return void res.status(found.status).json({ error: found.error });
+      if (!await canAccessSession(ctx, found.session, req.user!.id))
+        return void res.status(403).json({ error: 'Not your session' });
       const session = await skip(ctx, found);
       res.json({ session, step: lastStep(session.steps, req.params.itemId) });
     } catch (err) {
@@ -166,10 +187,12 @@ export function huntRouter(ctx: AppContext): Router {
   });
 
   // Hunter insists the AI was wrong — override to found.
-  router.post('/:sessionId/steps/:itemId/dispute', requireAuth, async (req, res, next) => {
+  router.post('/:sessionId/steps/:itemId/dispute', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
       if ('error' in found) return void res.status(found.status).json({ error: found.error });
+      if (!await canAccessSession(ctx, found.session, req.user!.id))
+        return void res.status(403).json({ error: 'Not your session' });
       const { description } = req.body as DisputeRequest;
       if (!description?.trim()) {
         return void res.status(400).json({ error: 'A description is required to dispute' });
@@ -183,10 +206,12 @@ export function huntRouter(ctx: AppContext): Router {
   });
 
   // Submit a text answer to a riddle item.
-  router.post('/:sessionId/steps/:itemId/solve', requireAuth, async (req, res, next) => {
+  router.post('/:sessionId/steps/:itemId/solve', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
       if ('error' in found) return void res.status(found.status).json({ error: found.error });
+      if (!await canAccessSession(ctx, found.session, req.user!.id))
+        return void res.status(403).json({ error: 'Not your session' });
       const { answer } = req.body as SolveRiddleRequest;
       if (!answer?.trim()) {
         return void res.status(400).json({ error: 'An answer is required' });
@@ -200,8 +225,12 @@ export function huntRouter(ctx: AppContext): Router {
   });
 
   // Submit an answer for the optional final item.
-  router.post('/:sessionId/solve-final', requireAuth, async (req, res, next) => {
+  router.post('/:sessionId/solve-final', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
+      const session = await ctx.hunts.get(req.params.sessionId);
+      if (!session) return void res.status(404).json({ error: 'Hunt not found' });
+      if (!await canAccessSession(ctx, session, req.user!.id))
+        return void res.status(403).json({ error: 'Not your session' });
       const { answer } = req.body as SolveFinalItemRequest;
       if (!answer?.trim()) {
         return void res.status(400).json({ error: 'An answer is required' });
@@ -215,8 +244,12 @@ export function huntRouter(ctx: AppContext): Router {
   });
 
   // Return to a previously skipped item (with scoring penalty).
-  router.post('/:sessionId/steps/:itemId/return', requireAuth, async (req, res, next) => {
+  router.post('/:sessionId/steps/:itemId/return', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
+      const session = await ctx.hunts.get(req.params.sessionId);
+      if (!session) return void res.status(404).json({ error: 'Hunt not found' });
+      if (!await canAccessSession(ctx, session, req.user!.id))
+        return void res.status(403).json({ error: 'Not your session' });
       const result = await returnSkipped(ctx, req.params.sessionId, req.params.itemId);
       if ('error' in result) return void res.status(result.status).json({ error: result.error });
       res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });

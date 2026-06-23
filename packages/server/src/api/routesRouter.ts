@@ -12,6 +12,7 @@ import type {
 import { averageRating, isRoutePlayable } from '@ftp/shared';
 import type { AppContext } from '../context.js';
 import { optionalAuth, requireAuth, type AuthedRequest } from '../auth/middleware.js';
+import { config } from '../config.js';
 
 function toSummary(route: Route): RouteSummary {
   const located = route.items.filter((i) => i.location);
@@ -24,6 +25,7 @@ function toSummary(route: Route): RouteSummary {
     authorName: route.authorName,
     itemCount: route.items.length,
     status: route.status,
+    visibility: route.visibility,
     avgRating: route.avgRating,
     createdAt: route.createdAt,
     startLocation: located[0]?.location,
@@ -31,17 +33,29 @@ function toSummary(route: Route): RouteSummary {
   };
 }
 
+/** Return true when a photo URL in an item's photos array is safe to store.
+ *  Must be either a relative /uploads/ path or a URL under the configured S3 public base. */
+function isAllowedPhotoUrl(url: string): boolean {
+  if (url.startsWith('/uploads/')) return true;
+  const s3Base = config.s3.publicUrl;
+  if (s3Base && url.startsWith(s3Base)) return true;
+  return false;
+}
+
 /** `/api/routes` — create, edit, finalise, list, and rate routes. */
 export function routesRouter(ctx: AppContext): Router {
   const router = Router();
 
-  // Browse: all finalised routes, plus the caller's own drafts.
+  // Browse: all finalised public routes, plus the caller's own routes (any visibility).
   router.get('/', optionalAuth, async (req: AuthedRequest, res, next) => {
     try {
       const all = await ctx.routes.list();
-      const visible = all.filter(
-        (r) => r.status === 'ready' || r.authorId === req.user?.id,
-      );
+      const userId = req.user?.id;
+      const visible = all.filter((r) => {
+        if (r.authorId === userId) return true; // always see your own (drafts + private)
+        if (r.status !== 'ready') return false;  // others can't see drafts
+        return (r.visibility ?? 'public') === 'public'; // others see only public
+      });
       res.json(visible.map(toSummary));
     } catch (err) {
       next(err);
@@ -50,7 +64,7 @@ export function routesRouter(ctx: AppContext): Router {
 
   router.post('/', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const { title, description } = req.body as CreateRouteRequest;
+      const { title, description, visibility } = req.body as CreateRouteRequest;
       if (!title?.trim()) {
         res.status(400).json({ error: 'A route needs a title' });
         return;
@@ -63,6 +77,7 @@ export function routesRouter(ctx: AppContext): Router {
         authorName: req.user!.name,
         items: [],
         status: 'draft',
+        visibility: visibility === 'private' ? 'private' : 'public',
         createdAt: new Date().toISOString(),
         ratings: [],
       };
@@ -84,13 +99,18 @@ export function routesRouter(ctx: AppContext): Router {
         res.status(403).json({ error: 'This route is not ready yet' });
         return;
       }
+      // Private routes require authentication (return 404 to avoid enumeration).
+      if ((route.visibility ?? 'public') === 'private' && !req.user) {
+        res.status(404).json({ error: 'Route not found' });
+        return;
+      }
       res.json(route);
     } catch (err) {
       next(err);
     }
   });
 
-  // Edit title/description/items (full ordered replace).
+  // Edit title/description/items/visibility (full ordered replace).
   router.patch('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
       const route = await ctx.routes.get(req.params.id);
@@ -103,7 +123,20 @@ export function routesRouter(ctx: AppContext): Router {
       if (body.title !== undefined) patch.title = body.title.trim();
       if (body.description !== undefined) patch.description = body.description.trim() || undefined;
       if (body.coverPhotoUrl !== undefined) patch.coverPhotoUrl = body.coverPhotoUrl || undefined;
-      if (body.items !== undefined) patch.items = body.items;
+      if (body.visibility !== undefined) {
+        patch.visibility = body.visibility === 'private' ? 'private' : 'public';
+      }
+      if (body.items !== undefined) {
+        // Validate photo URLs to prevent SSRF via Gemini photo fetching.
+        for (const item of body.items) {
+          for (const photo of item.photos) {
+            if (!isAllowedPhotoUrl(photo.url)) {
+              return void res.status(400).json({ error: `Photo URL not allowed: ${photo.url}` });
+            }
+          }
+        }
+        patch.items = body.items;
+      }
       if (body.finalItem !== undefined) patch.finalItem = body.finalItem ?? undefined;
       res.json(await ctx.routes.update(route.id, patch));
     } catch (err) {

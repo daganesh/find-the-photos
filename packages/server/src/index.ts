@@ -14,6 +14,10 @@ function photoStatus(): string {
 }
 
 async function start() {
+  if (config.production && config.sessionSecret === 'dev-insecure-secret-change-me') {
+    throw new Error('FATAL: SESSION_SECRET must be set to a strong random secret in production');
+  }
+
   if (config.databaseUrl) {
     await initDb();
   }
