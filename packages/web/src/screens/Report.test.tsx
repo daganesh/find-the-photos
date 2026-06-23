@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { Report } from './Report.js';
 
@@ -17,6 +17,8 @@ function renderReport() {
     </MemoryRouter>,
   );
 }
+
+afterEach(cleanup);
 
 describe('Report screen', () => {
   it('renders Type and Severity toggle buttons', () => {
