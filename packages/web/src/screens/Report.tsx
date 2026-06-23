@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { BugReport, ReportSeverity, ReportType } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { useAsync } from '../hooks/useAsync.js';
+import { useAuth } from '../auth/AuthContext.js';
 import { Banner, Button, Card, Page, Spinner } from '../ui/index.js';
 
 const STATUS_LABELS: Record<BugReport['status'], string> = {
@@ -19,6 +20,7 @@ const STATUS_COLORS: Record<BugReport['status'], string> = {
 };
 
 export function Report() {
+  const { user } = useAuth();
   const reports = useAsync(() => api.listReports(), []);
   const [type, setType] = useState<ReportType>('bug');
   const [severity, setSeverity] = useState<ReportSeverity>(2);
@@ -100,7 +102,7 @@ export function Report() {
 
         {list.length > 0 && (
           <>
-            <h3 style={{ margin: 0 }}>All reports</h3>
+            <h3 style={{ margin: 0 }}>{user?.isAdmin ? 'All reports' : 'Your reports'}</h3>
             {list.map((r) => (
               <Card key={r.id}>
                 <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>

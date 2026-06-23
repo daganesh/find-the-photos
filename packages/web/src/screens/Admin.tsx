@@ -157,8 +157,12 @@ function ReportsPanel() {
   const [saving, setSaving] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [creatingIssue, setCreatingIssue] = useState<string | null>(null);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
 
-  async function handleChange(report: BugReport, patch: { status?: ReportStatus; severity?: ReportSeverity }) {
+  async function handleChange(
+    report: BugReport,
+    patch: { status?: ReportStatus; severity?: ReportSeverity; title?: string; description?: string },
+  ) {
     setSaving(report.id);
     setSaveError(null);
     try {
@@ -184,10 +188,40 @@ function ReportsPanel() {
     }
   }
 
+  async function handleLink(parentId: string, targetId: string) {
+    setSaveError(null);
+    try {
+      await api.linkReports(parentId, targetId);
+      reports.reload();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to link reports');
+    } finally {
+      setLinkingId(null);
+    }
+  }
+
+  async function handleUnlink(parentId: string, linkedId: string) {
+    setSaveError(null);
+    try {
+      await api.unlinkReport(parentId, linkedId);
+      reports.reload();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to unlink report');
+    }
+  }
+
   const all = reports.data?.reports ?? [];
-  const visible = all
+
+  // Build the set of IDs that are children so we exclude them from the top-level list.
+  const childIds = new Set(all.flatMap((r) => r.linkedReportIds ?? []));
+
+  const filtered = all
     .filter((r) => typeFilter === 'all' || r.type === typeFilter)
-    .filter((r) => statusFilter === 'all' || r.status === statusFilter)
+    .filter((r) => statusFilter === 'all' || r.status === statusFilter);
+
+  // Root reports: not referenced as a child by any other report.
+  const sorted = filtered
+    .filter((r) => !childIds.has(r.id))
     .sort((a, b) => {
       if (b.severity !== a.severity) return b.severity - a.severity;
       return b.createdAt.localeCompare(a.createdAt);
@@ -198,7 +232,7 @@ function ReportsPanel() {
 
   function exportCsv() {
     const header = ['id', 'type', 'severity', 'status', 'description', 'reporters', 'created_at'];
-    const rows = visible.map((r) => [
+    const rows = filtered.map((r) => [
       r.id,
       r.type,
       String(r.severity),
@@ -250,28 +284,59 @@ function ReportsPanel() {
       {reports.error && <Banner tone="no">{String(reports.error)}</Banner>}
       {saveError && <Banner tone="no">{saveError}</Banner>}
 
-      {!reports.loading && visible.length === 0 && (
+      {!reports.loading && sorted.length === 0 && (
         <Banner tone="ok">No reports match the current filters.</Banner>
       )}
 
-      {visible.length > 0 && (
+      {filtered.length > 0 && (
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <Button variant="ghost" onClick={exportCsv}>
-            📥 Export CSV ({visible.length})
+            📥 Export CSV ({filtered.length})
           </Button>
         </div>
       )}
 
-      {visible.map((r) => (
-        <ReportCard
-          key={r.id}
-          report={r}
-          isSaving={saving === r.id}
-          isCreatingIssue={creatingIssue === r.id}
-          onChange={(patch) => handleChange(r, patch)}
-          onCreateIssue={(assignToAgent) => handleCreateIssue(r, assignToAgent)}
-        />
-      ))}
+      {sorted.map((r) => {
+        const linkedChildren = (r.linkedReportIds ?? [])
+          .map((lid) => all.find((x) => x.id === lid))
+          .filter((x): x is BugReport => x !== undefined);
+
+        // Tickets available to link to this report: not already linked, not itself,
+        // not already a child of any parent, and not itself a parent with children.
+        const linkable = all.filter(
+          (x) =>
+            x.id !== r.id &&
+            !(r.linkedReportIds ?? []).includes(x.id) &&
+            !childIds.has(x.id) &&
+            !x.linkedReportIds?.length,
+        );
+
+        return (
+          <div key={r.id} className="stack" style={{ gap: 4 }}>
+            <ReportCard
+              report={r}
+              isSaving={saving === r.id}
+              isCreatingIssue={creatingIssue === r.id}
+              isLinkingOpen={linkingId === r.id}
+              linkableReports={linkable}
+              onChange={(patch) => handleChange(r, patch)}
+              onCreateIssue={(assignToAgent) => handleCreateIssue(r, assignToAgent)}
+              onLinkToggle={() => setLinkingId(linkingId === r.id ? null : r.id)}
+              onLink={(targetId) => handleLink(r.id, targetId)}
+            />
+            {linkedChildren.map((child) => (
+              <div key={child.id} style={{ marginLeft: 24 }}>
+                <LinkedReportCard
+                  report={child}
+                  isSaving={saving === child.id}
+                  onChange={(patch) => handleChange(child, patch)}
+                  onUnlink={() => handleUnlink(r.id, child.id)}
+                />
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -280,19 +345,42 @@ function ReportCard({
   report,
   isSaving,
   isCreatingIssue,
+  isLinkingOpen,
+  linkableReports,
   onChange,
   onCreateIssue,
+  onLinkToggle,
+  onLink,
 }: {
   report: BugReport;
   isSaving: boolean;
   isCreatingIssue: boolean;
-  onChange: (patch: { status?: ReportStatus; severity?: ReportSeverity }) => void;
+  isLinkingOpen: boolean;
+  linkableReports: BugReport[];
+  onChange: (patch: { status?: ReportStatus; severity?: ReportSeverity; title?: string; description?: string }) => void;
   onCreateIssue: (assignToAgent: boolean) => void;
+  onLinkToggle: () => void;
+  onLink: (targetId: string) => void;
 }) {
   const [assignToAgent, setAssignToAgent] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(report.title ?? '');
+  const [editDescription, setEditDescription] = useState(report.description);
+
   const date = new Date(report.createdAt).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   });
+
+  function saveEdits() {
+    onChange({ title: editTitle, description: editDescription });
+    setIsEditing(false);
+  }
+
+  function cancelEdits() {
+    setEditTitle(report.title ?? '');
+    setEditDescription(report.description);
+    setIsEditing(false);
+  }
 
   return (
     <Card>
@@ -315,14 +403,55 @@ function ReportCard({
                 {report.reporters.length} reporter{report.reporters.length !== 1 ? 's' : ''}
               </span>
               <span className="muted" style={{ fontSize: '0.75rem' }}>{date}</span>
+              {(report.linkedReportIds?.length ?? 0) > 0 && (
+                <span style={{
+                  display: 'inline-block', padding: '1px 8px', borderRadius: 999,
+                  fontSize: '0.75rem', fontWeight: 600, background: '#7c3aed22', color: '#7c3aed',
+                }}>
+                  🔗 {report.linkedReportIds!.length} linked
+                </span>
+              )}
             </div>
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>{report.description}</p>
-            {report.reporters.length > 0 && (
-              <p className="muted" style={{ margin: '4px 0 0', fontSize: '0.75rem' }}>
-                {report.reporters.map((r) => r.name).join(', ')}
-              </p>
+
+            {isEditing ? (
+              <div className="stack" style={{ gap: 6 }}>
+                <input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Title (optional)"
+                  style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }}
+                />
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={3}
+                  style={{ resize: 'vertical', fontSize: '0.9rem' }}
+                />
+                <div className="row" style={{ gap: 6 }}>
+                  <Button variant="happy" onClick={saveEdits} disabled={isSaving || !editDescription.trim()}>
+                    {isSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button variant="ghost" onClick={cancelEdits}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {report.title && <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: '0.9rem' }}>{report.title}</p>}
+                <p style={{ margin: 0, fontSize: '0.9rem' }}>{report.description}</p>
+                {report.reporters.length > 0 && (
+                  <p className="muted" style={{ margin: '4px 0 0', fontSize: '0.75rem' }}>
+                    {report.reporters.map((r) => r.name).join(', ')}
+                  </p>
+                )}
+              </>
             )}
           </div>
+
+          {!isEditing && (
+            <Button variant="ghost" onClick={() => setIsEditing(true)} disabled={isSaving}>
+              ✏️ Edit
+            </Button>
+          )}
         </div>
 
         <div className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -363,8 +492,44 @@ function ReportCard({
             </div>
           </div>
 
+          <Button variant="ghost" onClick={onLinkToggle} disabled={isSaving}>
+            🔗 Link
+          </Button>
+
           {isSaving && <span className="muted" style={{ fontSize: '0.8rem' }}>Saving…</span>}
         </div>
+
+        {/* Link picker — shown when admin clicks the Link button */}
+        {isLinkingOpen && (
+          <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
+            <p className="muted" style={{ margin: '0 0 6px', fontSize: '0.8rem' }}>
+              Select a ticket to group with this one:
+            </p>
+            {linkableReports.length === 0 ? (
+              <span className="muted" style={{ fontSize: '0.8rem' }}>No available tickets to link.</span>
+            ) : (
+              <div className="stack" style={{ gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+                {linkableReports.map((lr) => (
+                  <button
+                    key={lr.id}
+                    onClick={() => onLink(lr.id)}
+                    style={{
+                      textAlign: 'left', padding: '6px 10px', borderRadius: 6,
+                      border: '1px solid #e5e7eb', background: '#fafafa',
+                      cursor: 'pointer', fontSize: '0.85rem',
+                    }}
+                  >
+                    <span className="muted" style={{ fontSize: '0.75rem', marginRight: 6 }}>
+                      {lr.type === 'bug' ? '🐛' : '✨'}
+                    </span>
+                    {lr.title ?? lr.description.slice(0, 60)}
+                    {!lr.title && lr.description.length > 60 ? '…' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* GitHub issue: file the report and (optionally) hand it to Claude. */}
         {report.status !== 'done' && report.status !== 'new' && <div
@@ -411,6 +576,93 @@ function ReportCard({
             </>
           )}
         </div>}
+      </div>
+    </Card>
+  );
+}
+
+// A compact card for a child (linked) report, with unlink and edit capabilities.
+function LinkedReportCard({
+  report,
+  isSaving,
+  onChange,
+  onUnlink,
+}: {
+  report: BugReport;
+  isSaving: boolean;
+  onChange: (patch: { status?: ReportStatus; severity?: ReportSeverity; title?: string; description?: string }) => void;
+  onUnlink: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(report.title ?? '');
+  const [editDescription, setEditDescription] = useState(report.description);
+
+  function saveEdits() {
+    onChange({ title: editTitle, description: editDescription });
+    setIsEditing(false);
+  }
+
+  function cancelEdits() {
+    setEditTitle(report.title ?? '');
+    setEditDescription(report.description);
+    setIsEditing(false);
+  }
+
+  return (
+    <Card>
+      <div className="stack" style={{ gap: 6 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+              <span style={{
+                display: 'inline-block', padding: '1px 8px', borderRadius: 999,
+                fontSize: '0.7rem', fontWeight: 600, background: '#6b728022', color: '#6b7280',
+              }}>
+                🔗 Linked
+              </span>
+              <span className="muted" style={{ fontSize: '0.7rem' }}>
+                {report.type === 'bug' ? '🐛 Bug' : '✨ Feature'}
+              </span>
+            </div>
+            {isEditing ? (
+              <div className="stack" style={{ gap: 6 }}>
+                <input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Title (optional)"
+                  style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.85rem' }}
+                />
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={2}
+                  style={{ resize: 'vertical', fontSize: '0.85rem' }}
+                />
+                <div className="row" style={{ gap: 6 }}>
+                  <Button variant="happy" onClick={saveEdits} disabled={isSaving || !editDescription.trim()}>
+                    {isSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button variant="ghost" onClick={cancelEdits}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {report.title && <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: '0.85rem' }}>{report.title}</p>}
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>{report.description}</p>
+              </>
+            )}
+          </div>
+          <div className="row" style={{ gap: 4 }}>
+            {!isEditing && (
+              <Button variant="ghost" onClick={() => setIsEditing(true)} disabled={isSaving}>
+                ✏️
+              </Button>
+            )}
+            <Button variant="ghost" onClick={onUnlink} disabled={isSaving}>
+              ✂️ Unlink
+            </Button>
+          </div>
+        </div>
       </div>
     </Card>
   );

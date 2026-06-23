@@ -28,8 +28,8 @@ export const AGENT_PROMPT = `@claude please pick up this issue.
 
 Plan your approach, create a new branch, implement the change across the relevant packages (shared / server / web), add or update tests, then run \`npm run typecheck\` and \`npm test\`. Open a pull request for review — do not merge it yourself. Follow the conventions in CLAUDE.md and the \`.agents/\` knowledge base.`;
 
-/** Build the GitHub issue title, body, and labels from a triaged report. */
-export function buildIssueContent(report: BugReport): {
+/** Build the GitHub issue title, body, and labels from a triaged report, optionally including linked sub-tickets. */
+export function buildIssueContent(report: BugReport, linkedReports: BugReport[] = []): {
   title: string;
   body: string;
   labels: string[];
@@ -41,7 +41,20 @@ export function buildIssueContent(report: BugReport): {
   const created = new Date(report.createdAt).toISOString().slice(0, 10);
   const escapedDescription = report.description.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const body = [
+  const linkedSections = linkedReports.map((lr) => {
+    const lrTitle = lr.title ?? lr.description.split('\n')[0]!.trim();
+    const lrType = lr.type === 'bug' ? 'Bug' : 'Feature';
+    const lrEscaped = lr.description.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const lrReporters = lr.reporters.map((r) => r.name).join(', ') || 'unknown';
+    return [
+      `### Linked ${lrType}: ${lrTitle}`,
+      lrEscaped,
+      `- **Report ID:** ${lr.id}`,
+      `- **Reporters:** ${lrReporters}`,
+    ].join('\n');
+  });
+
+  const bodyParts = [
     '## Description',
     escapedDescription,
     '',
@@ -51,6 +64,13 @@ export function buildIssueContent(report: BugReport): {
     `- **Reporters:** ${report.reporters.length} user(s) — ${reporterNames}`,
     `- **First reported:** ${created}`,
     `- **Report ID:** ${report.id}`,
+  ];
+
+  if (linkedSections.length > 0) {
+    bodyParts.push('', '## Linked tickets', ...linkedSections.flatMap((s) => ['', s]));
+  }
+
+  bodyParts.push(
     '',
     '## Acceptance criteria',
     '<!-- Refine before/while working -->',
@@ -58,11 +78,11 @@ export function buildIssueContent(report: BugReport): {
     '',
     '---',
     '🤖 Filed from the Find the Photos admin panel.',
-  ].join('\n');
+  );
 
   return {
     title: `${prefix} ${short}`,
-    body,
+    body: bodyParts.join('\n'),
     labels: [TYPE_LABEL[report.type], SEVERITY_LABEL[report.severity]],
   };
 }
@@ -71,15 +91,18 @@ export function buildIssueContent(report: BugReport): {
  * File a report as a GitHub issue, optionally hand it to Claude via an @claude
  * comment, and record the issue link back onto the report. Idempotent: a report
  * that already has a linked issue is returned untouched.
+ *
+ * Pass `linkedReports` to include grouped sub-ticket content in the issue body.
  */
 export async function fileReportIssue(
   deps: { github: GitHubService; reports: ReportSink },
   report: BugReport,
   assignToAgent: boolean,
+  linkedReports: BugReport[] = [],
 ): Promise<BugReport> {
   if (report.github) return report; // already filed
 
-  const { title, body, labels } = buildIssueContent(report);
+  const { title, body, labels } = buildIssueContent(report, linkedReports);
   const issue = await deps.github.createIssue({ title, body, labels });
 
   if (assignToAgent) {
