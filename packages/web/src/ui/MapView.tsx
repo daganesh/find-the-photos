@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GeoPoint } from '@ftp/shared';
-import { googleMapsLink, loadGoogleMaps } from '../services/maps.js';
+import { googleMapsLink, loadGoogleMaps, subscribeAuthFailure } from '../services/maps.js';
 
 interface MapViewProps {
   /** The target (item) location — always shown when present. */
@@ -21,6 +21,9 @@ export function MapView({ target, hunter, showRoute }: MapViewProps) {
 
   useEffect(() => {
     let cancelled = false;
+    const unsubscribeAuth = subscribeAuthFailure(() => {
+      if (!cancelled) setFailed(true);
+    });
     loadGoogleMaps()
       .then((maps) => {
         if (cancelled || !ref.current) return;
@@ -50,6 +53,7 @@ export function MapView({ target, hunter, showRoute }: MapViewProps) {
       .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
+      unsubscribeAuth();
     };
   }, [target, hunter, showRoute]);
 
