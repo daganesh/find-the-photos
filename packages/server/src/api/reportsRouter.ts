@@ -15,6 +15,13 @@ function wordOverlap(a: string, b: string): number {
   return union === 0 ? 0 : intersection / union;
 }
 
+/** Return the subset of reports a given user is allowed to see. */
+export function visibleReports(reports: BugReport[], user: { id: string; isAdmin?: boolean }): BugReport[] {
+  return user.isAdmin
+    ? reports
+    : reports.filter((r) => r.reporters.some((rep) => rep.userId === user.id));
+}
+
 export function reportsRouter(ctx: AppContext): Router {
   const router = Router();
 
@@ -23,10 +30,7 @@ export function reportsRouter(ctx: AppContext): Router {
     try {
       const user = req.user!;
       const reports = await ctx.reports.list();
-      const visible = user.isAdmin
-        ? reports
-        : reports.filter((r) => r.reporters.some((rep) => rep.userId === user.id));
-      res.json({ reports: visible });
+      res.json({ reports: visibleReports(reports, user) });
     } catch (err) {
       next(err);
     }
