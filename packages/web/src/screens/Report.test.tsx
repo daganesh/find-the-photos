@@ -11,7 +11,9 @@ vi.mock('../services/apiClient', () => ({
   },
 }));
 
-const mockUseAuth = vi.fn().mockReturnValue({ user: null });
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn().mockReturnValue({ user: null }),
+}));
 
 vi.mock('../auth/AuthContext', () => ({
   useAuth: mockUseAuth,
