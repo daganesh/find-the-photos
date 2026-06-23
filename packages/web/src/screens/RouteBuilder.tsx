@@ -143,6 +143,8 @@ export function RouteBuilder() {
   const [publishError, setPublishError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [headerExpanded, setHeaderExpanded] = useState(true);
+  const [confirmDeleteRoute, setConfirmDeleteRoute] = useState(false);
+  const [deletingRoute, setDeletingRoute] = useState(false);
 
   // Undo state for deletions
   const [undoItem, setUndoItem] = useState<{ item: Item; index: number } | null>(null);
@@ -302,6 +304,17 @@ export function RouteBuilder() {
     } catch (e) {
       setSaving(false);
       setPublishError(e instanceof Error ? e.message : 'Could not publish — please try again');
+    }
+  }
+
+  async function deleteRouteAndGoHome() {
+    setDeletingRoute(true);
+    try {
+      await api.deleteRoute(routeId);
+      navigate('/');
+    } catch {
+      setDeletingRoute(false);
+      setConfirmDeleteRoute(false);
     }
   }
 
@@ -662,6 +675,20 @@ export function RouteBuilder() {
         </Button>
         {publishError && <Banner tone="no">{publishError}</Banner>}
         {!isRoutePlayable(route) && <p className="muted center">Add a title and at least one item to finish.</p>}
+
+        {confirmDeleteRoute ? (
+          <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 'var(--space-4)' }}>
+            <span className="muted" style={{ flex: 1, fontSize: '0.9rem' }}>Delete this hunt permanently?</span>
+            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={deleteRouteAndGoHome} disabled={deletingRoute}>
+              {deletingRoute ? '…' : '🗑 Yes, delete'}
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmDeleteRoute(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <Button variant="ghost" block onClick={() => setConfirmDeleteRoute(true)} style={{ marginTop: 'var(--space-4)', color: 'var(--color-ink-soft)' }}>
+            🗑 Delete this hunt
+          </Button>
+        )}
       </div>
     </Page>
   );
