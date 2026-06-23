@@ -95,7 +95,8 @@ export function Home() {
   }
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
-  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready' && r.itemCount > 0) ?? []) : [];
+  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'draft') ?? []) : [];
+  const myRoutes = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'ready') ?? []) : [];
   const allSessions = myHunts?.sessions ?? [];
   const activeSessions = allSessions.filter((s) => !s.finishedAt);
   const pastSessions = allSessions.filter((s) => !!s.finishedAt).slice(0, 10);
@@ -189,6 +190,21 @@ export function Home() {
                 route={r}
                 onContinue={() => navigate(`/build/${r.id}`)}
                 onDelete={() => deleteDraft(r.id)}
+              />
+            ))}
+          </CollapsibleSection>
+        )}
+
+        {user && myRoutes.length > 0 && (
+          <CollapsibleSection title="My published hunts">
+            {myRoutes.map((r) => (
+              <PublishedRouteCard
+                key={r.id}
+                route={r}
+                onPlay={() => navigate(`/hunt/${r.id}`)}
+                onEdit={() => navigate(`/build/${r.id}`)}
+                onDelete={() => deleteDraft(r.id)}
+                deleting={deletingId === r.id}
               />
             ))}
           </CollapsibleSection>
@@ -715,6 +731,68 @@ function ActiveTeamHuntCard({
       </div>
       <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
         <Button variant="happy" onClick={onRejoin}>👥 Rejoin team hunt</Button>
+      </div>
+    </Card>
+  );
+}
+
+function PublishedRouteCard({
+  route,
+  onPlay,
+  onEdit,
+  onDelete,
+  deleting,
+}: {
+  route: RouteSummary;
+  onPlay: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  return (
+    <Card>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ marginBottom: 4 }}>{route.title || 'Untitled hunt'}</h3>
+          <p className="muted" style={{ margin: 0 }}>
+            {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+            {route.avgRating !== undefined && ` · ⭐ ${route.avgRating.toFixed(1)}`}
+          </p>
+        </div>
+        <span
+          style={{
+            display: 'inline-block',
+            padding: '2px 10px',
+            borderRadius: 'var(--radius-full, 999px)',
+            background: 'var(--tint-happy, #dcfce7)',
+            color: 'var(--color-ok, #16a34a)',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            flexShrink: 0,
+            marginLeft: 'var(--space-2)',
+          }}
+        >
+          Published
+        </span>
+      </div>
+      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
+        {confirmDelete ? (
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this hunt permanently?</span>
+            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
+              {deleting ? '…' : '🗑 Yes, delete'}
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 8 }}>
+            <Button variant="happy" onClick={onPlay}>▶ Play</Button>
+            <Button variant="ghost" onClick={onEdit}>✏️ Edit</Button>
+            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+          </div>
+        )}
       </div>
     </Card>
   );
