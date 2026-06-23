@@ -1,7 +1,8 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { Report } from './Report.js';
+import { api } from '../services/apiClient.js';
 
 vi.mock('../services/apiClient', () => ({
   api: {
@@ -10,8 +11,12 @@ vi.mock('../services/apiClient', () => ({
   },
 }));
 
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn().mockReturnValue({ user: null }),
+}));
+
 vi.mock('../auth/AuthContext', () => ({
-  useAuth: vi.fn().mockReturnValue({ user: null }),
+  useAuth: mockUseAuth,
 }));
 
 function renderReport() {
@@ -21,6 +26,11 @@ function renderReport() {
     </MemoryRouter>,
   );
 }
+
+beforeEach(() => {
+  vi.mocked(api.listReports).mockResolvedValue({ reports: [] });
+  mockUseAuth.mockReturnValue({ user: null });
+});
 
 afterEach(cleanup);
 
@@ -66,5 +76,28 @@ describe('Report screen', () => {
     const featureBtn = screen.getByText('✨ Feature');
     fireEvent.click(featureBtn);
     expect(featureBtn.closest('button')?.className).toContain('btn--happy');
+  });
+});
+
+const oneReport = [{
+  id: 'r1', type: 'bug' as const, severity: 2 as const, status: 'new' as const,
+  description: 'Something broke',
+  reporters: [{ userId: 'u1', name: 'Alice', reportedAt: '2026-01-01T00:00:00Z' }],
+  createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+}];
+
+describe('Report screen — report list heading', () => {
+  it('shows "Your reports" heading for a non-admin user when reports exist', async () => {
+    vi.mocked(api.listReports).mockResolvedValue({ reports: oneReport });
+    mockUseAuth.mockReturnValue({ user: { id: 'u1', name: 'Alice', email: 'alice@example.com', isAdmin: false } });
+    renderReport();
+    await screen.findByText('Your reports');
+  });
+
+  it('shows "All reports" heading for an admin user when reports exist', async () => {
+    vi.mocked(api.listReports).mockResolvedValue({ reports: oneReport });
+    mockUseAuth.mockReturnValue({ user: { id: 'admin1', name: 'Admin', email: 'admin@example.com', isAdmin: true } });
+    renderReport();
+    await screen.findByText('All reports');
   });
 });
