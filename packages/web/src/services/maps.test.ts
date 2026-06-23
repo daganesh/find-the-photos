@@ -23,6 +23,7 @@ describe('loadGoogleMaps', () => {
     createdScript = null;
     delete (window as unknown as Record<string, unknown>)['__googleMapsInit__'];
     delete (window as unknown as Record<string, unknown>)['google'];
+    delete (window as unknown as Record<string, unknown>)['gm_authFailure'];
   });
 
   it('rejects immediately when no Maps key is configured', async () => {
@@ -85,6 +86,73 @@ describe('loadGoogleMaps', () => {
     const cb = (window as unknown as Record<string, unknown>)['__googleMapsInit__'] as (() => void);
     cb();
     await p1;
+  });
+
+  it('registers window.gm_authFailure when loading the script', async () => {
+    const { loadGoogleMaps } = await import('./maps.js');
+    loadGoogleMaps();
+    expect(typeof (window as unknown as Record<string, unknown>)['gm_authFailure']).toBe('function');
+  });
+
+  it('notifies subscribeAuthFailure handlers when gm_authFailure fires', async () => {
+    const { loadGoogleMaps, subscribeAuthFailure } = await import('./maps.js');
+    loadGoogleMaps();
+
+    const handler = vi.fn();
+    subscribeAuthFailure(handler);
+
+    const authFailure = (window as unknown as Record<string, unknown>)['gm_authFailure'] as () => void;
+    authFailure();
+
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it('unsubscribed handlers are not called when gm_authFailure fires', async () => {
+    const { loadGoogleMaps, subscribeAuthFailure } = await import('./maps.js');
+    loadGoogleMaps();
+
+    const handler = vi.fn();
+    const unsubscribe = subscribeAuthFailure(handler);
+    unsubscribe();
+
+    const authFailure = (window as unknown as Record<string, unknown>)['gm_authFailure'] as () => void;
+    authFailure();
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('rejects on subsequent calls after gm_authFailure has fired', async () => {
+    const { loadGoogleMaps } = await import('./maps.js');
+    loadGoogleMaps();
+
+    const authFailure = (window as unknown as Record<string, unknown>)['gm_authFailure'] as () => void;
+    authFailure();
+
+    await expect(loadGoogleMaps()).rejects.toThrow('Maps auth failed');
+  });
+
+  it('chains onto an existing gm_authFailure handler', async () => {
+    const existing = vi.fn();
+    (window as unknown as Record<string, unknown>)['gm_authFailure'] = existing;
+
+    const { loadGoogleMaps } = await import('./maps.js');
+    loadGoogleMaps();
+
+    const authFailure = (window as unknown as Record<string, unknown>)['gm_authFailure'] as () => void;
+    authFailure();
+
+    expect(existing).toHaveBeenCalledOnce();
+  });
+
+  it('allows a new load attempt after onerror (loaderPromise is reset)', async () => {
+    const { loadGoogleMaps } = await import('./maps.js');
+    const p1 = loadGoogleMaps();
+    createdScript!.dispatchEvent(new Event('error'));
+    await expect(p1).rejects.toThrow('Maps failed to load');
+
+    // Second call should create a fresh script (not return the rejected promise)
+    const p2 = loadGoogleMaps();
+    expect(p2).not.toBe(p1);
   });
 });
 
