@@ -90,6 +90,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [jigsawDisplayDifficulty, setJigsawDisplayDifficulty] = useState<1 | 2 | 3>(3);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
+  const [prizeAcknowledged, setPrizeAcknowledged] = useState(false);
 
   // Guard the browser back button while the team hunt is active.
   const isHuntActive = Boolean(
@@ -328,22 +329,27 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   // Final challenge gate — shown after all steps are complete, before results.
   if (complete && !celebrateItemId) {
     const hasFinalItem = Boolean(route.data.finalItem);
-    const finalDone = !hasFinalItem || !!session.finalItemSolved || finalItemSkipped;
+    const finalDone = !hasFinalItem || (!!session.finalItemSolved && prizeAcknowledged) || finalItemSkipped;
     if (hasFinalItem && !finalDone) {
       return withToast(
-        <Page title="🏆 Final challenge!">
-          <FinalItemPanel
-            finalItem={route.data.finalItem!}
-            items={items}
-            solvedItemIds={new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId))}
-            onSolve={hunt.solveFinalItem}
-            solved={!!session.finalItemSolved}
-            busy={hunt.busy}
-            defaultExpanded
-          />
-          <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
-            Skip final challenge
-          </Button>
+        <Page title={session.finalItemSolved ? '🎁 Your prize!' : '🏆 Final challenge!'}>
+          <div className="stack">
+            <FinalItemPanel
+              finalItem={route.data.finalItem!}
+              items={items}
+              solvedItemIds={new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId))}
+              onSolve={hunt.solveFinalItem}
+              solved={!!session.finalItemSolved}
+              busy={hunt.busy}
+              defaultExpanded
+              onPrizeContinue={() => setPrizeAcknowledged(true)}
+            />
+            {!session.finalItemSolved && (
+              <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
+                Skip final challenge
+              </Button>
+            )}
+          </div>
         </Page>,
         true,
       );
@@ -352,9 +358,6 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
   // Navigate to results when done (after user dismisses celebration).
   if (complete && !celebrateItemId) {
-    const codeReveal = session.finalItemSolved &&
-      route.data.finalItem?.kind === 'code' &&
-      route.data.finalItem?.revealAnswer;
     return withToast(
       <Page title="Done!">
         <Fireworks />
@@ -362,13 +365,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           <div className="stack center pop-in">
             <div style={{ fontSize: '3.5rem' }}>🏆</div>
             <h2>Hunt complete!</h2>
-            {codeReveal && (
-              <>
-                <p className="muted" style={{ margin: 0 }}>The answer is:</p>
-                <p style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>
-                  {route.data.finalItem!.revealAnswer}
-                </p>
-              </>
+            {session.finalItemSolved && (
+              <strong>Final item solved! +100 bonus points!</strong>
             )}
             <ScorePill score={session.totalScore} />
             <Button size="lg" block variant="happy"

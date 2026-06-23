@@ -76,13 +76,22 @@ Team
 
 Dispute verification: `verifyDispute(description, itemName)` — player must name the item correctly before override is accepted.
 
-## FinalItem (code kind)
+## FinalItem (code kind only)
 
-`FinalItem` with `kind: 'code'` has two distinct fields:
+The final item only supports `kind: 'code'`. Riddle and jigsaw kinds are no longer available in the RouteBuilder.
+
+`FinalItem` with `kind: 'code'` has these key fields:
 
 | Field | Role |
 |-------|------|
 | `answer` | The code players enter (letters/digits collected from solved items, verified server-side) |
-| `revealAnswer?` | The real final solution revealed to the player **after** the correct code is entered (optional) |
+| `revealAnswer?` | Prize text revealed inside the open chest after the correct code is entered |
+| `prizeImageUrl?` | Prize image URL revealed inside the open chest. Takes precedence over `revealAnswer` when set |
 
-The `answer` acts as a **key** to the lock; `revealAnswer` is what is inside. If `revealAnswer` is not set, the success message is generic. The route author configures both in the `RouteBuilder` under the "Final item" section.
+The `answer` is the key to the lock. `revealAnswer` or `prizeImageUrl` (mutually exclusive, image wins) is the prize inside the chest. The route author configures these in the `RouteBuilder` under the "Final item" section.
+
+### Chest UX flow (player side)
+1. **Locked chest** — shown on the final-challenge screen. Tapping opens the code-entry form.
+2. **Code entry** — `CodeAssemblyDisplay` shows collected characters; player fills blanks and submits.
+3. **Open chest** — on correct code, `FinalItemPanel` renders the open chest image with the prize (text or image) overlaid inside. A "Continue to results" button calls `onPrizeContinue`.
+4. **Celebration** — `HuntPlayer`/`TeamHuntPlayer` transitions to the results/fireworks screen.
