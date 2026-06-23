@@ -42,6 +42,8 @@ export interface HuntTrailItem {
   name: string;
   completed?: boolean;
   thumbnail?: string;
+  /** Marks the final-item node — shown with a lock icon instead of a question mark. */
+  isFinal?: boolean;
 }
 
 interface HuntTrailProps {
@@ -88,6 +90,7 @@ export function HuntTrail({
       <div className="ftp-trail__scroll" ref={scrollRef} style={{ maxHeight }}>
         {items.map((item, i) => {
           const done = !!item.completed;
+          const isFinal = !!item.isFinal;
           const current = i === currentIndex;
           const state = done ? 'done' : current ? 'current' : 'upcoming';
           const prevDone = i > 0 && !!items[i - 1]?.completed;
@@ -172,12 +175,12 @@ export function HuntTrail({
                 {paws}
 
                 <span className={nodeClass} title={item.name} style={{ left: `${xi}%` }}>
-                  {done && thumb
+                  {done && !isFinal && thumb
                     ? <img src={thumb} alt="" />
                     : done
-                      ? <span aria-hidden="true">📷</span>
-                      : <span className="ftp-trail__q" aria-hidden="true">?</span>}
-                  {done && <span className="ftp-trail__check" aria-hidden="true">✓</span>}
+                      ? <span aria-hidden="true">{isFinal ? '🏆' : '📷'}</span>
+                      : <span className="ftp-trail__q" aria-hidden="true">{isFinal ? '🔒' : '?'}</span>}
+                  {done && !isFinal && <span className="ftp-trail__check" aria-hidden="true">✓</span>}
                 </span>
               </div>
 
@@ -186,11 +189,13 @@ export function HuntTrail({
                   {item.name}
                 </p>
                 <p className="ftp-trail__status">
-                  {done
-                    ? 'Found it! · tap to revisit'
-                    : current
-                      ? "You're here · find it!"
-                      : `Step ${i + 1}`}
+                  {isFinal
+                    ? done ? 'Unlocked! 🏆' : current ? '🔒 Unlock now!' : '🔒 Final challenge'
+                    : done
+                      ? 'Found it! · tap to revisit'
+                      : current
+                        ? "You're here · find it!"
+                        : `Step ${i + 1}`}
                 </p>
               </div>
             </div>

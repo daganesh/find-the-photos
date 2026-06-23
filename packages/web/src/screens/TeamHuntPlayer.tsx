@@ -257,13 +257,20 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const paused = team?.status === 'paused';
 
   // Trail map data — follows session.steps order.
-  const trailItems = session.steps.map((st) => {
-    const it = items.find((i) => i.id === st.itemId);
-    const foundPhoto = st.photoAttempts.filter((a) => a.verdict.match).at(-1)?.photoUrl;
-    return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto };
-  });
+  const trailItems = [
+    ...session.steps.map((st) => {
+      const it = items.find((i) => i.id === st.itemId);
+      const foundPhoto = st.photoAttempts.filter((a) => a.verdict.match).at(-1)?.photoUrl;
+      return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto };
+    }),
+    ...(route.data.finalItem
+      ? [{ id: 'final', name: 'Final challenge', completed: !!session.finalItemSolved, isFinal: true }]
+      : []),
+  ];
   const firstActiveIdx = session.steps.findIndex((s) => s.status === 'active');
-  const trailCurrentIndex = firstActiveIdx >= 0 ? firstActiveIdx : session.steps.length - 1;
+  const trailCurrentIndex = firstActiveIdx >= 0
+    ? firstActiveIdx
+    : route.data.finalItem ? session.steps.length : session.steps.length - 1;
 
   function handleTrailSelect(idx: number) {
     const st = session.steps[idx];

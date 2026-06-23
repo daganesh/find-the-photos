@@ -382,12 +382,20 @@ export function HuntPlayer() {
   const stepNumber = session.steps.findIndex((s) => s.itemId === item.id) + 1;
 
   // Trail map data — follows session.steps order (respects reversed hunts).
-  const trailItems = session.steps.map((st) => {
-    const it = items.find((i) => i.id === st.itemId);
-    const foundPhoto = st.photoAttempts.filter((a) => a.verdict.match).at(-1)?.photoUrl;
-    return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto };
-  });
-  const trailCurrentIndex = Math.max(0, session.steps.findIndex((s) => s.status === 'active'));
+  const trailItems = [
+    ...session.steps.map((st) => {
+      const it = items.find((i) => i.id === st.itemId);
+      const foundPhoto = st.photoAttempts.filter((a) => a.verdict.match).at(-1)?.photoUrl;
+      return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto };
+    }),
+    ...(routeData.finalItem
+      ? [{ id: 'final', name: 'Final challenge', completed: !!session.finalItemSolved, isFinal: true }]
+      : []),
+  ];
+  const activeIdx = session.steps.findIndex((s) => s.status === 'active');
+  const trailCurrentIndex = activeIdx >= 0
+    ? activeIdx
+    : routeData.finalItem ? session.steps.length : session.steps.length - 1;
 
   function handleTrailSelect(idx: number) {
     const st = session.steps[idx];
@@ -626,20 +634,6 @@ export function HuntPlayer() {
               )}
             </div>
           </>
-        )}
-
-        {/* Final item progress — shown during the hunt */}
-        {routeData.finalItem && (
-          <FinalItemPanel
-            finalItem={routeData.finalItem}
-            items={items}
-            solvedItemIds={new Set(session.steps.filter((s) => s.status === 'found').map((s) => s.itemId))}
-            onSolve={hunt.solveFinalItem}
-            solved={!!session.finalItemSolved}
-            busy={hunt.busy}
-            skippedItemIds={new Set(skippedSteps.map((s) => s.itemId))}
-            onRetry={(itemId) => hunt.returnToSkipped(itemId)}
-          />
         )}
 
         {/* Skipped items — offer to retry them */}

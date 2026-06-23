@@ -184,7 +184,7 @@ export function FinalItemPanel({
               style={{ width: 200, maxWidth: '70vw', display: 'block', margin: '0 auto' }}
             />
           </button>
-          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'var(--color-ink-soft)' }}>
+          <p style={{ margin: '8px 0 0', fontSize: '0.9rem', fontWeight: 600 }}>
             {expanded ? '▲ Hide code entry' : '🔒 Tap to enter the code'}
           </p>
           <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--color-ink-soft)' }}>
