@@ -274,6 +274,14 @@ export function HuntPlayer() {
               <div className="stack center">
                 <div style={{ fontSize: '2.5rem' }}>🏆</div>
                 <strong>Final item solved! +100 bonus points!</strong>
+                {routeData.finalItem?.kind === 'code' && routeData.finalItem?.revealAnswer && (
+                  <>
+                    <p className="muted" style={{ margin: 0 }}>The answer is:</p>
+                    <p style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>
+                      {routeData.finalItem.revealAnswer}
+                    </p>
+                  </>
+                )}
               </div>
             </Card>
           )}
