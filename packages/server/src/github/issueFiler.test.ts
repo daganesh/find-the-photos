@@ -38,6 +38,27 @@ describe('buildIssueContent', () => {
     expect(title.length).toBeLessThanOrEqual(80);
     expect(title.endsWith('…')).toBe(true);
   });
+
+  it('includes linked report content under a Linked tickets section', () => {
+    const linked = makeReport({
+      id: 'r2',
+      type: 'feature',
+      severity: 1,
+      title: 'Dark mode support',
+      description: 'App should support dark mode',
+      reporters: [{ userId: 'u2', name: 'Alex', reportedAt: '2026-06-01T00:00:00.000Z' }],
+    });
+    const { body } = buildIssueContent(makeReport(), [linked]);
+    expect(body).toContain('## Linked tickets');
+    expect(body).toContain('### Linked Feature: Dark mode support');
+    expect(body).toContain('App should support dark mode');
+    expect(body).toContain('**Report ID:** r2');
+  });
+
+  it('omits the Linked tickets section when no linked reports are provided', () => {
+    const { body } = buildIssueContent(makeReport());
+    expect(body).not.toContain('## Linked tickets');
+  });
 });
 
 describe('fileReportIssue', () => {

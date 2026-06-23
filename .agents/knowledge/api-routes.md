@@ -57,10 +57,12 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/reports` | Required | List all reports |
+| GET | `/api/reports` | Required | List reports. Admins see all; non-admins see only their own tickets (reports where they are a reporter). |
 | POST | `/api/reports` | Required | Submit a bug/feature report; deduplicates via word-overlap |
-| PATCH | `/api/reports/:id` | Admin | Update `status` and/or `severity` of a report |
-| POST | `/api/reports/:id/github-issue` | Admin | File the report as a GitHub issue; body `{ assignToAgent?: boolean }` (default `true`) posts an `@claude` comment to hand it to Claude. Idempotent (returns the existing issue if already filed); flips `new` → `in_progress` and records `report.github`. Returns 503 if `GITHUB_TOKEN` is unset. |
+| PATCH | `/api/reports/:id` | Admin | Update `status`, `severity`, `title`, and/or `description`. Cascades `status`/`severity` changes to any linked (grouped) reports. |
+| POST | `/api/reports/:id/link` | Admin | Group another report under this one; body `{ targetId: string }`. Aligns the target's status and severity with the parent. |
+| DELETE | `/api/reports/:id/link/:linkedId` | Admin | Remove a report from this group. |
+| POST | `/api/reports/:id/github-issue` | Admin | File the report (and any grouped sub-tickets) as a GitHub issue; body `{ assignToAgent?: boolean }` (default `true`) posts an `@claude` comment. Idempotent; flips `new` → `in_progress`. Returns 503 if `GITHUB_TOKEN` is unset. |
 
 ## Team Chat (`/api/teams/:teamId/chat`)
 

@@ -10,6 +10,10 @@ vi.mock('../services/apiClient', () => ({
   },
 }));
 
+vi.mock('../auth/AuthContext', () => ({
+  useAuth: vi.fn().mockReturnValue({ user: null }),
+}));
+
 function renderReport() {
   return render(
     <MemoryRouter>

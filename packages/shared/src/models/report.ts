@@ -29,4 +29,6 @@ export interface BugReport {
   updatedAt: string;
   /** Set once an admin files this report as a GitHub issue. */
   github?: GithubIssueRef;
+  /** IDs of reports grouped under this one. Grouped reports share status and priority. */
+  linkedReportIds?: string[];
 }

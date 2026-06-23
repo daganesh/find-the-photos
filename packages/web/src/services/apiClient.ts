@@ -205,8 +205,14 @@ export class ApiClient {
   submitReport(body: { title?: string; description: string; type: ReportType; severity: ReportSeverity }): Promise<{ report: BugReport; merged: boolean }> {
     return this.request('/api/reports', { method: 'POST', body: JSON.stringify(body) });
   }
-  updateReport(id: string, body: { status?: ReportStatus; severity?: ReportSeverity }): Promise<{ report: BugReport }> {
+  updateReport(id: string, body: { status?: ReportStatus; severity?: ReportSeverity; title?: string; description?: string }): Promise<{ report: BugReport }> {
     return this.request(`/api/reports/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  }
+  linkReports(id: string, targetId: string): Promise<{ report: BugReport }> {
+    return this.request(`/api/reports/${id}/link`, { method: 'POST', body: JSON.stringify({ targetId }) });
+  }
+  unlinkReport(id: string, linkedId: string): Promise<{ report: BugReport }> {
+    return this.request(`/api/reports/${id}/link/${linkedId}`, { method: 'DELETE' });
   }
   createGithubIssue(id: string, body: { assignToAgent: boolean }): Promise<{ report: BugReport }> {
     return this.request(`/api/reports/${id}/github-issue`, { method: 'POST', body: JSON.stringify(body) });
