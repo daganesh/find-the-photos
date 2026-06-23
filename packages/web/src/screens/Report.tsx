@@ -56,13 +56,13 @@ export function Report() {
       <div className="stack">
         <Card>
           <div className="stack">
-            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span className="field-label" style={{ minWidth: 60 }}>Type</span>
               <Button variant={type === 'bug' ? 'happy' : 'ghost'} onClick={() => setType('bug')}>🐛 Bug</Button>
               <Button variant={type === 'feature' ? 'happy' : 'ghost'} onClick={() => setType('feature')}>✨ Feature</Button>
             </div>
 
-            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span className="field-label" style={{ minWidth: 60 }}>Severity</span>
               {([1, 2, 3] as ReportSeverity[]).map((s) => (
                 <Button key={s} variant={severity === s ? 'happy' : 'ghost'} onClick={() => setSeverity(s)}>
