@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { Report } from './Report.js';
 
 vi.mock('../services/apiClient', () => ({
@@ -9,9 +10,17 @@ vi.mock('../services/apiClient', () => ({
   },
 }));
 
+function renderReport() {
+  return render(
+    <MemoryRouter>
+      <Report />
+    </MemoryRouter>,
+  );
+}
+
 describe('Report screen', () => {
   it('renders Type and Severity toggle buttons', () => {
-    render(<Report />);
+    renderReport();
     expect(screen.getByText('🐛 Bug')).toBeDefined();
     expect(screen.getByText('✨ Feature')).toBeDefined();
     expect(screen.getByText('1 Low')).toBeDefined();
@@ -20,7 +29,7 @@ describe('Report screen', () => {
   });
 
   it('severity row container has flexWrap wrap to prevent overflow on narrow screens', () => {
-    const { container } = render(<Report />);
+    const { container } = renderReport();
     const rows = container.querySelectorAll<HTMLElement>('.row');
     const severityRow = Array.from(rows).find((el) =>
       el.textContent?.includes('Severity'),
@@ -30,7 +39,7 @@ describe('Report screen', () => {
   });
 
   it('type row container has flexWrap wrap to prevent overflow on narrow screens', () => {
-    const { container } = render(<Report />);
+    const { container } = renderReport();
     const rows = container.querySelectorAll<HTMLElement>('.row');
     const typeRow = Array.from(rows).find((el) =>
       el.textContent?.includes('Type'),
@@ -40,14 +49,14 @@ describe('Report screen', () => {
   });
 
   it('clicking a severity button selects it', () => {
-    render(<Report />);
+    renderReport();
     const highBtn = screen.getByText('3 High');
     fireEvent.click(highBtn);
     expect(highBtn.closest('button')?.className).toContain('btn--happy');
   });
 
   it('clicking a type button selects it', () => {
-    render(<Report />);
+    renderReport();
     const featureBtn = screen.getByText('✨ Feature');
     fireEvent.click(featureBtn);
     expect(featureBtn.closest('button')?.className).toContain('btn--happy');
