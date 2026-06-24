@@ -202,7 +202,7 @@ export class ApiClient {
   listReports(): Promise<{ reports: BugReport[] }> {
     return this.request('/api/reports');
   }
-  submitReport(body: { title?: string; description: string; type: ReportType; severity: ReportSeverity }): Promise<{ report: BugReport; merged: boolean }> {
+  submitReport(body: { title?: string; description: string; type: ReportType; severity: ReportSeverity; imageUrls?: string[] }): Promise<{ report: BugReport; merged: boolean }> {
     return this.request('/api/reports', { method: 'POST', body: JSON.stringify(body) });
   }
   updateReport(id: string, body: { status?: ReportStatus; severity?: ReportSeverity; title?: string; description?: string }): Promise<{ report: BugReport }> {

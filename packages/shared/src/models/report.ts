@@ -27,6 +27,8 @@ export interface BugReport {
   reporters: Reporter[];
   createdAt: string;
   updatedAt: string;
+  /** Up to 3 image URLs attached by the reporter (resized before upload). */
+  imageUrls?: string[];
   /** Set once an admin files this report as a GitHub issue. */
   github?: GithubIssueRef;
   /** IDs of reports grouped under this one. Grouped reports share status and priority. */
