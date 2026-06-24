@@ -68,10 +68,7 @@ body {
   margin: 0;
   font-family: var(--font);
   color: var(--color-ink);
-  background:
-    radial-gradient(1200px 600px at 80% -10%, #d5f4f2 0%, transparent 60%),
-    radial-gradient(900px 500px at -10% 10%, #e0f9f7 0%, transparent 55%),
-    var(--color-bg);
+  background: url('/bg-map.png') center top / cover fixed;
   -webkit-font-smoothing: antialiased;
 }
 

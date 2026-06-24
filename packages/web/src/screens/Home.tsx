@@ -120,11 +120,7 @@ export function Home() {
           <p className="muted">Play a hunt someone made, or create your own!</p>
         </header>
 
-        <Button size="lg" block variant="happy" onClick={createRoute} disabled={creating}>
-          ➕ {creating ? 'Creating…' : 'Make a new hunt'}
-        </Button>
-
-        {joinOpen ? (
+        {joinOpen && (
           <div className="row" style={{ gap: 8 }}>
             <input
               autoFocus
@@ -145,10 +141,6 @@ export function Home() {
               ✕
             </Button>
           </div>
-        ) : (
-          <Button block variant="ghost" onClick={() => setJoinOpen(true)}>
-            👥 Join a team hunt
-          </Button>
         )}
 
         {loading && <Spinner label="Loading hunts…" />}
@@ -183,7 +175,7 @@ export function Home() {
         )}
 
         {user && myDrafts.length > 0 && (
-          <CollapsibleSection title="My drafts" id="home-my-drafts">
+          <CollapsibleSection title="My drafts" defaultOpen={false} id="home-my-drafts">
             {myDrafts.map((r) => (
               <DraftCard
                 key={r.id}
@@ -196,7 +188,7 @@ export function Home() {
         )}
 
         {user && myRoutes.length > 0 && (
-          <CollapsibleSection title="My published hunts" id="home-my-published-hunts">
+          <CollapsibleSection title="My published hunts" defaultOpen={false} id="home-my-published-hunts">
             {myRoutes.map((r) => (
               <PublishedRouteCard
                 key={r.id}
