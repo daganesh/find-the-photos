@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { BugReport, ReportSeverity, ReportType } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { useAsync } from '../hooks/useAsync.js';
@@ -63,7 +63,6 @@ export function Report() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [error, setError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleImageFiles(files: FileList) {
     const remaining = MAX_IMAGES - images.length;
@@ -168,7 +167,6 @@ export function Report() {
                   >
                     📎 Add image ({images.length}/{MAX_IMAGES})
                     <input
-                      ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       multiple

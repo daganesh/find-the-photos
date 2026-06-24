@@ -58,7 +58,7 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/reports` | Required | List reports. Admins see all; non-admins see only their own tickets (reports where they are a reporter). |
-| POST | `/api/reports` | Required | Submit a bug/feature report; deduplicates via word-overlap |
+| POST | `/api/reports` | Required | Submit a bug/feature report; body `{ description, type, severity, title?, imageUrls?: string[] }` (max 3 image URLs); deduplicates via word-overlap |
 | PATCH | `/api/reports/:id` | Admin | Update `status`, `severity`, `title`, and/or `description`. Cascades `status`/`severity` changes to any linked (grouped) reports. |
 | POST | `/api/reports/:id/link` | Admin | Group another report under this one; body `{ targetId: string }`. Aligns the target's status and severity with the parent. |
 | DELETE | `/api/reports/:id/link/:linkedId` | Admin | Remove a report from this group. |
