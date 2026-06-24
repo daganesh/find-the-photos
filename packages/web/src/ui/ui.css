@@ -265,6 +265,7 @@
 .bottombar__btn:active { transform: scale(0.85); }
 
 .bottombar__btn svg { width: 26px; height: 26px; }
+.bottombar__btn img { width: 26px; height: 26px; object-fit: contain; }
 
 .bottombar__fab {
   flex: none;
@@ -290,3 +291,4 @@
 .bottombar__fab:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
 
 .bottombar__fab svg { width: 28px; height: 28px; }
+.bottombar__fab img { width: 38px; height: 38px; object-fit: contain; }
