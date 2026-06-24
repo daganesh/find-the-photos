@@ -38,11 +38,12 @@ export function reportsRouter(ctx: AppContext): Router {
 
   router.post('/', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const { description, title, type, severity } = req.body as {
+      const { description, title, type, severity, imageUrls } = req.body as {
         description: string;
         title?: string;
         type: ReportType;
         severity: ReportSeverity;
+        imageUrls?: unknown;
       };
       const user = req.user!;
       const now = new Date().toISOString();
@@ -51,6 +52,10 @@ export function reportsRouter(ctx: AppContext): Router {
         res.status(400).json({ error: 'description, type and severity are required' });
         return;
       }
+
+      const validatedImageUrls = Array.isArray(imageUrls)
+        ? (imageUrls as unknown[]).filter((u): u is string => typeof u === 'string').slice(0, 3)
+        : undefined;
 
       const existing = await ctx.reports.list();
       const match = existing.find(
@@ -74,6 +79,7 @@ export function reportsRouter(ctx: AppContext): Router {
         status: 'new',
         ...(title ? { title: title.trim() } : {}),
         description,
+        ...(validatedImageUrls?.length ? { imageUrls: validatedImageUrls } : {}),
         reporters: [{ userId: user.id, name: user.name, reportedAt: now }],
         createdAt: now,
         updatedAt: now,

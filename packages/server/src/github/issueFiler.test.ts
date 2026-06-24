@@ -59,6 +59,18 @@ describe('buildIssueContent', () => {
     const { body } = buildIssueContent(makeReport());
     expect(body).not.toContain('## Linked tickets');
   });
+
+  it('includes a Screenshots section when the report has imageUrls', () => {
+    const { body } = buildIssueContent(makeReport({ imageUrls: ['https://example.com/a.jpg', 'https://example.com/b.jpg'] }));
+    expect(body).toContain('## Screenshots');
+    expect(body).toContain('![screenshot](https://example.com/a.jpg)');
+    expect(body).toContain('![screenshot](https://example.com/b.jpg)');
+  });
+
+  it('omits the Screenshots section when the report has no imageUrls', () => {
+    const { body } = buildIssueContent(makeReport());
+    expect(body).not.toContain('## Screenshots');
+  });
 });
 
 describe('fileReportIssue', () => {

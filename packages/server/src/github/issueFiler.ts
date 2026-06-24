@@ -66,6 +66,13 @@ export function buildIssueContent(report: BugReport, linkedReports: BugReport[] 
     `- **Report ID:** ${report.id}`,
   ];
 
+  if (report.imageUrls?.length) {
+    bodyParts.push('', '## Screenshots');
+    for (const url of report.imageUrls) {
+      bodyParts.push(`![screenshot](${url})`);
+    }
+  }
+
   if (linkedSections.length > 0) {
     bodyParts.push('', '## Linked tickets', ...linkedSections.flatMap((s) => ['', s]));
   }

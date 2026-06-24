@@ -8,6 +8,7 @@ vi.mock('../services/apiClient', () => ({
   api: {
     listReports: vi.fn().mockResolvedValue({ reports: [] }),
     submitReport: vi.fn().mockResolvedValue({ report: {}, merged: false }),
+    uploadFile: vi.fn().mockResolvedValue({ id: 'img1', url: 'https://example.com/img1.jpg' }),
   },
 }));
 
@@ -85,6 +86,48 @@ const oneReport = [{
   reporters: [{ userId: 'u1', name: 'Alice', reportedAt: '2026-01-01T00:00:00Z' }],
   createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
 }];
+
+describe('Report screen — image attachments', () => {
+  it('shows the add image button when no images are selected', () => {
+    renderReport();
+    expect(screen.getByText(/Add image \(0\/3\)/)).toBeDefined();
+  });
+
+  it('hides the add image button once 3 images are selected', async () => {
+    // JSDOM doesn't support canvas, so we patch URL.createObjectURL and Image
+    const origCreateObjectURL = URL.createObjectURL;
+    const origRevokeObjectURL = URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn().mockReturnValue('blob:preview');
+    URL.revokeObjectURL = vi.fn();
+
+    // Patch Image to immediately trigger onload without actual decoding
+    const OrigImage = globalThis.Image;
+    class FakeImage {
+      naturalWidth = 100;
+      naturalHeight = 100;
+      set src(_: string) { this.onload?.(); }
+      onload?: () => void;
+      onerror?: () => void;
+    }
+    (globalThis as unknown as Record<string, unknown>).Image = FakeImage;
+
+    renderReport();
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const makeFile = (name: string) => new File(['x'], name, { type: 'image/jpeg' });
+    for (let i = 0; i < 3; i++) {
+      Object.defineProperty(input, 'files', { configurable: true, get: () => [makeFile(`img${i}.jpg`)] });
+      fireEvent.change(input);
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    expect(screen.queryByText(/Add image/)).toBeNull();
+
+    URL.createObjectURL = origCreateObjectURL;
+    URL.revokeObjectURL = origRevokeObjectURL;
+    (globalThis as unknown as Record<string, unknown>).Image = OrigImage;
+  });
+});
 
 describe('Report screen — report list heading', () => {
   it('shows "Your reports" heading for a non-admin user when reports exist', async () => {
