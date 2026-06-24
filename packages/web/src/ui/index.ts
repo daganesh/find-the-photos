@@ -18,6 +18,7 @@ export { MapView } from './MapView.js';
 export { Banner } from './Banner.js';
 export { Fireworks } from './Fireworks.js';
 export { AppBar } from './AppBar.js';
+export { BottomBar } from './BottomBar.js';
 export { UserMenu } from './UserMenu.js';
 export { JigsawView } from './JigsawView.js';
 export { FinalItemPanel } from './FinalItemPanel.js';

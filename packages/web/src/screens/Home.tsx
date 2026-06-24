@@ -6,7 +6,7 @@ import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { getCurrentLocation } from '../services/geolocation.js';
-import { Button, Card, MapView, Page, Spinner, StarRating } from '../ui/index.js';
+import { BottomBar, Button, Card, MapView, Page, Spinner, StarRating } from '../ui/index.js';
 import { filterHunts, hasActiveFilters } from './huntFilters.js';
 import type { DateFilter } from './huntFilters.js';
 
@@ -154,7 +154,7 @@ export function Home() {
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
         {(activeSessions.length > 0 || activeTeams.length > 0) && (
-          <CollapsibleSection title="Active hunts">
+          <CollapsibleSection title="Active hunts" id="home-active-hunts">
             {activeSessions.map((s) => {
               const route = routes?.find((r) => r.id === s.routeId);
               return (
@@ -183,7 +183,7 @@ export function Home() {
         )}
 
         {user && myDrafts.length > 0 && (
-          <CollapsibleSection title="My drafts">
+          <CollapsibleSection title="My drafts" id="home-my-drafts">
             {myDrafts.map((r) => (
               <DraftCard
                 key={r.id}
@@ -196,7 +196,7 @@ export function Home() {
         )}
 
         {user && myRoutes.length > 0 && (
-          <CollapsibleSection title="My published hunts">
+          <CollapsibleSection title="My published hunts" id="home-my-published-hunts">
             {myRoutes.map((r) => (
               <PublishedRouteCard
                 key={r.id}
@@ -242,7 +242,7 @@ export function Home() {
         </CollapsibleSection>
 
         {pastSessions.length > 0 && (
-          <CollapsibleSection title="Past hunts" defaultOpen={false}>
+          <CollapsibleSection title="Past hunts" defaultOpen={false} id="home-past-hunts">
             {pastSessions.map((s) => {
               const route = routes?.find((r) => r.id === s.routeId);
               const found = s.steps.filter((st) => st.status === 'found').length;
@@ -268,6 +268,26 @@ export function Home() {
           </Button>
         )}
       </div>
+      <BottomBar
+        onCreate={createRoute}
+        onJoin={() => setJoinOpen(true)}
+        onMyHunts={() => {
+          const el =
+            document.getElementById('home-my-drafts') ??
+            document.getElementById('home-my-published-hunts');
+          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+        onMyScores={() => {
+          document.getElementById('home-past-hunts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+        onMyHistory={() => {
+          const el =
+            document.getElementById('home-active-hunts') ??
+            document.getElementById('home-past-hunts');
+          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+        creating={creating}
+      />
     </Page>
   );
 }
@@ -469,10 +489,10 @@ function FilterPopup({
   );
 }
 
-function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
+function CollapsibleSection({ title, children, defaultOpen = true, id }: { title: string; children: ReactNode; defaultOpen?: boolean; id?: string }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className="stack">
+    <section id={id} className="stack">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

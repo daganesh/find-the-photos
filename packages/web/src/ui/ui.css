@@ -171,8 +171,8 @@
 .appbar__logo { height: 36px; width: 36px; object-fit: contain; border-radius: 8px; }
 .appbar__title { font-weight: 800; font-size: 1.05rem; color: var(--color-ink); letter-spacing: -0.01em; }
 
-/* Push page content below the fixed appbar */
-#root { padding-top: 56px; }
+/* Push page content below the fixed appbar and above the bottom bar */
+#root { padding-top: 56px; padding-bottom: 68px; }
 
 /* UserMenu */
 .usermenu { position: relative; }
@@ -230,3 +230,63 @@
   from { filter: drop-shadow(0 0 3px #f59e0b); }
   to   { filter: drop-shadow(0 0 10px #f59e0b); }
 }
+
+/* BottomBar — fixed navigation strip at the bottom */
+.bottombar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 var(--space-1) env(safe-area-inset-bottom, 0);
+  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-accent));
+  box-shadow: 0 -1px 0 var(--color-line), 0 -6px 20px rgba(78, 50, 110, 0.10);
+}
+
+.bottombar__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease-pop);
+  padding: 4px;
+}
+
+.bottombar__btn:active { transform: scale(0.85); }
+
+.bottombar__btn svg { width: 26px; height: 26px; }
+
+.bottombar__fab {
+  flex: none;
+  position: relative;
+  top: -18px;
+  width: 62px;
+  height: 62px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg), 0 0 0 4px color-mix(in srgb, var(--color-surface) 90%, var(--color-accent));
+  transition: transform 0.12s var(--ease-pop), filter 0.15s;
+  margin: 0 var(--space-2);
+}
+
+.bottombar__fab:active { transform: scale(0.88) translateY(2px); }
+
+.bottombar__fab:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+
+.bottombar__fab svg { width: 28px; height: 28px; }
