@@ -604,52 +604,46 @@ function ActiveHuntCard({
   onDelete: () => void;
   deleting: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const found = session.steps.filter((s) => s.status === 'found').length;
   const total = session.steps.length;
-  const isPaused = Boolean(session.pausedAt);
+
+  function handleCardClick() {
+    setExpanded((e) => !e);
+    if (expanded) setConfirmDelete(false);
+  }
 
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4 }}>{routeTitle ?? 'Hunt'}</h3>
-          <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-            {found} / {total} items found
-          </p>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleCardClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+      >
+        <h3 style={{ margin: '0 0 2px' }}>{routeTitle ?? 'Hunt'}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+          {found} / {total} items found
+        </p>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Abandon this hunt?</span>
+              <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
+                {deleting ? '…' : '🗑 Yes'}
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: 8 }}>
+              <Button variant="happy" onClick={onResume}>▶ Resume hunt</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+            </div>
+          )}
         </div>
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '2px 10px',
-            borderRadius: 'var(--radius-full, 999px)',
-            background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
-            color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
-            fontSize: '0.78rem',
-            fontWeight: 600,
-            flexShrink: 0,
-            marginLeft: 'var(--space-2)',
-          }}
-        >
-          {isPaused ? '⏸ Paused' : '▶ Active'}
-        </span>
-      </div>
-      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        {confirmDelete ? (
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Abandon this hunt?</span>
-            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
-              {deleting ? '…' : '🗑 Yes'}
-            </Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          </div>
-        ) : (
-          <div className="row" style={{ gap: 8 }}>
-            <Button variant="happy" onClick={onResume}>▶ Resume hunt</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
-          </div>
-        )}
-      </div>
+      )}
     </Card>
   );
 }
@@ -671,31 +665,44 @@ function PastHuntCard({
   onDelete: () => void;
   deleting: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  function handleCardClick() {
+    setExpanded((e) => !e);
+    if (expanded) setConfirmDelete(false);
+  }
+
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <strong>{title}</strong>
-          <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.82rem' }}>
-            {found}/{total} found · ⭐ {score}
-          </p>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleCardClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+      >
+        <h3 style={{ margin: '0 0 2px' }}>{title}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+          {found}/{total} found · ⭐ {score}
+        </p>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this record?</span>
+              <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.85rem' }} onClick={onDelete} disabled={deleting}>
+                {deleting ? '…' : 'Delete'}
+              </Button>
+              <Button variant="ghost" style={{ fontSize: '0.85rem' }} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: 6 }}>
+              <Button variant="ghost" onClick={onResults}>Results →</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+            </div>
+          )}
         </div>
-        {confirmDelete ? (
-          <div className="row" style={{ gap: 6 }}>
-            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.85rem' }} onClick={onDelete} disabled={deleting}>
-              {deleting ? '…' : 'Delete'}
-            </Button>
-            <Button variant="ghost" style={{ fontSize: '0.85rem' }} onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          </div>
-        ) : (
-          <div className="row" style={{ gap: 6 }}>
-            <Button variant="ghost" onClick={onResults}>Results →</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
-          </div>
-        )}
-      </div>
+      )}
     </Card>
   );
 }
@@ -709,29 +716,24 @@ function ActiveTeamHuntCard({
   routeTitle?: string;
   onRejoin: () => void;
 }) {
-  const isPaused = team.status === 'paused';
+  const [expanded, setExpanded] = useState(false);
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4 }}>{routeTitle ?? 'Hunt'}</h3>
-          <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-            👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
-          </p>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+      >
+        <h3 style={{ margin: '0 0 2px' }}>{routeTitle ?? 'Hunt'}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+          👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
+        </p>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          <Button variant="happy" onClick={onRejoin}>👥 Rejoin team hunt</Button>
         </div>
-        <span style={{
-          display: 'inline-block', padding: '2px 10px',
-          borderRadius: 'var(--radius-full, 999px)',
-          background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
-          color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
-          fontSize: '0.78rem', fontWeight: 600, flexShrink: 0, marginLeft: 'var(--space-2)',
-        }}>
-          {isPaused ? '⏸ Paused' : '▶ Active'}
-        </span>
-      </div>
-      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        <Button variant="happy" onClick={onRejoin}>👥 Rejoin team hunt</Button>
-      </div>
+      )}
     </Card>
   );
 }
@@ -749,98 +751,87 @@ function PublishedRouteCard({
   onDelete: () => void;
   deleting: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  function handleCardClick() {
+    setExpanded((e) => !e);
+    if (expanded) setConfirmDelete(false);
+  }
+
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4 }}>{route.title || 'Untitled hunt'}</h3>
-          <p className="muted" style={{ margin: 0 }}>
-            {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
-            {route.avgRating !== undefined && ` · ⭐ ${route.avgRating.toFixed(1)}`}
-          </p>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleCardClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+      >
+        <h3 style={{ margin: '0 0 2px' }}>{route.title || 'Untitled hunt'}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+          {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+          {route.avgRating !== undefined && ` · ⭐ ${route.avgRating.toFixed(1)}`}
+        </p>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this hunt permanently?</span>
+              <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
+                {deleting ? '…' : '🗑 Yes, delete'}
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: 8 }}>
+              <Button variant="happy" onClick={onPlay}>▶ Play</Button>
+              <Button variant="ghost" onClick={onEdit}>✏️ Edit</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+            </div>
+          )}
         </div>
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '2px 10px',
-            borderRadius: 'var(--radius-full, 999px)',
-            background: 'var(--tint-happy, #dcfce7)',
-            color: 'var(--color-ok, #16a34a)',
-            fontSize: '0.78rem',
-            fontWeight: 600,
-            flexShrink: 0,
-            marginLeft: 'var(--space-2)',
-          }}
-        >
-          Published
-        </span>
-      </div>
-      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        {confirmDelete ? (
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this hunt permanently?</span>
-            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
-              {deleting ? '…' : '🗑 Yes, delete'}
-            </Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          </div>
-        ) : (
-          <div className="row" style={{ gap: 8 }}>
-            <Button variant="happy" onClick={onPlay}>▶ Play</Button>
-            <Button variant="ghost" onClick={onEdit}>✏️ Edit</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
-          </div>
-        )}
-      </div>
+      )}
     </Card>
   );
 }
 
 function DraftCard({ route, onContinue, onDelete }: { route: RouteSummary; onContinue: () => void; onDelete: () => void }) {
+  const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  function handleCardClick() {
+    setExpanded((e) => !e);
+    if (expanded) setConfirmDelete(false);
+  }
+
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4 }}>{route.title || 'Untitled hunt'}</h3>
-          <p className="muted" style={{ margin: 0 }}>
-            {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
-          </p>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleCardClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+      >
+        <h3 style={{ margin: '0 0 2px' }}>{route.title || 'Untitled hunt'}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+          {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+        </p>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this draft?</span>
+              <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete}>🗑 Yes, delete</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: 8 }}>
+              <Button variant="ghost" onClick={onContinue}>✏️ Continue editing</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+            </div>
+          )}
         </div>
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '2px 10px',
-            borderRadius: 'var(--radius-full, 999px)',
-            background: 'var(--color-surface-raised, #e8e8e8)',
-            color: 'var(--color-text-muted, #666)',
-            fontSize: '0.78rem',
-            fontWeight: 600,
-            letterSpacing: '0.03em',
-            flexShrink: 0,
-            marginLeft: 'var(--space-2)',
-          }}
-        >
-          Draft
-        </span>
-      </div>
-      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        {confirmDelete ? (
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this draft?</span>
-            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete}>🗑 Yes, delete</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          </div>
-        ) : (
-          <div className="row" style={{ gap: 8 }}>
-            <Button variant="ghost" onClick={onContinue}>✏️ Continue editing</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
-          </div>
-        )}
-      </div>
+      )}
     </Card>
   );
 }

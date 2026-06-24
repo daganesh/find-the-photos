@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FinalItem, Item } from '@ftp/shared';
 import { getFinalItemPositions, getJigsawGridSize } from '@ftp/shared';
 import { mediaUrl } from '../services/media.js';
@@ -63,16 +63,6 @@ export function FinalItemPanel({
     return revealed;
   }, [items, solvedItemIds, totalPositions]);
 
-  // Pre-fill collected characters for code kind.
-  useEffect(() => {
-    if (finalItem.kind !== 'code') return;
-    if (revealedPositions.size === 0) return;
-    setAnswer(
-      finalItem.answer.split('').map((char, i) =>
-        char === ' ' ? ' ' : (revealedPositions.has(i) ? char.toUpperCase() : '_')
-      ).join(''),
-    );
-  }, [finalItem, revealedPositions]);
 
   async function handleSubmit() {
     setError('');
@@ -210,7 +200,7 @@ export function FinalItemPanel({
             <input
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Fill in the blanks and enter the full code…"
+              placeholder="Type the code you collected…"
               disabled={busy}
               onKeyDown={(e) => { if (e.key === 'Enter' && answer.trim()) handleSubmit(); }}
               style={{ fontFamily: 'monospace', letterSpacing: '0.15em', textTransform: 'uppercase' }}
@@ -386,11 +376,11 @@ function CodeAssemblyDisplay({ answer, revealed }: { answer: string; revealed: S
   const allRevealed = answer.split('').every((c, i) => c === ' ' || revealed.has(i));
   return (
     <div className="stack" style={{ alignItems: 'center' }}>
-      {!allRevealed && (
-        <p className="muted" style={{ margin: 0, fontSize: '0.85rem', textAlign: 'center' }}>
-          Collected pieces are highlighted — fill in the blanks below
-        </p>
-      )}
+      <p className="muted" style={{ margin: 0, fontSize: '0.85rem', textAlign: 'center' }}>
+        {allRevealed
+          ? 'All characters collected — type the code below to unlock the chest!'
+          : 'Collected characters are highlighted — solve more items to reveal the rest'}
+      </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', padding: '8px 0' }}>
         {answer.split('').map((char, i) => {
           if (char === ' ') return <span key={i} style={{ width: 12 }} />;
