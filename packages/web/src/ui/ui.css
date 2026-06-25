@@ -14,9 +14,8 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(35, 20, 5, 0.82);
-  backdrop-filter: blur(8px);
-  color: #fce8b0;
+  background: #bcd8f0;
+  color: var(--color-ink);
 }
 .page__bar-title { font-size: 1.2rem; font-weight: 700; }
 .page__bar-spacer { flex: 1; }
@@ -166,12 +165,11 @@
   align-items: center;
   gap: var(--space-2);
   padding: 0 var(--space-3);
-  background: rgba(35, 20, 5, 0.82);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 1px 0 rgba(255, 200, 100, 0.18);
+  background: #bcd8f0;
+  box-shadow: 0 1px 0 rgba(80, 140, 190, 0.25);
 }
 .appbar__logo { height: 36px; width: 36px; object-fit: contain; border-radius: 8px; }
-.appbar__title { font-weight: 800; font-size: 1.05rem; color: #fce8b0; letter-spacing: -0.01em; }
+.appbar__title { font-weight: 800; font-size: 1.05rem; color: var(--color-ink); letter-spacing: -0.01em; }
 
 /* Push page content below the fixed appbar and above the bottom bar */
 #root { padding-top: 56px; padding-bottom: 68px; }
@@ -245,9 +243,8 @@
   align-items: center;
   justify-content: space-around;
   padding: 0 var(--space-1) env(safe-area-inset-bottom, 0);
-  background: rgba(35, 20, 5, 0.82);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 -1px 0 rgba(255, 200, 100, 0.18), 0 -6px 24px rgba(0,0,0,0.4);
+  background: #bcd8f0;
+  box-shadow: 0 -1px 0 rgba(80, 140, 190, 0.3), 0 -4px 16px rgba(80, 130, 180, 0.2);
 }
 
 .bottombar__btn {
@@ -268,7 +265,7 @@
 .bottombar__btn:active { transform: scale(0.85); }
 
 .bottombar__btn svg { width: 26px; height: 26px; }
-.bottombar__btn img { width: 40px; height: 40px; object-fit: contain; mix-blend-mode: multiply; }
+.bottombar__btn img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(40, 20, 5, 0.35)); }
 
 .bottombar__fab {
   flex: none;
@@ -278,13 +275,13 @@
   height: 62px;
   border: none;
   border-radius: var(--radius-pill);
-  background: rgba(185, 120, 20, 0.92);
-  color: #ffffff;
+  background: #ffffff;
+  color: var(--color-ink);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-lg), 0 0 0 4px rgba(35, 20, 5, 0.82);
+  box-shadow: var(--shadow-lg), 0 0 0 4px #bcd8f0;
   transition: transform 0.12s var(--ease-pop), filter 0.15s;
   margin: 0 var(--space-2);
 }
@@ -294,4 +291,4 @@
 .bottombar__fab:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
 
 .bottombar__fab svg { width: 28px; height: 28px; }
-.bottombar__fab img { width: 50px; height: 50px; object-fit: contain; mix-blend-mode: multiply; }
+.bottombar__fab img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(40, 20, 5, 0.45)); }
