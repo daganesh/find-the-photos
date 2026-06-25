@@ -63,6 +63,8 @@ export interface HuntSession {
   teamId?: string;
   /** Number of items unlocked in parallel (1 = sequential solo play). */
   teamSize: number;
+  /** Max simultaneous active items in team mode (owner-configurable, 1–10, ≤ teamSize). */
+  openItemLimit?: number;
   steps: StepProgress[];
   startedAt: string;
   /** Device location captured when the hunt started (for filtering/map later). */

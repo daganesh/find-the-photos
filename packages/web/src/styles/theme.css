@@ -68,8 +68,17 @@ body {
   margin: 0;
   font-family: var(--font);
   color: var(--color-ink);
-  background: url('/bg-map.png') center top / cover fixed;
+  background: #f0e8d0;
   -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: -8%;
+  z-index: -1;
+  background: url('/bg-map.png') center center / cover no-repeat;
+  filter: brightness(1.75) contrast(0.52) saturate(0.6);
 }
 
 h1, h2, h3 { margin: 0 0 var(--space-2); line-height: 1.1; font-weight: 800; }
