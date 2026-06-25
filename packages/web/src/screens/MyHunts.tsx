@@ -77,10 +77,10 @@ export function MyHunts() {
 
       <BottomBar
         onCreate={createRoute}
-        onJoin={() => navigate('/')}
+        onJoin={() => navigate('/join')}
         onMyHunts={() => {}}
-        onMyScores={() => navigate('/')}
-        onMyHistory={() => navigate('/')}
+        onMyScores={() => navigate('/history')}
+        onMyHistory={() => navigate('/history')}
         creating={creating}
       />
     </Page>
