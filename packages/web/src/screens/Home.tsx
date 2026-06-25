@@ -28,8 +28,6 @@ export function Home() {
   const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [joinOpen, setJoinOpen] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
 
   // Filter state — draft is the in-popup edit, applied is what's actually filtering
   const [filterOpen, setFilterOpen] = useState(false);
@@ -96,10 +94,8 @@ export function Home() {
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'draft') ?? []) : [];
-  const myRoutes = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'ready') ?? []) : [];
   const allSessions = myHunts?.sessions ?? [];
   const activeSessions = allSessions.filter((s) => !s.finishedAt);
-  const pastSessions = allSessions.filter((s) => !!s.finishedAt).slice(0, 10);
   const activeTeams = myTeams?.teams ?? [];
 
   const filterOpts = { ...applied, myLocation };
@@ -115,33 +111,7 @@ export function Home() {
   return (
     <Page>
       <div className="stack">
-        <header className="stack">
-          <h1>Hi {user?.name?.split(' ')[0]} 👋</h1>
-          <p className="muted">Play a hunt someone made, or create your own!</p>
-        </header>
-
-        {joinOpen && (
-          <div className="row" style={{ gap: 8 }}>
-            <input
-              autoFocus
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              placeholder="Enter join code…"
-              maxLength={8}
-              style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '0.1em' }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && joinCode.trim()) navigate(`/join/${joinCode.trim()}`);
-                if (e.key === 'Escape') { setJoinOpen(false); setJoinCode(''); }
-              }}
-            />
-            <Button variant="happy" disabled={!joinCode.trim()} onClick={() => navigate(`/join/${joinCode.trim()}`)}>
-              Join
-            </Button>
-            <Button variant="ghost" onClick={() => { setJoinOpen(false); setJoinCode(''); }}>
-              ✕
-            </Button>
-          </div>
-        )}
+        <h1>Hi {user?.name?.split(' ')[0]} 👋</h1>
 
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
@@ -187,23 +157,9 @@ export function Home() {
           </CollapsibleSection>
         )}
 
-        {user && myRoutes.length > 0 && (
-          <CollapsibleSection title="My published hunts" defaultOpen={false} id="home-my-published-hunts">
-            {myRoutes.map((r) => (
-              <PublishedRouteCard
-                key={r.id}
-                route={r}
-                onPlay={() => navigate(`/hunt/${r.id}`)}
-                onEdit={() => navigate(`/build/${r.id}`)}
-                onDelete={() => deleteDraft(r.id)}
-                deleting={deletingId === r.id}
-              />
-            ))}
-          </CollapsibleSection>
-        )}
-
-        <CollapsibleSection title="Available Hunts">
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <section className="stack">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0 }}>Available Hunts</h2>
             <FilterButton active={filtersActive} count={activeFilterCount} onClick={openFilterPopup} />
           </div>
           {filterOpen && (
@@ -231,28 +187,7 @@ export function Home() {
               onClick={() => navigate(`/hunt/${r.id}`)}
             />
           ))}
-        </CollapsibleSection>
-
-        {pastSessions.length > 0 && (
-          <CollapsibleSection title="Past hunts" defaultOpen={false} id="home-past-hunts">
-            {pastSessions.map((s) => {
-              const route = routes?.find((r) => r.id === s.routeId);
-              const found = s.steps.filter((st) => st.status === 'found').length;
-              return (
-                <PastHuntCard
-                  key={s.id}
-                  title={route?.title ?? 'Hunt'}
-                  found={found}
-                  total={s.steps.length}
-                  score={s.totalScore}
-                  onResults={() => navigate(`/results/${s.routeId}/${s.id}`)}
-                  onDelete={() => deleteSession(s.id)}
-                  deleting={deletingId === s.id}
-                />
-              );
-            })}
-          </CollapsibleSection>
-        )}
+        </section>
 
         {!loading && (
           <Button variant="ghost" onClick={reload}>
@@ -262,17 +197,10 @@ export function Home() {
       </div>
       <BottomBar
         onCreate={createRoute}
-        onJoin={() => setJoinOpen(true)}
+        onJoin={() => navigate('/join')}
         onMyHunts={() => navigate('/my-hunts')}
-        onMyScores={() => {
-          document.getElementById('home-past-hunts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
-        onMyHistory={() => {
-          const el =
-            document.getElementById('home-active-hunts') ??
-            document.getElementById('home-past-hunts');
-          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
+        onMyScores={() => navigate('/history')}
+        onMyHistory={() => navigate('/history')}
         creating={creating}
       />
     </Page>
@@ -288,36 +216,29 @@ function FilterButton({ active, count, onClick }: { active: boolean; count: numb
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
+        justifyContent: 'center',
+        gap: 4,
         background: active ? 'var(--color-accent)' : 'var(--color-surface)',
         color: active ? 'var(--color-accent-ink)' : 'var(--color-ink)',
         border: 'none',
         borderRadius: 'var(--radius-pill)',
-        padding: '8px 16px',
+        width: 40,
+        height: 40,
         fontFamily: 'inherit',
-        fontWeight: 700,
-        fontSize: '0.95rem',
+        fontSize: '1.1rem',
         cursor: 'pointer',
         boxShadow: 'var(--shadow)',
+        flexShrink: 0,
       }}
     >
-      🔽 Filters
-      {active && (
-        <span
-          style={{
-            background: 'rgba(255,255,255,0.35)',
-            borderRadius: '50%',
-            width: 20,
-            height: 20,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.75rem',
-            lineHeight: 1,
-          }}
-        >
-          {count}
-        </span>
+      {active ? (
+        <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>{count}</span>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="7" y1="12" x2="17" y2="12" />
+          <line x1="10" y1="18" x2="14" y2="18" />
+        </svg>
       )}
     </button>
   );
@@ -655,8 +576,9 @@ function ActiveHuntCard({
   );
 }
 
-function PastHuntCard({
+export function PastHuntCard({
   title,
+  coverPhotoUrl,
   found,
   total,
   score,
@@ -665,6 +587,7 @@ function PastHuntCard({
   deleting,
 }: {
   title: string;
+  coverPhotoUrl?: string;
   found: number;
   total: number;
   score: number;
@@ -680,17 +603,43 @@ function PastHuntCard({
     if (expanded) setConfirmDelete(false);
   }
 
+  const hasCover = Boolean(coverPhotoUrl);
+
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <button
         type="button"
         onClick={handleCardClick}
-        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+        style={{
+          display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
+          padding: hasCover ? 0 : 'var(--space-4)',
+        }}
       >
-        <h3 style={{ margin: '0 0 2px' }}>{title}</h3>
-        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-          {found}/{total} found · ⭐ {score}
-        </p>
+        {hasCover ? (
+          <div style={{
+            padding: 'var(--space-4)',
+            minHeight: 120,
+            display: 'flex',
+            alignItems: 'flex-end',
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.6) 100%), url(${mediaUrl(coverPhotoUrl!)})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}>
+            <div>
+              <h3 style={{ margin: '0 0 2px', color: '#fff' }}>{title}</h3>
+              <p className="muted" style={{ margin: 0, fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)' }}>
+                {found}/{total} found · ⭐ {score}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h3 style={{ margin: '0 0 2px' }}>{title}</h3>
+            <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+              {found}/{total} found · ⭐ {score}
+            </p>
+          </>
+        )}
       </button>
       {expanded && (
         <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
@@ -766,18 +715,42 @@ export function PublishedRouteCard({
     if (expanded) setConfirmDelete(false);
   }
 
+  const hasCover = Boolean(route.coverPhotoUrl);
+
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <button
         type="button"
         onClick={handleCardClick}
-        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: hasCover ? 0 : 'var(--space-4)' }}
       >
-        <h3 style={{ margin: '0 0 2px' }}>{route.title || 'Untitled hunt'}</h3>
-        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-          {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
-          {route.avgRating !== undefined && ` · ⭐ ${route.avgRating.toFixed(1)}`}
-        </p>
+        {hasCover ? (
+          <div style={{
+            padding: 'var(--space-4)',
+            minHeight: 120,
+            display: 'flex',
+            alignItems: 'flex-end',
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.6) 100%), url(${mediaUrl(route.coverPhotoUrl!)})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}>
+            <div>
+              <h3 style={{ margin: '0 0 2px', color: '#fff' }}>{route.title || 'Untitled hunt'}</h3>
+              <p className="muted" style={{ margin: 0, fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)' }}>
+                {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+                {route.avgRating !== undefined && ` · ⭐ ${route.avgRating.toFixed(1)}`}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h3 style={{ margin: '0 0 2px' }}>{route.title || 'Untitled hunt'}</h3>
+            <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+              {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+              {route.avgRating !== undefined && ` · ⭐ ${route.avgRating.toFixed(1)}`}
+            </p>
+          </>
+        )}
       </button>
       {expanded && (
         <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
