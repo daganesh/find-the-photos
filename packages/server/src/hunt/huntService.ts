@@ -52,7 +52,7 @@ export function buildSession(route: Route, hunterId: string, startLocation?: Geo
   };
 }
 
-/** Build a team session: first N items active in parallel (N = team member count). */
+/** Build a team session: first N items active in parallel (N = openItemLimit, capped by teamSize). */
 export function buildTeamSession(
   route: Route,
   hunterId: string,
@@ -60,12 +60,13 @@ export function buildTeamSession(
   teamSize: number,
   startLocation?: GeoPoint,
   reversed = false,
+  openItemLimit?: number,
 ): HuntSession {
-  const n = Math.max(1, Math.min(teamSize, route.items.length));
+  const limit = Math.max(1, Math.min(openItemLimit ?? teamSize, teamSize, route.items.length));
   const items = reversed ? [...route.items].reverse() : route.items;
   const steps: StepProgress[] = items.map((item, index) => {
     const step = createStep(item.id, now());
-    return index < n ? step : { ...step, status: 'locked', startedAt: undefined };
+    return index < limit ? step : { ...step, status: 'locked', startedAt: undefined };
   });
   return {
     id: nanoid(12),
@@ -73,6 +74,7 @@ export function buildTeamSession(
     hunterId,
     teamId,
     teamSize,
+    openItemLimit: limit,
     steps,
     startedAt: now(),
     startLocation,
@@ -81,10 +83,10 @@ export function buildTeamSession(
   };
 }
 
-/** Unlock locked steps until `teamSize` items are active simultaneously. Mutates in place. */
-function advance(steps: StepProgress[], teamSize: number): void {
+/** Unlock locked steps until `limit` items are active simultaneously. Mutates in place. */
+function advance(steps: StepProgress[], limit: number): void {
   let active = steps.filter((s) => s.status === 'active').length;
-  while (active < teamSize) {
+  while (active < limit) {
     const next = steps.findIndex((s) => s.status === 'locked');
     if (next === -1) break;
     steps[next] = { ...steps[next]!, status: 'active', startedAt: now() };
@@ -95,7 +97,7 @@ function advance(steps: StepProgress[], teamSize: number): void {
 /** Replace a step by item id and keep the running total fresh. */
 function withStep(session: HuntSession, itemId: string, next: StepProgress): HuntSession {
   const steps = session.steps.map((s) => (s.itemId === itemId ? next : s));
-  advance(steps, session.teamSize);
+  advance(steps, session.openItemLimit ?? session.teamSize);
   const updated: HuntSession = { ...session, steps };
   updated.totalScore = scoreSession(updated);
   if (steps.every((s) => s.status === 'found' || s.status === 'skipped')) {
