@@ -78,7 +78,7 @@ body::before {
   inset: -8%;
   z-index: -1;
   background: url('/bg-map.png') center center / cover no-repeat;
-  filter: brightness(1.75) contrast(0.52) saturate(0.6);
+  filter: brightness(1.9) contrast(0.38);
 }
 
 h1, h2, h3 { margin: 0 0 var(--space-2); line-height: 1.1; font-weight: 800; }
