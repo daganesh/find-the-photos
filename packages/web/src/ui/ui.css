@@ -270,9 +270,9 @@
 .bottombar__fab {
   flex: none;
   position: relative;
-  top: -18px;
-  width: 62px;
-  height: 62px;
+  top: -10px;
+  width: 58px;
+  height: 58px;
   border: none;
   border-radius: var(--radius-pill);
   background: #ffffff;

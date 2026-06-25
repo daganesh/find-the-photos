@@ -263,12 +263,7 @@ export function Home() {
       <BottomBar
         onCreate={createRoute}
         onJoin={() => setJoinOpen(true)}
-        onMyHunts={() => {
-          const el =
-            document.getElementById('home-my-drafts') ??
-            document.getElementById('home-my-published-hunts');
-          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
+        onMyHunts={() => navigate('/my-hunts')}
         onMyScores={() => {
           document.getElementById('home-past-hunts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }}
@@ -750,7 +745,7 @@ function ActiveTeamHuntCard({
   );
 }
 
-function PublishedRouteCard({
+export function PublishedRouteCard({
   route,
   onPlay,
   onEdit,
@@ -807,7 +802,7 @@ function PublishedRouteCard({
   );
 }
 
-function DraftCard({ route, onContinue, onDelete }: { route: RouteSummary; onContinue: () => void; onDelete: () => void }) {
+export function DraftCard({ route, onContinue, onDelete }: { route: RouteSummary; onContinue: () => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
