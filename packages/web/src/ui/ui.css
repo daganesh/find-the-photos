@@ -268,7 +268,7 @@
 .bottombar__btn:active { transform: scale(0.85); }
 
 .bottombar__btn svg { width: 26px; height: 26px; }
-.bottombar__btn img { width: 40px; height: 40px; object-fit: contain; mix-blend-mode: multiply; }
+.bottombar__btn img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(40, 20, 5, 0.35)); }
 
 .bottombar__fab {
   flex: none;
@@ -294,4 +294,4 @@
 .bottombar__fab:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
 
 .bottombar__fab svg { width: 28px; height: 28px; }
-.bottombar__fab img { width: 50px; height: 50px; object-fit: contain; mix-blend-mode: multiply; }
+.bottombar__fab img { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(40, 20, 5, 0.45)); }
