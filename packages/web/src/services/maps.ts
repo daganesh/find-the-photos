@@ -51,7 +51,7 @@ export function loadGoogleMaps(): Promise<typeof google.maps> {
     };
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${env.googleMapsApiKey}&libraries=marker&callback=${callbackName}&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${env.googleMapsApiKey}&callback=${callbackName}&loading=async`;
     script.async = true;
     script.onerror = () => {
       delete (window as unknown as Record<string, unknown>)[callbackName];
