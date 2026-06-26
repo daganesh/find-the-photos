@@ -23,7 +23,16 @@ export function ThinkingOverlay({ visible }: ThinkingOverlayProps) {
         backdropFilter: 'blur(2px)',
       }}
     >
-      <div className="thinking-character">🤔</div>
+      <img
+        src="/thinking-fox.png"
+        alt=""
+        aria-hidden="true"
+        style={{
+          width: 160,
+          height: 'auto',
+          filter: 'drop-shadow(0 6px 18px rgba(78,50,110,0.22))',
+        }}
+      />
       <div style={{
         background: 'rgba(255,255,255,0.95)',
         borderRadius: 20,
