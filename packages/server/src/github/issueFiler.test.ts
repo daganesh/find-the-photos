@@ -73,6 +73,37 @@ describe('buildIssueContent', () => {
   });
 });
 
+describe('fileReportIssue — image URL resolution', () => {
+  it('resolves relative /uploads/ URLs to absolute before embedding in the issue body', async () => {
+    const github = {
+      createIssue: vi.fn().mockResolvedValue({ number: 1, url: 'https://github.com/x/y/issues/1' }),
+      addComment: vi.fn().mockResolvedValue(undefined),
+    };
+    const reports = { upsert: vi.fn().mockResolvedValue(undefined) };
+    const report = makeReport({ imageUrls: ['/uploads/abc123.jpg'] });
+
+    await fileReportIssue({ github, reports }, report, false);
+
+    const body: string = github.createIssue.mock.calls[0][0].body as string;
+    expect(body).not.toContain('![screenshot](/uploads/');
+    expect(body).toMatch(/!\[screenshot\]\(https?:\/\/.+\/uploads\/abc123\.jpg\)/);
+  });
+
+  it('leaves absolute S3/CDN URLs unchanged', async () => {
+    const github = {
+      createIssue: vi.fn().mockResolvedValue({ number: 2, url: 'u' }),
+      addComment: vi.fn(),
+    };
+    const reports = { upsert: vi.fn() };
+    const report = makeReport({ imageUrls: ['https://cdn.example.com/photo.jpg'] });
+
+    await fileReportIssue({ github, reports }, report, false);
+
+    const body: string = github.createIssue.mock.calls[0][0].body as string;
+    expect(body).toContain('![screenshot](https://cdn.example.com/photo.jpg)');
+  });
+});
+
 describe('fileReportIssue', () => {
   it('creates an issue, posts the agent comment, and links it to the report', async () => {
     const github = {
