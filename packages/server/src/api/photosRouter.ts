@@ -6,7 +6,7 @@ import { requireAuth } from '../auth/middleware.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB per photo/clip
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — images are downscaled to ≤1440px JPEG anyway
 });
 
 /** `/api/photos` — upload item photos and audio hints. */
