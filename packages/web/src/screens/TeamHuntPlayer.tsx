@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import countdown1 from '../assets/countdown-1.png';
+import countdown2 from '../assets/countdown-2.png';
+import countdown3 from '../assets/countdown-3.png';
 import type { HuntSession } from '@ftp/shared';
 import { SCORING, canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
@@ -320,7 +323,12 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           <p style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--color-ink-soft)', margin: 0 }}>
             Get ready!
           </p>
-          <div className="countdown-digit" key={countdown}>{countdown}</div>
+          <img
+            key={countdown}
+            className="countdown-digit"
+            src={countdown === 3 ? countdown3 : countdown === 2 ? countdown2 : countdown1}
+            alt={String(countdown)}
+          />
           <p className="muted" style={{ margin: 0 }}>Hunt starts in…</p>
         </div>
       </Page>,
