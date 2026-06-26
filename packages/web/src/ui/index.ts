@@ -28,3 +28,4 @@ export { HuntTrail } from './HuntTrail.js';
 export type { HuntTrailItem } from './HuntTrail.js';
 export { ItemHistoryPanel } from './ItemHistoryPanel.js';
 export { TeamChat } from './TeamChat.js';
+export { ThinkingOverlay } from './ThinkingOverlay.js';
