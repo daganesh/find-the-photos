@@ -42,6 +42,7 @@ export const config = {
   gemini: {
     apiKey: optional('GEMINI_API_KEY'),
     model: optional('GEMINI_MODEL', 'gemini-2.0-flash'),
+    maxRetries: Number(optional('GEMINI_MAX_RETRIES', '3')),
   },
 
   /** GitHub integration: file admin-triaged reports as issues and hand them to Claude. */
