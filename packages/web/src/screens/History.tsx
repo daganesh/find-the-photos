@@ -14,19 +14,12 @@ export function History() {
     () => (user ? api.listAllMyHunts() : Promise.resolve({ sessions: [] })),
     [user?.id],
   );
-  const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const pastSessions = (myHunts?.sessions ?? []).filter((s) => !!s.finishedAt);
 
-  async function createRoute() {
-    setCreating(true);
-    try {
-      const route = await api.createRoute({ title: 'My new hunt' });
-      navigate(`/build/${route.id}`);
-    } finally {
-      setCreating(false);
-    }
+  function createRoute() {
+    navigate('/build/new');
   }
 
   async function deleteSession(sessionId: string) {
@@ -72,9 +65,8 @@ export function History() {
         onCreate={createRoute}
         onJoin={() => navigate('/join')}
         onMyHunts={() => navigate('/my-hunts')}
-        onMyScores={() => {}}
+        onMyScores={() => navigate('/scores')}
         onMyHistory={() => {}}
-        creating={creating}
       />
     </Page>
   );
