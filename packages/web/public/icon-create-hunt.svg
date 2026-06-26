@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Map circle background -->
+  <circle cx="32" cy="32" r="24" fill="#f4e4b0" stroke="#6b4a1a" stroke-width="2.5"/>
+  <!-- Terrain contour lines -->
+  <path d="M15 30 Q22 23 32 28 Q42 33 49 26" stroke="#6b4a1a" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.7"/>
+  <path d="M13 38 Q20 32 30 37 Q40 42 51 36" stroke="#6b4a1a" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.7"/>
+  <!-- Location pin at centre -->
+  <circle cx="32" cy="28" r="3.5" fill="#e05c00" stroke="#6b4a1a" stroke-width="1.2"/>
+  <line x1="32" y1="31.5" x2="32" y2="37" stroke="#e05c00" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Paintbrush handle (upper-right to lower-left) -->
+  <line x1="48" y1="14" x2="28" y2="54" stroke="#6b4a1a" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Brush ferrule (metal band) -->
+  <rect x="42.5" y="20" width="7" height="5" rx="1" fill="#a0a0a0" stroke="#6b4a1a" stroke-width="1" transform="rotate(-63 46 22.5)"/>
+  <!-- Bristles -->
+  <path d="M26 50 Q28 56 30 54 Q31 58 29 56" fill="#6b4a1a" stroke="#6b4a1a" stroke-width="0.5" stroke-linejoin="round"/>
+</svg>
