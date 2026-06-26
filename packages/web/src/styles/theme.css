@@ -127,12 +127,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--color-accent); o
 }
 
 .countdown-digit {
-  font-size: clamp(9rem, 38vw, 16rem);
-  font-weight: 900;
-  color: var(--color-primary);
-  line-height: 1;
+  width: clamp(180px, 55vw, 320px);
+  height: auto;
   transform-origin: center center;
   user-select: none;
+  display: block;
 }
 
 @media (prefers-reduced-motion: no-preference) {
