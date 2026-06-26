@@ -1,4 +1,4 @@
-import type { FinalItem, Hint, Item, Route, Rating } from '../models/route.js';
+import type { FinalItem, Hint, Item, Route, Rating, RouteVisibility } from '../models/route.js';
 import type { GeoPoint } from '../models/geo.js';
 import type { HuntSession, MatchVerdict, StepProgress } from '../models/hunt.js';
 import type { User } from '../models/user.js';
@@ -41,6 +41,8 @@ export interface UpdateRouteRequest {
   items?: Item[];
   /** Set or clear the optional final item. Pass null to remove. */
   finalItem?: FinalItem | null;
+  /** Who can discover this route in the browse list. */
+  visibility?: RouteVisibility;
 }
 
 export interface RouteSummary {
@@ -53,6 +55,7 @@ export interface RouteSummary {
   authorName?: string;
   itemCount: number;
   status: Route['status'];
+  visibility?: RouteVisibility;
   avgRating?: number;
   createdAt: string;
   /** GPS of the first item that has a location — shown as "Start" on cards. */

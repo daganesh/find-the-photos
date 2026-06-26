@@ -10,20 +10,13 @@ export function MyHunts() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
-  const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'draft') ?? []) : [];
   const myRoutes = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'ready') ?? []) : [];
 
-  async function createRoute() {
-    setCreating(true);
-    try {
-      const route = await api.createRoute({ title: 'My new hunt' });
-      navigate(`/build/${route.id}`);
-    } finally {
-      setCreating(false);
-    }
+  function createRoute() {
+    navigate('/build/new');
   }
 
   async function deleteDraft(routeId: string) {
@@ -79,9 +72,8 @@ export function MyHunts() {
         onCreate={createRoute}
         onJoin={() => navigate('/join')}
         onMyHunts={() => {}}
-        onMyScores={() => navigate('/history')}
+        onMyScores={() => navigate('/scores')}
         onMyHistory={() => navigate('/history')}
-        creating={creating}
       />
     </Page>
   );

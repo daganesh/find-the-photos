@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import type { RouteVisibility } from '@ftp/shared';
 import type { FinalItem, Item, ModerationIssue, Route } from '@ftp/shared';
 import { getJigsawGridSize, isRoutePlayable } from '@ftp/shared';
 import {
@@ -127,7 +128,17 @@ function SortableItemCard({ item, index, finalItem, chunkSize, onEdit, onRemove 
 export function RouteBuilder() {
   const { routeId = '' } = useParams();
   const navigate = useNavigate();
-  const { data, loading, error } = useAsync(() => api.getRoute(routeId), [routeId]);
+
+  // 'new' mode: don't hit the server until the user makes a real change
+  const isNewMode = routeId === 'new';
+
+  // Tracks the actual server-side route id (null until first persist in new mode)
+  const serverRouteIdRef = useRef<string | null>(isNewMode ? null : routeId);
+
+  const { data, loading, error } = useAsync(
+    () => (isNewMode ? Promise.resolve(null) : api.getRoute(routeId)),
+    [routeId],
+  );
 
   const [route, setRoute] = useState<Route | null>(null);
   const [editing, setEditing] = useState<EditingState>(null);
@@ -140,6 +151,7 @@ export function RouteBuilder() {
   const [blockedIssues, setBlockedIssues] = useState<ModerationIssue[]>([]);
   const [flaggedIssues, setFlaggedIssues] = useState<ModerationIssue[]>([]);
   const [flagOverride, setFlagOverride] = useState('');
+  const [visibility, setVisibility] = useState<RouteVisibility>('public');
   const [publishError, setPublishError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [headerExpanded, setHeaderExpanded] = useState(true);
@@ -151,28 +163,72 @@ export function RouteBuilder() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (data) setRoute(data);
-  }, [data]);
+    if (isNewMode) {
+      // Initialise once with a blank local draft — nothing is saved to the server yet.
+      // Use functional form so re-runs (e.g. when useAsync resolves null) don't reset state.
+      setRoute((prev) =>
+        prev
+          ? prev
+          : {
+              id: 'new',
+              title: 'My new hunt',
+              description: undefined,
+              authorId: '',
+              authorName: '',
+              items: [],
+              status: 'draft',
+              createdAt: new Date().toISOString(),
+              ratings: [],
+            },
+      );
+    } else if (data) {
+      setRoute(data);
+      if (data.visibility) setVisibility(data.visibility);
+    }
+  }, [isNewMode, data]);
 
   // DnD sensors — require 5px movement so taps still register as clicks
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  if (loading) return <Page onBack title="Build"><Spinner label="Loading…" /></Page>;
-  if (error || !route) return <Page onBack title="Build"><p style={{ color: 'var(--color-danger)' }}>{error ?? 'Not found'}</p></Page>;
+  if ((loading && !isNewMode) || !route) return <Page onBack title="Build"><Spinner label="Loading…" /></Page>;
+  if (!isNewMode && error) return <Page onBack title="Build"><p style={{ color: 'var(--color-danger)' }}>{error}</p></Page>;
 
   async function persist(next: Route) {
     setRoute(next);
+    setSaveError('');
     try {
-      await api.updateRoute(next.id, {
+      let id = serverRouteIdRef.current;
+
+      if (!id) {
+        // First real change in "new" mode — create the route server-side
+        const created = await api.createRoute({
+          title: next.title || 'My new hunt',
+          description: next.description,
+        });
+        id = created.id;
+        serverRouteIdRef.current = id;
+
+        // Persist full state then replace URL so the component re-anchors to the real id
+        await api.updateRoute(id, {
+          title: next.title,
+          description: next.description,
+          coverPhotoUrl: next.coverPhotoUrl,
+          items: next.items,
+          finalItem: next.finalItem ?? null,
+        });
+        navigate(`/build/${id}`, { replace: true });
+        return;
+      }
+
+      await api.updateRoute(id, {
         title: next.title,
         description: next.description,
         coverPhotoUrl: next.coverPhotoUrl,
         items: next.items,
         finalItem: next.finalItem ?? null,
       });
-      setSaveError('');
     } catch {
       setSaveError('⚠️ Changes could not be saved — check your connection');
     }
@@ -287,20 +343,26 @@ export function RouteBuilder() {
   }
 
   async function finalize() {
+    const id = serverRouteIdRef.current;
+    if (!id) {
+      // Route was never modified — nothing to publish
+      navigate('/');
+      return;
+    }
     setSaving(true);
     setBlockedIssues([]);
     setFlaggedIssues([]);
     setPublishError('');
     try {
-      const result = await api.moderateRoute(route!.id);
+      const result = await api.moderateRoute(id);
       const blocked = result.issues.filter(i => i.severity === 'blocked');
       const flagged = result.issues.filter(i => i.severity === 'flagged');
       setBlockedIssues(blocked);
       setFlaggedIssues(flagged);
       if (blocked.length > 0) { setSaving(false); return; }
       if (flagged.length > 0 && !flagOverride.trim()) { setSaving(false); return; }
-      await api.finalizeRoute(route!.id, flagOverride.trim() || undefined);
-      navigate(`/play/${route!.id}`);
+      await api.finalizeRoute(id, flagOverride.trim() || undefined, visibility);
+      navigate(`/play/${id}`);
     } catch (e) {
       setSaving(false);
       setPublishError(e instanceof Error ? e.message : 'Could not publish — please try again');
@@ -308,9 +370,10 @@ export function RouteBuilder() {
   }
 
   async function deleteRouteAndGoHome() {
+    const id = serverRouteIdRef.current;
     setDeletingRoute(true);
     try {
-      await api.deleteRoute(routeId);
+      if (id) await api.deleteRoute(id);
       navigate('/');
     } catch {
       setDeletingRoute(false);
@@ -663,6 +726,40 @@ export function RouteBuilder() {
             </div>
           </Card>
         )}
+
+        {/* Visibility toggle — shown only before publishing (or when already published) */}
+        <div>
+          <span className="field-label">Visibility</span>
+          <div className="row" style={{ gap: 8 }}>
+            <Button
+              variant={visibility === 'public' ? 'primary' : 'ghost'}
+              onClick={() => {
+                setVisibility('public');
+                if (serverRouteIdRef.current) {
+                  void api.updateRoute(serverRouteIdRef.current, { visibility: 'public' });
+                }
+              }}
+            >
+              🌍 Public
+            </Button>
+            <Button
+              variant={visibility === 'private' ? 'primary' : 'ghost'}
+              onClick={() => {
+                setVisibility('private');
+                if (serverRouteIdRef.current) {
+                  void api.updateRoute(serverRouteIdRef.current, { visibility: 'private' });
+                }
+              }}
+            >
+              🔒 Private
+            </Button>
+          </div>
+          <p className="muted" style={{ fontSize: '0.8rem', margin: '4px 0 0' }}>
+            {visibility === 'private'
+              ? 'Only you can find this hunt in the list. Anyone with the link can still play.'
+              : 'Anyone can discover and play this hunt.'}
+          </p>
+        </div>
 
         <Button
           variant="happy"

@@ -24,6 +24,7 @@ function toSummary(route: Route): RouteSummary {
     authorName: route.authorName,
     itemCount: route.items.length,
     status: route.status,
+    visibility: route.visibility,
     avgRating: route.avgRating,
     createdAt: route.createdAt,
     startLocation: located[0]?.location,
@@ -35,12 +36,15 @@ function toSummary(route: Route): RouteSummary {
 export function routesRouter(ctx: AppContext): Router {
   const router = Router();
 
-  // Browse: all finalised routes, plus the caller's own drafts.
+  // Browse: all finalised public routes, plus the caller's own drafts and private routes.
   router.get('/', optionalAuth, async (req: AuthedRequest, res, next) => {
     try {
       const all = await ctx.routes.list();
+      const userId = req.user?.id;
       const visible = all.filter(
-        (r) => r.status === 'ready' || r.authorId === req.user?.id,
+        (r) =>
+          r.authorId === userId ||
+          (r.status === 'ready' && r.visibility !== 'private'),
       );
       res.json(visible.map(toSummary));
     } catch (err) {
@@ -105,6 +109,7 @@ export function routesRouter(ctx: AppContext): Router {
       if (body.coverPhotoUrl !== undefined) patch.coverPhotoUrl = body.coverPhotoUrl || undefined;
       if (body.items !== undefined) patch.items = body.items;
       if (body.finalItem !== undefined) patch.finalItem = body.finalItem ?? undefined;
+      if (body.visibility !== undefined) patch.visibility = body.visibility;
       res.json(await ctx.routes.update(route.id, patch));
     } catch (err) {
       next(err);
@@ -152,11 +157,13 @@ export function routesRouter(ctx: AppContext): Router {
           .status(400)
           .json({ error: 'Add a title and at least one item before finishing' });
       }
-      const { flagOverride } = req.body as { flagOverride?: string };
+      const { flagOverride, visibility } = req.body as { flagOverride?: string; visibility?: 'public' | 'private' };
       if (flagOverride && flagOverride.trim()) {
         console.warn('[moderation] override by author %s for route %s: %s', req.user!.id, route.id, flagOverride);
       }
-      res.json(await ctx.routes.update(route.id, { status: 'ready' }));
+      const finalUpdate: Partial<Route> = { status: 'ready' };
+      if (visibility === 'public' || visibility === 'private') finalUpdate.visibility = visibility;
+      res.json(await ctx.routes.update(route.id, finalUpdate));
     } catch (err) {
       next(err);
     }

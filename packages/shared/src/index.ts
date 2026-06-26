@@ -11,6 +11,7 @@ export type {
   ItemKind,
   FinalItem,
   RouteStatus,
+  RouteVisibility,
   Rating,
   Route,
 } from './models/route.js';

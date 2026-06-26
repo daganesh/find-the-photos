@@ -26,7 +26,6 @@ export function Home() {
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
   const { data: myHunts, reload: reloadHunts } = useAsync(() => (user ? api.listAllMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
   const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
-  const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Filter state — draft is the in-popup edit, applied is what's actually filtering
@@ -36,14 +35,8 @@ export function Home() {
   const [myLocation, setMyLocation] = useState<GeoPoint | undefined>();
   const [locating, setLocating] = useState(false);
 
-  async function createRoute() {
-    setCreating(true);
-    try {
-      const route = await api.createRoute({ title: 'My new hunt' });
-      navigate(`/build/${route.id}`);
-    } finally {
-      setCreating(false);
-    }
+  function createRoute() {
+    navigate('/build/new');
   }
 
   async function deleteDraft(routeId: string) {
@@ -199,9 +192,8 @@ export function Home() {
         onCreate={createRoute}
         onJoin={() => navigate('/join')}
         onMyHunts={() => navigate('/my-hunts')}
-        onMyScores={() => navigate('/history')}
+        onMyScores={() => navigate('/scores')}
         onMyHistory={() => navigate('/history')}
-        creating={creating}
       />
     </Page>
   );

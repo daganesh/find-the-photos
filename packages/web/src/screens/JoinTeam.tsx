@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
-import { Banner, Button, Page, Spinner } from '../ui/index.js';
+import { Banner, BottomBar, Button, Page, Spinner } from '../ui/index.js';
 
 /** Code entry form — shown at /join with no code yet. */
 function JoinEntry() {
@@ -32,6 +32,13 @@ function JoinEntry() {
           Join →
         </Button>
       </div>
+      <BottomBar
+        onCreate={() => navigate('/build/new')}
+        onJoin={() => {}}
+        onMyHunts={() => navigate('/my-hunts')}
+        onMyScores={() => navigate('/scores')}
+        onMyHistory={() => navigate('/history')}
+      />
     </Page>
   );
 }
