@@ -7,6 +7,7 @@ Route                            the authored game
   id, title, description
   items: Item[]                  ordered list of things to find
   status: 'draft' | 'ready'
+  visibility?: 'public' | 'private'   defaults to 'public'; 'private' hides from browse list (owner still sees it; direct link still works)
   ratings: Rating[]
   finalItem?: FinalItem          optional bonus challenge (see below)
 

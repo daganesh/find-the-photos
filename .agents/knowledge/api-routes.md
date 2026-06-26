@@ -14,13 +14,13 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/routes` | Optional | List all `ready` routes + caller's own drafts |
+| GET | `/api/routes` | Optional | List all `ready` public routes + caller's own routes (drafts + private) |
 | POST | `/api/routes` | Required | Create a draft route; body: `{ title, description? }` |
-| GET | `/api/routes/:id` | Optional | Get full route (drafts visible to owner only) |
-| PATCH | `/api/routes/:id` | Owner | Update title/description/coverPhotoUrl/items |
+| GET | `/api/routes/:id` | Optional | Get full route (drafts visible to owner only; private ready routes accessible via direct link) |
+| PATCH | `/api/routes/:id` | Owner | Update title/description/coverPhotoUrl/items/visibility |
 | DELETE | `/api/routes/:id` | Owner | Delete route |
 | POST | `/api/routes/:id/moderate` | Owner | AI text moderation check → `ModerationResult` |
-| POST | `/api/routes/:id/finalize` | Owner | Mark draft `→ ready`; validates playability |
+| POST | `/api/routes/:id/finalize` | Owner | Mark draft `→ ready`; body: `{ flagOverride?, visibility?: 'public'\|'private' }` |
 | POST | `/api/routes/:id/ratings` | Required | Rate a route; body: `{ stars: 1-5, comment? }` |
 
 ## Hunt (`/api/hunt`)
