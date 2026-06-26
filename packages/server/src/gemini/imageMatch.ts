@@ -40,16 +40,61 @@ CRITICAL RULES FOR THE REASON FIELD:
   NEVER reveal, name, describe, or hint at the target object in any way.
   The name of the target object must NEVER appear in the reason field.`;
 
-/** Retry an async fn up to `attempts` times with exponential back-off. */
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+const GEMINI_TIMEOUT_MS = 30_000;
+
+/** True for transient Gemini errors worth retrying (503, 429, 500). */
+function isTransientGeminiError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as Record<string, unknown>;
+  const status = typeof e.status === 'number' ? e.status
+    : typeof e.code === 'number' ? e.code
+    : NaN;
+  if (status === 503 || status === 429 || status === 500) return true;
+  return /\b(503|429|UNAVAILABLE|RESOURCE_EXHAUSTED)\b/.test(JSON.stringify(e));
+}
+
+/**
+ * Retry an async fn up to `maxAttempts` times on transient Gemini errors.
+ * Sleep increases linearly: 1 s, 2 s, 3 s … capped at 5 s.
+ * A hard 30-second timeout wraps the entire retry sequence.
+ * Returns the result together with the number of attempts made.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = config.gemini.maxRetries,
+): Promise<{ result: T; attempts: number }> {
   let lastErr: unknown;
-  for (let i = 0; i < attempts; i++) {
-    try { return await fn(); } catch (e) {
-      lastErr = e;
-      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 600 * (i + 1)));
+
+  const attemptAll = async (): Promise<{ result: T; attempts: number }> => {
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        return { result: await fn(), attempts: i + 1 };
+      } catch (e) {
+        lastErr = e;
+        if (i < maxAttempts - 1 && isTransientGeminiError(e)) {
+          await new Promise((r) => setTimeout(r, Math.min(1000 * (i + 1), 5000)));
+          continue;
+        }
+        throw e;
+      }
     }
-  }
-  throw lastErr;
+    throw lastErr;
+  };
+
+  return Promise.race([
+    attemptAll(),
+    new Promise<never>((_, rej) =>
+      setTimeout(() => rej(new Error('Gemini request timed out after 30 s')), GEMINI_TIMEOUT_MS),
+    ),
+  ]);
+}
+
+/** Append retry annotation to a verdict's reason when the call needed retries. */
+function annotateRetries(verdict: MatchVerdict, attempts: number): MatchVerdict {
+  if (attempts <= 1) return verdict;
+  const n = attempts - 1;
+  const label = n === 1 ? 'retry' : 'retries';
+  return { ...verdict, reason: `${verdict.reason} (needed ${n} ${label})` };
 }
 
 /** Real Gemini-backed matcher. */
@@ -72,25 +117,25 @@ export class GeminiImageMatchService implements ImageMatchService {
       { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
     ];
 
-    const response = await withRetry(() => this.ai.models.generateContent({
+    const { result, attempts } = await withRetry(() => this.ai.models.generateContent({
       model: config.gemini.model,
       contents: [{ role: 'user', parts }],
       config: { responseMimeType: 'application/json' },
     }));
 
-    return parseVerdict(response.text ?? '');
+    return annotateRetries(parseVerdict(result.text ?? ''), attempts);
   }
 
   async verifyDispute(description: string, itemName: string): Promise<MatchVerdict> {
-    const prompt = `You are verifying a treasure hunt answer. The player answered: "${description}". The correct answer is: "${itemName}". Do they mean the same thing? Be generous — synonyms, partial descriptions, and different languages count if clearly the same. CRITICAL RULES FOR THE REASON FIELD: Do NOT mention, reveal, or hint at the correct answer under any circumstances. If wrong, give only a short directional hint (e.g. "think bigger", "that's a different kind of thing", "look more carefully"). Reply with STRICT JSON: {"match": boolean, "confidence": number (0..1), "reason": "one short kid-friendly sentence"}`;
+    const prompt = `You are verifying a treasure hunt answer. The player answered: <input>${description}</input>. The correct answer is: "${itemName}". Do they mean the same thing? Be generous — synonyms, partial descriptions, and different languages count if clearly the same. CRITICAL RULES FOR THE REASON FIELD: Do NOT mention, reveal, or hint at the correct answer under any circumstances. If wrong, give only a short directional hint (e.g. "think bigger", "that's a different kind of thing", "look more carefully"). Reply with STRICT JSON: {"match": boolean, "confidence": number (0..1), "reason": "one short kid-friendly sentence"}`;
 
-    const response = await withRetry(() => this.ai.models.generateContent({
+    const { result, attempts } = await withRetry(() => this.ai.models.generateContent({
       model: config.gemini.model,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: { responseMimeType: 'application/json' },
     }));
 
-    return parseVerdict(response.text ?? '');
+    return annotateRetries(parseVerdict(result.text ?? ''), attempts);
   }
 
   async scoreTask(candidate: InlineImage, instruction: string): Promise<MatchVerdict> {
@@ -100,13 +145,13 @@ export class GeminiImageMatchService implements ImageMatchService {
       { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
     ];
 
-    const response = await withRetry(() => this.ai.models.generateContent({
+    const { result, attempts } = await withRetry(() => this.ai.models.generateContent({
       model: config.gemini.model,
       contents: [{ role: 'user', parts }],
       config: { responseMimeType: 'application/json' },
     }));
 
-    return parseVerdict(response.text ?? '');
+    return annotateRetries(parseVerdict(result.text ?? ''), attempts);
   }
 }
 

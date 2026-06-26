@@ -21,6 +21,7 @@ export function TeamLobby() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [reversed, setReversed] = useState(false);
+  const [openItemLimit, setOpenItemLimit] = useState(5);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -75,7 +76,8 @@ export function TeamLobby() {
     setError(undefined);
     try {
       const location = await getCurrentLocation().catch(() => undefined);
-      const { team: t } = await api.startTeamHunt(teamId, location, reversed);
+      const effectiveLimit = Math.max(1, Math.min(openItemLimit, team?.members.length ?? openItemLimit));
+      const { team: t } = await api.startTeamHunt(teamId, location, reversed, effectiveLimit);
       setTeam(t);
       if (t.status === 'playing') {
         navigate(`/team/${teamId}/play`, { replace: true });
@@ -205,6 +207,30 @@ export function TeamLobby() {
                 {reversed ? 'Play original' : 'Play reversed'}
               </Button>
             </div>
+
+            <Card>
+              <div className="stack" style={{ gap: 'var(--space-2)' }}>
+                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="field-label" style={{ margin: 0 }}>Open clues at once</span>
+                  <strong style={{ fontSize: '1.3rem', minWidth: 28, textAlign: 'center' }}>{Math.min(openItemLimit, team.members.length)}</strong>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={Math.min(10, team.members.length)}
+                  value={openItemLimit}
+                  onChange={(e) => setOpenItemLimit(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                  aria-label="Number of clues open simultaneously"
+                />
+                <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+                  {Math.min(openItemLimit, team.members.length) === 1
+                    ? 'Everyone focuses on the same clue.'
+                    : `Up to ${Math.min(openItemLimit, team.members.length)} clues active at once — capped by team size.`}
+                </p>
+              </div>
+            </Card>
+
             <Button size="lg" block variant="happy" onClick={handleStart} disabled={starting}>
               {starting ? 'Starting…' : '▶ Start Hunt'}
             </Button>

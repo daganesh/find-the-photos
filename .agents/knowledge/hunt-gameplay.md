@@ -7,7 +7,9 @@ Route                            the authored game
   id, title, description
   items: Item[]                  ordered list of things to find
   status: 'draft' | 'ready'
+  visibility?: 'public' | 'private'   defaults to 'public'; 'private' hides from browse list (owner still sees it; direct link still works)
   ratings: Rating[]
+  finalItem?: FinalItem          optional bonus challenge (see below)
 
 Item
   kind: 'photo' | 'task'         photo = match reference photos; task = perform an action
@@ -74,3 +76,23 @@ Team
 | `task` | No references | `scoreTask()` — score performance 0–100 | No |
 
 Dispute verification: `verifyDispute(description, itemName)` — player must name the item correctly before override is accepted.
+
+## FinalItem (code kind only)
+
+The final item only supports `kind: 'code'`. Riddle and jigsaw kinds are no longer available in the RouteBuilder.
+
+`FinalItem` with `kind: 'code'` has these key fields:
+
+| Field | Role |
+|-------|------|
+| `answer` | The code players enter (letters/digits collected from solved items, verified server-side) |
+| `revealAnswer?` | Prize text revealed inside the open chest after the correct code is entered |
+| `prizeImageUrl?` | Prize image URL revealed inside the open chest. Takes precedence over `revealAnswer` when set |
+
+The `answer` is the key to the lock. `revealAnswer` or `prizeImageUrl` (mutually exclusive, image wins) is the prize inside the chest. The route author configures these in the `RouteBuilder` under the "Final item" section.
+
+### Chest UX flow (player side)
+1. **Locked chest** — shown on the final-challenge screen. Tapping opens the code-entry form.
+2. **Code entry** — `CodeAssemblyDisplay` shows collected characters; player fills blanks and submits.
+3. **Open chest** — on correct code, `FinalItemPanel` renders the open chest image with the prize (text or image) overlaid inside. A "Continue to results" button calls `onPrizeContinue`.
+4. **Celebration** — `HuntPlayer`/`TeamHuntPlayer` transitions to the results/fireworks screen.

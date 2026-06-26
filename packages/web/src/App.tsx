@@ -12,6 +12,9 @@ import { TeamHuntPlayer } from './screens/TeamHuntPlayer.js';
 import { TeamResults } from './screens/TeamResults.js';
 import { Admin } from './screens/Admin.js';
 import { Report } from './screens/Report.js';
+import { MyHunts } from './screens/MyHunts.js';
+import { History } from './screens/History.js';
+import { MyScores } from './screens/MyScores.js';
 import { AppBar } from './ui/index.js';
 
 /** Routes are gated by sign-in. The URL is preserved, so shared /play links
@@ -31,10 +34,14 @@ function AppRoutes() {
         <Route path="/play/:routeId/resume/:sessionId" element={<HuntPlayer />} />
         <Route path="/results/:routeId" element={<Results />} />
         <Route path="/results/:routeId/:sessionId" element={<Results />} />
+        <Route path="/join" element={<JoinTeam />} />
         <Route path="/join/:code" element={<JoinTeam />} />
         <Route path="/team/:teamId" element={<TeamLobby />} />
         <Route path="/team/:teamId/play" element={<TeamHuntPlayer />} />
         <Route path="/team/:teamId/results" element={<TeamResults />} />
+        <Route path="/my-hunts" element={<MyHunts />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/scores" element={<MyScores />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/report" element={<Report />} />
         <Route path="*" element={<Navigate to="/" replace />} />

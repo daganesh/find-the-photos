@@ -109,10 +109,13 @@ export function teamsRouter(ctx: AppContext): Router {
       const route = await ctx.routes.get(team.routeId);
       if (!route) return void res.status(404).json({ error: 'Route not found' });
 
-      const { location, reversed } = req.body as { location?: import('@ftp/shared').GeoPoint; reversed?: boolean };
+      const { location, reversed, openItemLimit } = req.body as { location?: import('@ftp/shared').GeoPoint; reversed?: boolean; openItemLimit?: number };
+      const clampedLimit = openItemLimit !== undefined
+        ? Math.max(1, Math.min(Math.round(openItemLimit), 10, team.members.length))
+        : undefined;
       const now = new Date().toISOString();
       const session = await ctx.hunts.create(
-        buildTeamSession(route, team.ownerId, team.id, team.members.length, location, reversed),
+        buildTeamSession(route, team.ownerId, team.id, team.members.length, location, reversed, clampedLimit),
       );
       const updated = await ctx.teams.update(team.id, {
         status: 'playing',

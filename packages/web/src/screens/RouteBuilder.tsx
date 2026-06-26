@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import type { RouteVisibility } from '@ftp/shared';
 import type { FinalItem, Item, ModerationIssue, Route } from '@ftp/shared';
 import { getJigsawGridSize, isRoutePlayable } from '@ftp/shared';
 import {
@@ -127,7 +128,17 @@ function SortableItemCard({ item, index, finalItem, chunkSize, onEdit, onRemove 
 export function RouteBuilder() {
   const { routeId = '' } = useParams();
   const navigate = useNavigate();
-  const { data, loading, error } = useAsync(() => api.getRoute(routeId), [routeId]);
+
+  // 'new' mode: don't hit the server until the user makes a real change
+  const isNewMode = routeId === 'new';
+
+  // Tracks the actual server-side route id (null until first persist in new mode)
+  const serverRouteIdRef = useRef<string | null>(isNewMode ? null : routeId);
+
+  const { data, loading, error } = useAsync(
+    () => (isNewMode ? Promise.resolve(null) : api.getRoute(routeId)),
+    [routeId],
+  );
 
   const [route, setRoute] = useState<Route | null>(null);
   const [editing, setEditing] = useState<EditingState>(null);
@@ -135,40 +146,89 @@ export function RouteBuilder() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverError, setCoverError] = useState('');
   const [uploadingFinalPhoto, setUploadingFinalPhoto] = useState(false);
+  const [uploadingPrizeImage, setUploadingPrizeImage] = useState(false);
+  const [prizeTypeOverride, setPrizeTypeOverride] = useState<'text' | 'image' | null>(null);
   const [blockedIssues, setBlockedIssues] = useState<ModerationIssue[]>([]);
   const [flaggedIssues, setFlaggedIssues] = useState<ModerationIssue[]>([]);
   const [flagOverride, setFlagOverride] = useState('');
+  const [visibility, setVisibility] = useState<RouteVisibility>('public');
   const [publishError, setPublishError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [headerExpanded, setHeaderExpanded] = useState(true);
+  const [confirmDeleteRoute, setConfirmDeleteRoute] = useState(false);
+  const [deletingRoute, setDeletingRoute] = useState(false);
 
   // Undo state for deletions
   const [undoItem, setUndoItem] = useState<{ item: Item; index: number } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (data) setRoute(data);
-  }, [data]);
+    if (isNewMode) {
+      // Initialise once with a blank local draft — nothing is saved to the server yet.
+      // Use functional form so re-runs (e.g. when useAsync resolves null) don't reset state.
+      setRoute((prev) =>
+        prev
+          ? prev
+          : {
+              id: 'new',
+              title: 'My new hunt',
+              description: undefined,
+              authorId: '',
+              authorName: '',
+              items: [],
+              status: 'draft',
+              createdAt: new Date().toISOString(),
+              ratings: [],
+            },
+      );
+    } else if (data) {
+      setRoute(data);
+      if (data.visibility) setVisibility(data.visibility);
+    }
+  }, [isNewMode, data]);
 
   // DnD sensors — require 5px movement so taps still register as clicks
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  if (loading) return <Page onBack title="Build"><Spinner label="Loading…" /></Page>;
-  if (error || !route) return <Page onBack title="Build"><p style={{ color: 'var(--color-danger)' }}>{error ?? 'Not found'}</p></Page>;
+  if ((loading && !isNewMode) || !route) return <Page onBack title="Build"><Spinner label="Loading…" /></Page>;
+  if (!isNewMode && error) return <Page onBack title="Build"><p style={{ color: 'var(--color-danger)' }}>{error}</p></Page>;
 
   async function persist(next: Route) {
     setRoute(next);
+    setSaveError('');
     try {
-      await api.updateRoute(next.id, {
+      let id = serverRouteIdRef.current;
+
+      if (!id) {
+        // First real change in "new" mode — create the route server-side
+        const created = await api.createRoute({
+          title: next.title || 'My new hunt',
+          description: next.description,
+        });
+        id = created.id;
+        serverRouteIdRef.current = id;
+
+        // Persist full state then replace URL so the component re-anchors to the real id
+        await api.updateRoute(id, {
+          title: next.title,
+          description: next.description,
+          coverPhotoUrl: next.coverPhotoUrl,
+          items: next.items,
+          finalItem: next.finalItem ?? null,
+        });
+        navigate(`/build/${id}`, { replace: true });
+        return;
+      }
+
+      await api.updateRoute(id, {
         title: next.title,
         description: next.description,
         coverPhotoUrl: next.coverPhotoUrl,
         items: next.items,
         finalItem: next.finalItem ?? null,
       });
-      setSaveError('');
     } catch {
       setSaveError('⚠️ Changes could not be saved — check your connection');
     }
@@ -257,7 +317,7 @@ export function RouteBuilder() {
   }
 
   async function updateFinalItem(patch: Partial<FinalItem>) {
-    const next: Route = { ...route!, finalItem: { ...(route!.finalItem ?? { kind: 'riddle', answer: '' }), ...patch } };
+    const next: Route = { ...route!, finalItem: { ...(route!.finalItem ?? { kind: 'code', answer: '' }), ...patch } };
     await persist(next);
   }
 
@@ -271,24 +331,53 @@ export function RouteBuilder() {
     }
   }
 
+  async function addPrizeImage(file: File) {
+    setUploadingPrizeImage(true);
+    try {
+      const { url } = await api.uploadFile(file, file.name);
+      await updateFinalItem({ prizeImageUrl: url });
+      setPrizeTypeOverride(null);
+    } finally {
+      setUploadingPrizeImage(false);
+    }
+  }
+
   async function finalize() {
+    const id = serverRouteIdRef.current;
+    if (!id) {
+      // Route was never modified — nothing to publish
+      navigate('/');
+      return;
+    }
     setSaving(true);
     setBlockedIssues([]);
     setFlaggedIssues([]);
     setPublishError('');
     try {
-      const result = await api.moderateRoute(route!.id);
+      const result = await api.moderateRoute(id);
       const blocked = result.issues.filter(i => i.severity === 'blocked');
       const flagged = result.issues.filter(i => i.severity === 'flagged');
       setBlockedIssues(blocked);
       setFlaggedIssues(flagged);
       if (blocked.length > 0) { setSaving(false); return; }
       if (flagged.length > 0 && !flagOverride.trim()) { setSaving(false); return; }
-      await api.finalizeRoute(route!.id, flagOverride.trim() || undefined);
-      navigate(`/play/${route!.id}`);
+      await api.finalizeRoute(id, flagOverride.trim() || undefined, visibility);
+      navigate(`/play/${id}`);
     } catch (e) {
       setSaving(false);
       setPublishError(e instanceof Error ? e.message : 'Could not publish — please try again');
+    }
+  }
+
+  async function deleteRouteAndGoHome() {
+    const id = serverRouteIdRef.current;
+    setDeletingRoute(true);
+    try {
+      if (id) await api.deleteRoute(id);
+      navigate('/');
+    } catch {
+      setDeletingRoute(false);
+      setConfirmDeleteRoute(false);
     }
   }
 
@@ -508,85 +597,78 @@ export function RouteBuilder() {
 
         {/* ── Final item ─────────────────────────────────────────────────── */}
         <h2>Final item (optional)</h2>
-        <p className="muted">A bonus challenge unlocked only after all items are found — players use clues collected along the way to solve it.</p>
+        <p className="muted">A code-lock bonus challenge unlocked after all items are found — players use characters collected along the way to crack it.</p>
         {finalItem ? (
           <Card>
             <div className="stack">
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong>🏆 Final item</strong>
-                <Button variant="ghost" onClick={() => persist({ ...route, finalItem: undefined })}>Remove</Button>
+                <strong>🔒 Code lock</strong>
+                <Button variant="ghost" onClick={() => { setPrizeTypeOverride(null); persist({ ...route, finalItem: undefined }); }}>Remove</Button>
               </div>
-
-              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                {(['riddle', 'code', 'jigsaw'] as const).map((k) => (
-                  <Button
-                    key={k}
-                    variant={finalItem.kind === k ? 'primary' : 'ghost'}
-                    onClick={() => updateFinalItem({ kind: k })}
-                  >
-                    {k === 'riddle' ? '❓ Riddle' : k === 'code' ? '🔢 Code' : '🧩 Jigsaw'}
-                  </Button>
-                ))}
-              </div>
-
-              {finalItem.kind === 'riddle' && (
-                <div>
-                  <label className="field-label">Riddle question</label>
-                  <textarea
-                    rows={2}
-                    value={finalItem.riddleQuestion ?? ''}
-                    placeholder="Shown to players from the start…"
-                    onChange={(e) => updateFinalItem({ riddleQuestion: e.target.value })}
-                  />
-                </div>
-              )}
-
-              {finalItem.kind === 'jigsaw' && (
-                <>
-                  <div>
-                    <span className="field-label">Puzzle photo</span>
-                    {finalItem.photoUrl && (
-                      <img src={mediaUrl(finalItem.photoUrl)} alt="" style={{ width: '100%', borderRadius: 'var(--radius)', maxHeight: 160, objectFit: 'cover', marginBottom: 'var(--space-2)' }} />
-                    )}
-                    <PhotoCapture onCapture={addFinalItemPhoto} variant="accent" disabled={uploadingFinalPhoto}>
-                      📷 {finalItem.photoUrl ? 'Change photo' : 'Add photo'}
-                    </PhotoCapture>
-                  </div>
-                  <div>
-                    <span className="field-label">Difficulty</span>
-                    <div className="row" style={{ gap: 8 }}>
-                      {([1, 2, 3] as const).map((d) => (
-                        <Button key={d} variant={finalItem.difficulty === d ? 'primary' : 'ghost'} onClick={() => updateFinalItem({ difficulty: d })}>
-                          {d === 1 ? '3×3' : d === 2 ? '5×5' : '10×10'}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
 
               <div>
-                <label className="field-label">{finalItem.kind === 'code' ? 'Code' : 'Answer'}</label>
+                <label className="field-label">Code</label>
                 <input
                   value={finalItem.answer}
-                  placeholder={finalItem.kind === 'code' ? 'e.g. CASTLE or 2847' : 'The final answer…'}
+                  placeholder="e.g. CASTLE or 2847"
                   onChange={(e) => updateFinalItem({ answer: e.target.value })}
+                  style={{ fontFamily: 'monospace', letterSpacing: '0.1em', textTransform: 'uppercase' }}
                 />
-                {!finalItem.answer && finalItem.kind !== 'jigsaw' && (
+                {!finalItem.answer && (
                   <p style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.8rem', margin: '4px 0 0' }}>
-                    ⚠️ Required — players can't complete this without an answer.
+                    ⚠️ Required — players can't open the chest without a code.
                   </p>
                 )}
               </div>
 
-              {route.items.length > 0 && finalItem.answer && finalItem.kind !== 'jigsaw' && (
-                <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>
-                  Each solved item reveals ~{chunkSize} character{chunkSize !== 1 ? 's' : ''} of the {finalItem.kind === 'code' ? 'code' : 'answer'}.
+              {/* Prize */}
+              <div>
+                <span className="field-label">Prize (revealed inside the open chest)</span>
+                <div className="row" style={{ gap: 8, marginBottom: 'var(--space-2)' }}>
+                  <Button
+                    variant={(prizeTypeOverride ?? (finalItem.prizeImageUrl ? 'image' : 'text')) === 'text' ? 'primary' : 'ghost'}
+                    onClick={() => {
+                      setPrizeTypeOverride('text');
+                      updateFinalItem({ prizeImageUrl: undefined });
+                    }}
+                  >
+                    📝 Text
+                  </Button>
+                  <Button
+                    variant={(prizeTypeOverride ?? (finalItem.prizeImageUrl ? 'image' : 'text')) === 'image' ? 'primary' : 'ghost'}
+                    onClick={() => setPrizeTypeOverride('image')}
+                  >
+                    🖼️ Image
+                  </Button>
+                </div>
+                {(prizeTypeOverride ?? (finalItem.prizeImageUrl ? 'image' : 'text')) === 'image' ? (
+                  <div>
+                    {finalItem.prizeImageUrl && (
+                      <img
+                        src={mediaUrl(finalItem.prizeImageUrl)}
+                        alt="Prize"
+                        style={{ width: 120, borderRadius: 8, objectFit: 'cover', marginBottom: 8, display: 'block' }}
+                      />
+                    )}
+                    <PhotoCapture onCapture={addPrizeImage} variant="accent" disabled={uploadingPrizeImage}>
+                      📷 {finalItem.prizeImageUrl ? 'Change prize image' : 'Upload prize image'}
+                    </PhotoCapture>
+                  </div>
+                ) : (
+                  <input
+                    value={finalItem.revealAnswer ?? ''}
+                    placeholder="e.g. The treasure is under the old oak tree"
+                    onChange={(e) => updateFinalItem({ revealAnswer: e.target.value || undefined })}
+                  />
+                )}
+                <p className="muted" style={{ fontSize: '0.8rem', margin: '4px 0 0' }}>
+                  Optional. Shown inside the open chest after the correct code is entered.
                 </p>
-              )}
-              {route.items.length > 0 && finalItem.kind === 'jigsaw' && (
+              </div>
+
+              {route.items.length > 0 && finalItem.answer && (
                 <p className="muted" style={{ fontSize: '0.85rem', margin: 0 }}>
-                  Each solved item reveals ~{chunkSize} of {totalPositions} puzzle piece{totalPositions !== 1 ? 's' : ''}.
+                  Each solved item reveals ~{chunkSize} character{chunkSize !== 1 ? 's' : ''} of the code.
                 </p>
               )}
             </div>
@@ -595,9 +677,9 @@ export function RouteBuilder() {
           <Button
             variant="ghost"
             block
-            onClick={() => persist({ ...route, finalItem: { kind: 'riddle', answer: '', riddleQuestion: '' } })}
+            onClick={() => persist({ ...route, finalItem: { kind: 'code', answer: '' } })}
           >
-            🏆 Add a final item
+            🔒 Add a code-lock finale
           </Button>
         )}
 
@@ -645,6 +727,40 @@ export function RouteBuilder() {
           </Card>
         )}
 
+        {/* Visibility toggle — shown only before publishing (or when already published) */}
+        <div>
+          <span className="field-label">Visibility</span>
+          <div className="row" style={{ gap: 8 }}>
+            <Button
+              variant={visibility === 'public' ? 'primary' : 'ghost'}
+              onClick={() => {
+                setVisibility('public');
+                if (serverRouteIdRef.current) {
+                  void api.updateRoute(serverRouteIdRef.current, { visibility: 'public' });
+                }
+              }}
+            >
+              🌍 Public
+            </Button>
+            <Button
+              variant={visibility === 'private' ? 'primary' : 'ghost'}
+              onClick={() => {
+                setVisibility('private');
+                if (serverRouteIdRef.current) {
+                  void api.updateRoute(serverRouteIdRef.current, { visibility: 'private' });
+                }
+              }}
+            >
+              🔒 Private
+            </Button>
+          </div>
+          <p className="muted" style={{ fontSize: '0.8rem', margin: '4px 0 0' }}>
+            {visibility === 'private'
+              ? 'Only you can find this hunt in the list. Anyone with the link can still play.'
+              : 'Anyone can discover and play this hunt.'}
+          </p>
+        </div>
+
         <Button
           variant="happy"
           size="lg"
@@ -656,6 +772,20 @@ export function RouteBuilder() {
         </Button>
         {publishError && <Banner tone="no">{publishError}</Banner>}
         {!isRoutePlayable(route) && <p className="muted center">Add a title and at least one item to finish.</p>}
+
+        {confirmDeleteRoute ? (
+          <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 'var(--space-4)' }}>
+            <span className="muted" style={{ flex: 1, fontSize: '0.9rem' }}>Delete this hunt permanently?</span>
+            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={deleteRouteAndGoHome} disabled={deletingRoute}>
+              {deletingRoute ? '…' : '🗑 Yes, delete'}
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmDeleteRoute(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <Button variant="ghost" block onClick={() => setConfirmDeleteRoute(true)} style={{ marginTop: 'var(--space-4)', color: 'var(--color-ink-soft)' }}>
+            🗑 Delete this hunt
+          </Button>
+        )}
       </div>
     </Page>
   );

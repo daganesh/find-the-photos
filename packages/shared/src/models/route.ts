@@ -63,6 +63,16 @@ export interface FinalItem {
   photoUrl?: string;
   /** For jigsaw: puzzle complexity (1=3×3, 2=5×5, 3=10×10). */
   difficulty?: 1 | 2 | 3;
+  /**
+   * For code kind: prize text revealed inside the open chest after the correct
+   * code is entered. Mutually exclusive with prizeImageUrl — image takes precedence.
+   */
+  revealAnswer?: string;
+  /**
+   * For code kind: URL of a prize image revealed inside the open chest after
+   * the correct code is entered. Takes precedence over revealAnswer when set.
+   */
+  prizeImageUrl?: string;
 }
 
 export type RouteStatus = 'draft' | 'ready';
@@ -88,7 +98,11 @@ export interface Route {
   authorName?: string;
   items: Item[];
   status: RouteStatus;
-  /** Controls whether the route appears in public browse listings. Defaults to 'public'. */
+  /**
+   * Who can discover this route in the browse list.
+   * 'private' = only the author sees it in listings; anyone with the direct
+   * link or join code can still play it. Defaults to 'public' when unset.
+   */
   visibility?: RouteVisibility;
   createdAt: string; // ISO timestamp
   ratings: Rating[];

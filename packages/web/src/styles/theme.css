@@ -68,11 +68,17 @@ body {
   margin: 0;
   font-family: var(--font);
   color: var(--color-ink);
-  background:
-    radial-gradient(1200px 600px at 80% -10%, #d5f4f2 0%, transparent 60%),
-    radial-gradient(900px 500px at -10% 10%, #e0f9f7 0%, transparent 55%),
-    var(--color-bg);
+  background: #f0e8d0;
   -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url('/bg-map.png') center top / cover no-repeat;
+  opacity: 0.55;
 }
 
 h1, h2, h3 { margin: 0 0 var(--space-2); line-height: 1.1; font-weight: 800; }
@@ -121,12 +127,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--color-accent); o
 }
 
 .countdown-digit {
-  font-size: clamp(9rem, 38vw, 16rem);
-  font-weight: 900;
-  color: var(--color-primary);
-  line-height: 1;
+  width: clamp(180px, 55vw, 320px);
+  height: auto;
   transform-origin: center center;
   user-select: none;
+  display: block;
 }
 
 @media (prefers-reduced-motion: no-preference) {

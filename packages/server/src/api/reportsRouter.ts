@@ -15,13 +15,22 @@ function wordOverlap(a: string, b: string): number {
   return union === 0 ? 0 : intersection / union;
 }
 
+/** Return the subset of reports a given user is allowed to see. */
+export function visibleReports(reports: BugReport[], user: { id: string; isAdmin?: boolean }): BugReport[] {
+  return user.isAdmin
+    ? reports
+    : reports.filter((r) => r.reporters.some((rep) => rep.userId === user.id));
+}
+
 export function reportsRouter(ctx: AppContext): Router {
   const router = Router();
 
-  router.get('/', requireAdmin, async (_req, res, next) => {
+  // Non-admins only see their own tickets.
+  router.get('/', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
+      const user = req.user!;
       const reports = await ctx.reports.list();
-      res.json({ reports });
+      res.json({ reports: visibleReports(reports, user) });
     } catch (err) {
       next(err);
     }
@@ -29,11 +38,12 @@ export function reportsRouter(ctx: AppContext): Router {
 
   router.post('/', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const { description, title, type, severity } = req.body as {
+      const { description, title, type, severity, imageUrls } = req.body as {
         description: string;
         title?: string;
         type: ReportType;
         severity: ReportSeverity;
+        imageUrls?: unknown;
       };
       const user = req.user!;
       const now = new Date().toISOString();
@@ -42,6 +52,10 @@ export function reportsRouter(ctx: AppContext): Router {
         res.status(400).json({ error: 'description, type and severity are required' });
         return;
       }
+
+      const validatedImageUrls = Array.isArray(imageUrls)
+        ? (imageUrls as unknown[]).filter((u): u is string => typeof u === 'string').slice(0, 3)
+        : undefined;
 
       const existing = await ctx.reports.list();
       const match = existing.find(
@@ -65,6 +79,7 @@ export function reportsRouter(ctx: AppContext): Router {
         status: 'new',
         ...(title ? { title: title.trim() } : {}),
         description,
+        ...(validatedImageUrls?.length ? { imageUrls: validatedImageUrls } : {}),
         reporters: [{ userId: user.id, name: user.name, reportedAt: now }],
         createdAt: now,
         updatedAt: now,
@@ -76,10 +91,16 @@ export function reportsRouter(ctx: AppContext): Router {
     }
   });
 
+  // Admin: update status, severity, title, and/or description. Cascades status/severity to linked reports.
   router.patch('/:id', requireAdmin, async (req: AuthedRequest, res, next) => {
     try {
       const { id } = req.params as { id: string };
-      const { status, severity } = req.body as { status?: ReportStatus; severity?: ReportSeverity };
+      const { status, severity, title, description } = req.body as {
+        status?: ReportStatus;
+        severity?: ReportSeverity;
+        title?: string;
+        description?: string;
+      };
 
       const existing = await ctx.reports.list();
       const report = existing.find((r) => r.id === id);
@@ -90,6 +111,97 @@ export function reportsRouter(ctx: AppContext): Router {
 
       if (status !== undefined) report.status = status;
       if (severity !== undefined) report.severity = severity;
+      if (title !== undefined) report.title = title.trim() || undefined;
+      if (description !== undefined) report.description = description;
+      const now = new Date().toISOString();
+      report.updatedAt = now;
+
+      await ctx.reports.upsert(report);
+
+      // Cascade status and severity changes to linked reports.
+      if (report.linkedReportIds?.length && (status !== undefined || severity !== undefined)) {
+        for (const linkedId of report.linkedReportIds) {
+          const linked = existing.find((r) => r.id === linkedId);
+          if (linked) {
+            if (status !== undefined) linked.status = status;
+            if (severity !== undefined) linked.severity = severity;
+            linked.updatedAt = now;
+            await ctx.reports.upsert(linked);
+          }
+        }
+      }
+
+      res.json({ report });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Admin: link another report as a child of this one.
+  router.post('/:id/link', requireAdmin, async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = req.params as { id: string };
+      const { targetId } = req.body as { targetId: string };
+
+      if (!targetId) {
+        res.status(400).json({ error: 'targetId is required' });
+        return;
+      }
+      if (targetId === id) {
+        res.status(400).json({ error: 'Cannot link a report to itself' });
+        return;
+      }
+
+      const existing = await ctx.reports.list();
+      const report = existing.find((r) => r.id === id);
+      if (!report) {
+        res.status(404).json({ error: 'Report not found' });
+        return;
+      }
+      const target = existing.find((r) => r.id === targetId);
+      if (!target) {
+        res.status(404).json({ error: 'Target report not found' });
+        return;
+      }
+
+      // Prevent linking a report that is itself already a parent (no nesting).
+      const alreadyParent = existing.some((r) => r.linkedReportIds?.includes(targetId));
+      if (alreadyParent) {
+        res.status(400).json({ error: 'Target report is already grouped under another ticket' });
+        return;
+      }
+
+      report.linkedReportIds = [...new Set([...(report.linkedReportIds ?? []), targetId])];
+      report.updatedAt = new Date().toISOString();
+
+      // Align linked report's status and severity with the parent.
+      target.status = report.status;
+      target.severity = report.severity;
+      target.updatedAt = report.updatedAt;
+
+      await ctx.reports.upsert(report);
+      await ctx.reports.upsert(target);
+
+      res.json({ report });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Admin: unlink a child report from this group.
+  router.delete('/:id/link/:linkedId', requireAdmin, async (req: AuthedRequest, res, next) => {
+    try {
+      const { id, linkedId } = req.params as { id: string; linkedId: string };
+
+      const existing = await ctx.reports.list();
+      const report = existing.find((r) => r.id === id);
+      if (!report) {
+        res.status(404).json({ error: 'Report not found' });
+        return;
+      }
+
+      report.linkedReportIds = (report.linkedReportIds ?? []).filter((lid) => lid !== linkedId);
+      if (report.linkedReportIds.length === 0) delete report.linkedReportIds;
       report.updatedAt = new Date().toISOString();
 
       await ctx.reports.upsert(report);
@@ -117,8 +229,12 @@ export function reportsRouter(ctx: AppContext): Router {
         return;
       }
 
+      const linkedReports = (report.linkedReportIds ?? [])
+        .map((lid) => existing.find((r) => r.id === lid))
+        .filter((r): r is BugReport => r !== undefined);
+
       const alreadyFiled = Boolean(report.github);
-      const updated = await fileReportIssue(ctx, report, assignToAgent);
+      const updated = await fileReportIssue(ctx, report, assignToAgent, linkedReports);
       res.status(alreadyFiled ? 200 : 201).json({ report: updated });
     } catch (err) {
       next(err);

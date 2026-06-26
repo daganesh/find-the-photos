@@ -86,10 +86,10 @@ export class ApiClient {
   updateRoute(id: string, body: UpdateRouteRequest): Promise<Route> {
     return this.request(`/api/routes/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   }
-  finalizeRoute(id: string, flagOverride?: string): Promise<Route> {
+  finalizeRoute(id: string, flagOverride?: string, visibility?: 'public' | 'private'): Promise<Route> {
     return this.request(`/api/routes/${id}/finalize`, {
       method: 'POST',
-      body: JSON.stringify({ flagOverride }),
+      body: JSON.stringify({ flagOverride, visibility }),
     });
   }
   moderateRoute(routeId: string): Promise<ModerationResult> {
@@ -188,8 +188,8 @@ export class ApiClient {
   joinTeamByCode(code: string, avatarEmoji?: string): Promise<Team> {
     return this.request(`/api/teams/join/${code}`, { method: 'POST', body: JSON.stringify({ avatarEmoji }) });
   }
-  startTeamHunt(teamId: string, location?: GeoPoint, reversed?: boolean): Promise<{ team: Team; session: HuntSession }> {
-    return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location, reversed }) });
+  startTeamHunt(teamId: string, location?: GeoPoint, reversed?: boolean, openItemLimit?: number): Promise<{ team: Team; session: HuntSession }> {
+    return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location, reversed, openItemLimit }) });
   }
   pauseOrResumeTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}/pause`, { method: 'POST' });
@@ -202,11 +202,17 @@ export class ApiClient {
   listReports(): Promise<{ reports: BugReport[] }> {
     return this.request('/api/reports');
   }
-  submitReport(body: { title?: string; description: string; type: ReportType; severity: ReportSeverity }): Promise<{ report: BugReport; merged: boolean }> {
+  submitReport(body: { title?: string; description: string; type: ReportType; severity: ReportSeverity; imageUrls?: string[] }): Promise<{ report: BugReport; merged: boolean }> {
     return this.request('/api/reports', { method: 'POST', body: JSON.stringify(body) });
   }
-  updateReport(id: string, body: { status?: ReportStatus; severity?: ReportSeverity }): Promise<{ report: BugReport }> {
+  updateReport(id: string, body: { status?: ReportStatus; severity?: ReportSeverity; title?: string; description?: string }): Promise<{ report: BugReport }> {
     return this.request(`/api/reports/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  }
+  linkReports(id: string, targetId: string): Promise<{ report: BugReport }> {
+    return this.request(`/api/reports/${id}/link`, { method: 'POST', body: JSON.stringify({ targetId }) });
+  }
+  unlinkReport(id: string, linkedId: string): Promise<{ report: BugReport }> {
+    return this.request(`/api/reports/${id}/link/${linkedId}`, { method: 'DELETE' });
   }
   createGithubIssue(id: string, body: { assignToAgent: boolean }): Promise<{ report: BugReport }> {
     return this.request(`/api/reports/${id}/github-issue`, { method: 'POST', body: JSON.stringify(body) });

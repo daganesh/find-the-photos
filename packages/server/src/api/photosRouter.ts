@@ -11,7 +11,7 @@ const ALLOWED_MIMES = new Set([
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB per photo/clip
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — images are downscaled to ≤1440px JPEG anyway
   fileFilter: (_req, file, cb) => cb(null, ALLOWED_MIMES.has(file.mimetype)),
 });
 

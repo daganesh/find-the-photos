@@ -6,7 +6,7 @@ import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { getCurrentLocation } from '../services/geolocation.js';
-import { Button, Card, MapView, Page, Spinner, StarRating } from '../ui/index.js';
+import { BottomBar, Button, Card, MapView, Page, Spinner, StarRating } from '../ui/index.js';
 import { filterHunts, hasActiveFilters } from './huntFilters.js';
 import type { DateFilter } from './huntFilters.js';
 
@@ -26,10 +26,7 @@ export function Home() {
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
   const { data: myHunts, reload: reloadHunts } = useAsync(() => (user ? api.listAllMyHunts() : Promise.resolve({ sessions: [] })), [user?.id]);
   const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
-  const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [joinOpen, setJoinOpen] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
 
   // Filter state — draft is the in-popup edit, applied is what's actually filtering
   const [filterOpen, setFilterOpen] = useState(false);
@@ -38,14 +35,8 @@ export function Home() {
   const [myLocation, setMyLocation] = useState<GeoPoint | undefined>();
   const [locating, setLocating] = useState(false);
 
-  async function createRoute() {
-    setCreating(true);
-    try {
-      const route = await api.createRoute({ title: 'My new hunt' });
-      navigate(`/build/${route.id}`);
-    } finally {
-      setCreating(false);
-    }
+  function createRoute() {
+    navigate('/build/new');
   }
 
   async function deleteDraft(routeId: string) {
@@ -95,10 +86,9 @@ export function Home() {
   }
 
   const ready = routes?.filter((r) => r.status === 'ready') ?? [];
-  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status !== 'ready' && r.itemCount > 0) ?? []) : [];
+  const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'draft') ?? []) : [];
   const allSessions = myHunts?.sessions ?? [];
   const activeSessions = allSessions.filter((s) => !s.finishedAt);
-  const pastSessions = allSessions.filter((s) => !!s.finishedAt).slice(0, 10);
   const activeTeams = myTeams?.teams ?? [];
 
   const filterOpts = { ...applied, myLocation };
@@ -114,46 +104,12 @@ export function Home() {
   return (
     <Page>
       <div className="stack">
-        <header className="stack">
-          <h1>Hi {user?.name?.split(' ')[0]} 👋</h1>
-          <p className="muted">Play a hunt someone made, or create your own!</p>
-        </header>
-
-        <Button size="lg" block variant="happy" onClick={createRoute} disabled={creating}>
-          ➕ {creating ? 'Creating…' : 'Make a new hunt'}
-        </Button>
-
-        {joinOpen ? (
-          <div className="row" style={{ gap: 8 }}>
-            <input
-              autoFocus
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              placeholder="Enter join code…"
-              maxLength={8}
-              style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '0.1em' }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && joinCode.trim()) navigate(`/join/${joinCode.trim()}`);
-                if (e.key === 'Escape') { setJoinOpen(false); setJoinCode(''); }
-              }}
-            />
-            <Button variant="happy" disabled={!joinCode.trim()} onClick={() => navigate(`/join/${joinCode.trim()}`)}>
-              Join
-            </Button>
-            <Button variant="ghost" onClick={() => { setJoinOpen(false); setJoinCode(''); }}>
-              ✕
-            </Button>
-          </div>
-        ) : (
-          <Button block variant="ghost" onClick={() => setJoinOpen(true)}>
-            👥 Join a team hunt
-          </Button>
-        )}
+        <h1>Hi {user?.name?.split(' ')[0]} 👋</h1>
 
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
         {(activeSessions.length > 0 || activeTeams.length > 0) && (
-          <CollapsibleSection title="Active hunts">
+          <CollapsibleSection title="Active hunts" id="home-active-hunts">
             {activeSessions.map((s) => {
               const route = routes?.find((r) => r.id === s.routeId);
               return (
@@ -182,7 +138,7 @@ export function Home() {
         )}
 
         {user && myDrafts.length > 0 && (
-          <CollapsibleSection title="My drafts">
+          <CollapsibleSection title="My drafts" defaultOpen={false} id="home-my-drafts">
             {myDrafts.map((r) => (
               <DraftCard
                 key={r.id}
@@ -194,8 +150,9 @@ export function Home() {
           </CollapsibleSection>
         )}
 
-        <CollapsibleSection title="Available Hunts">
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <section className="stack">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0 }}>Available Hunts</h2>
             <FilterButton active={filtersActive} count={activeFilterCount} onClick={openFilterPopup} />
           </div>
           {filterOpen && (
@@ -223,28 +180,7 @@ export function Home() {
               onClick={() => navigate(`/hunt/${r.id}`)}
             />
           ))}
-        </CollapsibleSection>
-
-        {pastSessions.length > 0 && (
-          <CollapsibleSection title="Past hunts" defaultOpen={false}>
-            {pastSessions.map((s) => {
-              const route = routes?.find((r) => r.id === s.routeId);
-              const found = s.steps.filter((st) => st.status === 'found').length;
-              return (
-                <PastHuntCard
-                  key={s.id}
-                  title={route?.title ?? 'Hunt'}
-                  found={found}
-                  total={s.steps.length}
-                  score={s.totalScore}
-                  onResults={() => navigate(`/results/${s.routeId}/${s.id}`)}
-                  onDelete={() => deleteSession(s.id)}
-                  deleting={deletingId === s.id}
-                />
-              );
-            })}
-          </CollapsibleSection>
-        )}
+        </section>
 
         {!loading && (
           <Button variant="ghost" onClick={reload}>
@@ -252,6 +188,13 @@ export function Home() {
           </Button>
         )}
       </div>
+      <BottomBar
+        onCreate={createRoute}
+        onJoin={() => navigate('/join')}
+        onMyHunts={() => navigate('/my-hunts')}
+        onMyScores={() => navigate('/scores')}
+        onMyHistory={() => navigate('/history')}
+      />
     </Page>
   );
 }
@@ -265,36 +208,29 @@ function FilterButton({ active, count, onClick }: { active: boolean; count: numb
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
+        justifyContent: 'center',
+        gap: 4,
         background: active ? 'var(--color-accent)' : 'var(--color-surface)',
         color: active ? 'var(--color-accent-ink)' : 'var(--color-ink)',
         border: 'none',
         borderRadius: 'var(--radius-pill)',
-        padding: '8px 16px',
+        width: 40,
+        height: 40,
         fontFamily: 'inherit',
-        fontWeight: 700,
-        fontSize: '0.95rem',
+        fontSize: '1.1rem',
         cursor: 'pointer',
         boxShadow: 'var(--shadow)',
+        flexShrink: 0,
       }}
     >
-      🔽 Filters
-      {active && (
-        <span
-          style={{
-            background: 'rgba(255,255,255,0.35)',
-            borderRadius: '50%',
-            width: 20,
-            height: 20,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.75rem',
-            lineHeight: 1,
-          }}
-        >
-          {count}
-        </span>
+      {active ? (
+        <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>{count}</span>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="7" y1="12" x2="17" y2="12" />
+          <line x1="10" y1="18" x2="14" y2="18" />
+        </svg>
       )}
     </button>
   );
@@ -453,10 +389,10 @@ function FilterPopup({
   );
 }
 
-function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
+function CollapsibleSection({ title, children, defaultOpen = true, id }: { title: string; children: ReactNode; defaultOpen?: boolean; id?: string }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className="stack">
+    <section id={id} className="stack">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -588,58 +524,53 @@ function ActiveHuntCard({
   onDelete: () => void;
   deleting: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const found = session.steps.filter((s) => s.status === 'found').length;
   const total = session.steps.length;
-  const isPaused = Boolean(session.pausedAt);
+
+  function handleCardClick() {
+    setExpanded((e) => !e);
+    if (expanded) setConfirmDelete(false);
+  }
 
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4 }}>{routeTitle ?? 'Hunt'}</h3>
-          <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-            {found} / {total} items found
-          </p>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleCardClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+      >
+        <h3 style={{ margin: '0 0 2px' }}>{routeTitle ?? 'Hunt'}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+          {found} / {total} items found
+        </p>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Abandon this hunt?</span>
+              <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
+                {deleting ? '…' : '🗑 Yes'}
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: 8 }}>
+              <Button variant="happy" onClick={onResume}>▶ Resume hunt</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+            </div>
+          )}
         </div>
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '2px 10px',
-            borderRadius: 'var(--radius-full, 999px)',
-            background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
-            color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
-            fontSize: '0.78rem',
-            fontWeight: 600,
-            flexShrink: 0,
-            marginLeft: 'var(--space-2)',
-          }}
-        >
-          {isPaused ? '⏸ Paused' : '▶ Active'}
-        </span>
-      </div>
-      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        {confirmDelete ? (
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Abandon this hunt?</span>
-            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
-              {deleting ? '…' : '🗑 Yes'}
-            </Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          </div>
-        ) : (
-          <div className="row" style={{ gap: 8 }}>
-            <Button variant="happy" onClick={onResume}>▶ Resume hunt</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
-          </div>
-        )}
-      </div>
+      )}
     </Card>
   );
 }
 
-function PastHuntCard({
+export function PastHuntCard({
   title,
+  coverPhotoUrl,
   found,
   total,
   score,
@@ -648,6 +579,7 @@ function PastHuntCard({
   deleting,
 }: {
   title: string;
+  coverPhotoUrl?: string;
   found: number;
   total: number;
   score: number;
@@ -655,31 +587,70 @@ function PastHuntCard({
   onDelete: () => void;
   deleting: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  function handleCardClick() {
+    setExpanded((e) => !e);
+    if (expanded) setConfirmDelete(false);
+  }
+
+  const hasCover = Boolean(coverPhotoUrl);
+
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <strong>{title}</strong>
-          <p className="muted" style={{ margin: '2px 0 0', fontSize: '0.82rem' }}>
-            {found}/{total} found · ⭐ {score}
-          </p>
-        </div>
-        {confirmDelete ? (
-          <div className="row" style={{ gap: 6 }}>
-            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.85rem' }} onClick={onDelete} disabled={deleting}>
-              {deleting ? '…' : 'Delete'}
-            </Button>
-            <Button variant="ghost" style={{ fontSize: '0.85rem' }} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleCardClick}
+        style={{
+          display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
+          padding: hasCover ? 0 : 'var(--space-4)',
+        }}
+      >
+        {hasCover ? (
+          <div style={{
+            padding: 'var(--space-4)',
+            minHeight: 120,
+            display: 'flex',
+            alignItems: 'flex-end',
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.6) 100%), url(${mediaUrl(coverPhotoUrl!)})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}>
+            <div>
+              <h3 style={{ margin: '0 0 2px', color: '#fff' }}>{title}</h3>
+              <p className="muted" style={{ margin: 0, fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)' }}>
+                {found}/{total} found · ⭐ {score}
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="row" style={{ gap: 6 }}>
-            <Button variant="ghost" onClick={onResults}>Results →</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
-          </div>
+          <>
+            <h3 style={{ margin: '0 0 2px' }}>{title}</h3>
+            <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+              {found}/{total} found · ⭐ {score}
+            </p>
+          </>
         )}
-      </div>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this record?</span>
+              <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.85rem' }} onClick={onDelete} disabled={deleting}>
+                {deleting ? '…' : 'Delete'}
+              </Button>
+              <Button variant="ghost" style={{ fontSize: '0.85rem' }} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: 6 }}>
+              <Button variant="ghost" onClick={onResults}>Results →</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
@@ -693,76 +664,146 @@ function ActiveTeamHuntCard({
   routeTitle?: string;
   onRejoin: () => void;
 }) {
-  const isPaused = team.status === 'paused';
+  const [expanded, setExpanded] = useState(false);
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4 }}>{routeTitle ?? 'Hunt'}</h3>
-          <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-            👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
-          </p>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+      >
+        <h3 style={{ margin: '0 0 2px' }}>{routeTitle ?? 'Hunt'}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+          👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
+        </p>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          <Button variant="happy" onClick={onRejoin}>👥 Rejoin team hunt</Button>
         </div>
-        <span style={{
-          display: 'inline-block', padding: '2px 10px',
-          borderRadius: 'var(--radius-full, 999px)',
-          background: isPaused ? 'var(--tint-happy, #dcfce7)' : 'var(--tint-accent, #eff6ff)',
-          color: isPaused ? 'var(--color-ok, #16a34a)' : 'var(--color-accent, #2563eb)',
-          fontSize: '0.78rem', fontWeight: 600, flexShrink: 0, marginLeft: 'var(--space-2)',
-        }}>
-          {isPaused ? '⏸ Paused' : '▶ Active'}
-        </span>
-      </div>
-      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        <Button variant="happy" onClick={onRejoin}>👥 Rejoin team hunt</Button>
-      </div>
+      )}
     </Card>
   );
 }
 
-function DraftCard({ route, onContinue, onDelete }: { route: RouteSummary; onContinue: () => void; onDelete: () => void }) {
+export function PublishedRouteCard({
+  route,
+  onPlay,
+  onEdit,
+  onDelete,
+  deleting,
+}: {
+  route: RouteSummary;
+  onPlay: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  function handleCardClick() {
+    setExpanded((e) => !e);
+    if (expanded) setConfirmDelete(false);
+  }
+
+  const hasCover = Boolean(route.coverPhotoUrl);
+
   return (
-    <Card>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ marginBottom: 4 }}>{route.title || 'Untitled hunt'}</h3>
-          <p className="muted" style={{ margin: 0 }}>
-            {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
-          </p>
-        </div>
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '2px 10px',
-            borderRadius: 'var(--radius-full, 999px)',
-            background: 'var(--color-surface-raised, #e8e8e8)',
-            color: 'var(--color-text-muted, #666)',
-            fontSize: '0.78rem',
-            fontWeight: 600,
-            letterSpacing: '0.03em',
-            flexShrink: 0,
-            marginLeft: 'var(--space-2)',
-          }}
-        >
-          Draft
-        </span>
-      </div>
-      <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-line)' }}>
-        {confirmDelete ? (
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this draft?</span>
-            <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete}>🗑 Yes, delete</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleCardClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: hasCover ? 0 : 'var(--space-4)' }}
+      >
+        {hasCover ? (
+          <div style={{
+            padding: 'var(--space-4)',
+            minHeight: 120,
+            display: 'flex',
+            alignItems: 'flex-end',
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.6) 100%), url(${mediaUrl(route.coverPhotoUrl!)})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}>
+            <div>
+              <h3 style={{ margin: '0 0 2px', color: '#fff' }}>{route.title || 'Untitled hunt'}</h3>
+              <p className="muted" style={{ margin: 0, fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)' }}>
+                {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+                {route.avgRating !== undefined && ` · ⭐ ${route.avgRating.toFixed(1)}`}
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="row" style={{ gap: 8 }}>
-            <Button variant="ghost" onClick={onContinue}>✏️ Continue editing</Button>
-            <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
-          </div>
+          <>
+            <h3 style={{ margin: '0 0 2px' }}>{route.title || 'Untitled hunt'}</h3>
+            <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+              {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+              {route.avgRating !== undefined && ` · ⭐ ${route.avgRating.toFixed(1)}`}
+            </p>
+          </>
         )}
-      </div>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this hunt permanently?</span>
+              <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete} disabled={deleting}>
+                {deleting ? '…' : '🗑 Yes, delete'}
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: 8 }}>
+              <Button variant="happy" onClick={onPlay}>▶ Play</Button>
+              <Button variant="ghost" onClick={onEdit}>✏️ Edit</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+export function DraftCard({ route, onContinue, onDelete }: { route: RouteSummary; onContinue: () => void; onDelete: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  function handleCardClick() {
+    setExpanded((e) => !e);
+    if (expanded) setConfirmDelete(false);
+  }
+
+  return (
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleCardClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 'var(--space-4)', cursor: 'pointer' }}
+      >
+        <h3 style={{ margin: '0 0 2px' }}>{route.title || 'Untitled hunt'}</h3>
+        <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+          {route.itemCount} {route.itemCount === 1 ? 'item' : 'items'}
+        </p>
+      </button>
+      {expanded && (
+        <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: '0.9rem', flex: 1 }}>Delete this draft?</span>
+              <Button variant="ghost" style={{ color: 'var(--color-danger, #ef4444)' }} onClick={onDelete}>🗑 Yes, delete</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: 8 }}>
+              <Button variant="ghost" onClick={onContinue}>✏️ Continue editing</Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(true)} style={{ color: 'var(--color-ink-soft)' }}>🗑</Button>
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import countdown1 from '../assets/countdown-1.png';
+import countdown2 from '../assets/countdown-2.png';
+import countdown3 from '../assets/countdown-3.png';
 import type { Item } from '@ftp/shared';
 import { SCORING, canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
@@ -20,6 +23,7 @@ import {
   PhotoCapture,
   ScorePill,
   Spinner,
+  ThinkingOverlay,
   Timer,
 } from '../ui/index.js';
 import { mediaUrl } from '../services/media.js';
@@ -37,6 +41,7 @@ export function HuntPlayer() {
   const [reversed, setReversed] = useState(false);
   const prevFound = useRef(0);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
+  const [prizeAcknowledged, setPrizeAcknowledged] = useState(false);
   const [disputeConfirm, setDisputeConfirm] = useState(false);
   const [disputeDesc, setDisputeDesc] = useState('');
   const [disputeError, setDisputeError] = useState('');
@@ -214,7 +219,12 @@ export function HuntPlayer() {
             Get ready!
           </p>
           {/* key forces remount on each tick, restarting the CSS animation */}
-          <div className="countdown-digit" key={countdown}>{countdown}</div>
+          <img
+            key={countdown}
+            className="countdown-digit"
+            src={countdown === 3 ? countdown3 : countdown === 2 ? countdown2 : countdown1}
+            alt={String(countdown)}
+          />
           <p className="muted" style={{ margin: 0 }}>Hunt starts in…</p>
         </div>
       </Page>
@@ -232,33 +242,38 @@ export function HuntPlayer() {
     const skippedIds = new Set(session.steps.filter((s) => s.status === 'skipped').map((s) => s.itemId));
     const goToResults = () => navigate(`/results/${routeId}/${session.id}`, { state: { session } });
     const hasFinalItem = Boolean(routeData.finalItem);
-    const finalDone = !hasFinalItem || !!session.finalItemSolved || finalItemSkipped;
+    const finalDone = !hasFinalItem || (!!session.finalItemSolved && prizeAcknowledged) || finalItemSkipped;
 
     // ── 1. Final item gate — shown BEFORE fireworks/score ─────────────
     if (hasFinalItem && !finalDone) {
       return (
-        <Page title="🏆 Final challenge!">
+        <Page title={session.finalItemSolved ? '🎁 Your prize!' : '🏆 Final challenge!'}>
           <div className="stack">
-            <Card>
-              <p className="muted center" style={{ margin: 0 }}>
-                You found {solvedIds.size} of {items.length} items. Now for the grand finale!
-              </p>
-            </Card>
+            {!session.finalItemSolved && (
+              <Card>
+                <p className="muted center" style={{ margin: 0 }}>
+                  You found {solvedIds.size} of {items.length} items. Now for the grand finale!
+                </p>
+              </Card>
+            )}
             <FinalItemPanel
               finalItem={routeData.finalItem!}
               items={items}
               solvedItemIds={solvedIds}
               onSolve={hunt.solveFinalItem}
-              solved={false}
+              solved={!!session.finalItemSolved}
               busy={hunt.busy}
               defaultExpanded
               showBreakdown
               skippedItemIds={skippedIds}
               onRetry={(itemId) => hunt.returnToSkipped(itemId)}
+              onPrizeContinue={() => setPrizeAcknowledged(true)}
             />
-            <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
-              ⏭ Give up on the final item
-            </Button>
+            {!session.finalItemSolved && (
+              <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
+                ⏭ Give up on the final item
+              </Button>
+            )}
           </div>
         </Page>
       );
@@ -391,6 +406,8 @@ export function HuntPlayer() {
   }
 
   return (
+    <>
+      <ThinkingOverlay visible={hunt.busy} />
     <Page
       onBack={() => setConfirmLeave(true)}
       title={`Clue ${stepNumber} / ${items.length}`}
@@ -525,12 +542,12 @@ export function HuntPlayer() {
             )}
             <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               {jigsawDisplayDifficulty > 1 ? (
-                <Button variant="ghost" disabled={hunt.busy}
+                <Button variant="ghost" disabled={hunt.busy} aria-label="Make easier"
                   onClick={() => {
                     setJigsawDisplayDifficulty((d) => Math.max(1, d - 1) as 1 | 2 | 3);
                     hunt.useHelp();
                   }}>
-                  🔽 Easier (−{SCORING.perHelpLevel}pts)
+                  🔽
                 </Button>
               ) : (
                 <span className="muted" style={{ fontSize: '0.8rem' }}>Lowest difficulty</span>
@@ -556,11 +573,11 @@ export function HuntPlayer() {
         {item.kind === 'task' && (
           <>
             <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="happy" disabled={hunt.busy}>
-              {hunt.busy ? '🔎 Checking…' : '📸 Take a photo'}
+              📸
             </PhotoCapture>
             {canSkip(step) && (
-              <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>
-                ⏭ Skip
+              <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy} aria-label="Skip">
+                ⏭
               </Button>
             )}
           </>
@@ -677,6 +694,7 @@ export function HuntPlayer() {
       </div>
       </div>
     </Page>
+    </>
   );
 }
 

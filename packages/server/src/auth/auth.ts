@@ -48,6 +48,7 @@ export function readSession(token: string): User | undefined {
       name: decoded.name,
       email: decoded.email,
       pictureUrl: decoded.pictureUrl,
+      isAdmin: config.adminEmails.includes(decoded.email),
     };
   } catch {
     return undefined;

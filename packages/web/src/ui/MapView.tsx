@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GeoPoint } from '@ftp/shared';
-import { googleMapsLink, loadGoogleMaps } from '../services/maps.js';
+import { googleMapsLink, isMapsFailed, loadGoogleMaps, subscribeAuthFailure } from '../services/maps.js';
 
 interface MapViewProps {
   /** The target (item) location — always shown when present. */
@@ -14,13 +14,31 @@ interface MapViewProps {
 /**
  * Shows the target on a Google Map, optionally with a line from the hunter.
  * Degrades to a "Open in Google Maps" link when no Maps key is configured.
+ *
+ * The map div is kept invisible (visibility:hidden) until the first `idle`
+ * event fires, which means tiles have loaded and the key is valid. If
+ * gm_authFailure fires first the fallback renders instead — this prevents
+ * Google's own "Oops!" error overlay from flashing before we can swap it out.
  */
 export function MapView({ target, hunter, showRoute }: MapViewProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [failed, setFailed] = useState(false);
+  // 'loading' → map div hidden while Google initialises
+  // 'ready'   → map visible (idle event fired, key is valid)
+  // 'failed'  → show our fallback
+  const [state, setState] = useState<'loading' | 'ready' | 'failed'>(() =>
+    isMapsFailed() ? 'failed' : 'loading',
+  );
 
   useEffect(() => {
+    // Already in a terminal state — nothing to set up.
+    if (state === 'failed') return;
+
     let cancelled = false;
+
+    const unsubscribeAuth = subscribeAuthFailure(() => {
+      if (!cancelled) setState('failed');
+    });
+
     loadGoogleMaps()
       .then((maps) => {
         if (cancelled || !ref.current) return;
@@ -46,14 +64,23 @@ export function MapView({ target, hunter, showRoute }: MapViewProps) {
             map.fitBounds(bounds, 60);
           }
         }
+        // Only reveal the map once tiles have loaded. gm_authFailure fires
+        // before idle when the key is bad, so the subscribeAuthFailure handler
+        // above will set state to 'failed' first and idle never shows.
+        maps.event.addListenerOnce(map, 'idle', () => {
+          if (!cancelled) setState('ready');
+        });
       })
-      .catch(() => !cancelled && setFailed(true));
+      .catch(() => !cancelled && setState('failed'));
+
     return () => {
       cancelled = true;
+      unsubscribeAuth();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, hunter, showRoute]);
 
-  if (failed) {
+  if (state === 'failed') {
     return (
       <div className="map">
         <div className="map__fallback">
@@ -67,5 +94,11 @@ export function MapView({ target, hunter, showRoute }: MapViewProps) {
     );
   }
 
-  return <div className="map" ref={ref} />;
+  return (
+    <div
+      className="map"
+      ref={ref}
+      style={state === 'loading' ? { visibility: 'hidden' } : undefined}
+    />
+  );
 }
