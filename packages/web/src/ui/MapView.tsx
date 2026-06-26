@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GeoPoint } from '@ftp/shared';
+import { env } from '../services/env.js';
 import { googleMapsLink, isMapsFailed, loadGoogleMaps, subscribeAuthFailure } from '../services/maps.js';
 
 interface MapViewProps {
@@ -11,37 +12,37 @@ interface MapViewProps {
   showRoute?: boolean;
 }
 
-/**
- * Shows the target on a Google Map, optionally with a line from the hunter.
- * Degrades to a "Open in Google Maps" link when no Maps key is configured.
- *
- * The map div is kept invisible (visibility:hidden) until the first `idle`
- * event fires, which means tiles have loaded and the key is valid. If
- * gm_authFailure fires first the fallback renders instead — this prevents
- * Google's own "Oops!" error overlay from flashing before we can swap it out.
- */
 export function MapView({ target, hunter, showRoute }: MapViewProps) {
   const ref = useRef<HTMLDivElement>(null);
-  // 'loading' → map div hidden while Google initialises
-  // 'ready'   → map visible (idle event fired, key is valid)
-  // 'failed'  → show our fallback
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>(() =>
     isMapsFailed() ? 'failed' : 'loading',
   );
+  const [log, setLog] = useState<string[]>(() => [
+    `init: hasMaps=${!isMapsFailed()} key="${env.googleMapsApiKey ? env.googleMapsApiKey.slice(0, 8) + '…' : '(none)'}"`,
+    `initState: ${isMapsFailed() ? 'failed' : 'loading'}`,
+  ]);
+
+  function addLog(msg: string) {
+    setLog((prev) => [...prev, `${new Date().toISOString().slice(11, 23)} ${msg}`]);
+  }
 
   useEffect(() => {
-    // Already in a terminal state — nothing to set up.
     if (state === 'failed') return;
 
     let cancelled = false;
 
     const unsubscribeAuth = subscribeAuthFailure(() => {
+      addLog('gm_authFailure fired');
       if (!cancelled) setState('failed');
     });
 
+    addLog('loadGoogleMaps() called');
+
     loadGoogleMaps()
       .then((maps) => {
-        if (cancelled || !ref.current) return;
+        addLog('maps API resolved');
+        if (cancelled || !ref.current) { addLog(`skipped (cancelled=${cancelled} ref=${!!ref.current})`); return; }
+        addLog('creating maps.Map');
         const map = new maps.Map(ref.current, {
           center: target,
           zoom: 17,
@@ -52,38 +53,48 @@ export function MapView({ target, hunter, showRoute }: MapViewProps) {
         if (hunter) {
           new maps.Marker({ position: hunter, map, title: 'You', label: '🧍' });
           if (showRoute) {
-            new maps.Polyline({
-              path: [hunter, target],
-              map,
-              strokeColor: '#ff7a59',
-              strokeWeight: 4,
-            });
+            new maps.Polyline({ path: [hunter, target], map, strokeColor: '#ff7a59', strokeWeight: 4 });
             const bounds = new maps.LatLngBounds();
             bounds.extend(hunter);
             bounds.extend(target);
             map.fitBounds(bounds, 60);
           }
         }
-        // Only reveal the map once tiles have loaded. gm_authFailure fires
-        // before idle when the key is bad, so the subscribeAuthFailure handler
-        // above will set state to 'failed' first and idle never shows.
         maps.event.addListenerOnce(map, 'idle', () => {
+          addLog('idle fired → ready');
           if (!cancelled) setState('ready');
         });
       })
-      .catch(() => !cancelled && setState('failed'));
+      .catch((err: unknown) => {
+        addLog(`loadGoogleMaps rejected: ${err instanceof Error ? err.message : String(err)}`);
+        if (!cancelled) setState('failed');
+      });
 
     return () => {
+      addLog('effect cleanup (cancelled)');
       cancelled = true;
       unsubscribeAuth();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, hunter, showRoute]);
 
+  const debugPanel = (
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0,
+      background: 'rgba(0,0,0,0.82)', color: '#0f0', fontFamily: 'monospace',
+      fontSize: 11, padding: 8, zIndex: 9999, maxHeight: 200, overflowY: 'auto',
+      borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+    }}>
+      <b style={{ color: '#ff0' }}>MAP DEBUG — state: {state}</b>
+      {log.map((l, i) => <div key={i}>{l}</div>)}
+    </div>
+  );
+
   if (state === 'failed') {
     return (
-      <div className="map">
-        <div className="map__fallback">
+      <div className="map" style={{ position: 'relative' }}>
+        {debugPanel}
+        <div className="map__fallback" style={{ paddingTop: 80 }}>
           <span style={{ fontSize: '2rem' }}>🗺️</span>
           <p className="muted">Map preview isn't available here.</p>
           <a className="btn btn--accent" href={googleMapsLink(target.lat, target.lng)} target="_blank" rel="noreferrer">
@@ -95,10 +106,12 @@ export function MapView({ target, hunter, showRoute }: MapViewProps) {
   }
 
   return (
-    <div
-      className="map"
-      ref={ref}
-      style={state === 'loading' ? { visibility: 'hidden' } : undefined}
-    />
+    <div className="map" style={{ position: 'relative' }}>
+      {debugPanel}
+      <div
+        ref={ref}
+        style={{ width: '100%', height: '100%', visibility: state === 'loading' ? 'hidden' : undefined }}
+      />
+    </div>
   );
 }
