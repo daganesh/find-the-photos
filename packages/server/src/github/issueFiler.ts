@@ -1,4 +1,5 @@
 import type { BugReport } from '@ftp/shared';
+import { config } from '../config.js';
 import type { GitHubService } from './githubClient.js';
 
 /** Minimal persistence surface needed to record the filed issue back onto the report. */
@@ -94,6 +95,11 @@ export function buildIssueContent(report: BugReport, linkedReports: BugReport[] 
   };
 }
 
+/** Convert a relative upload path to an absolute URL so GitHub can render it. */
+function resolveImageUrl(url: string): string {
+  return url.startsWith('/') ? `${config.webOrigin}${url}` : url;
+}
+
 /**
  * File a report as a GitHub issue, optionally hand it to Claude via an @claude
  * comment, and record the issue link back onto the report. Idempotent: a report
@@ -109,7 +115,13 @@ export async function fileReportIssue(
 ): Promise<BugReport> {
   if (report.github) return report; // already filed
 
-  const { title, body, labels } = buildIssueContent(report, linkedReports);
+  // Relative /uploads/… paths only work on the app server — resolve them to
+  // absolute URLs so GitHub can fetch and display the screenshots.
+  const reportForIssue: BugReport = report.imageUrls?.length
+    ? { ...report, imageUrls: report.imageUrls.map(resolveImageUrl) }
+    : report;
+
+  const { title, body, labels } = buildIssueContent(reportForIssue, linkedReports);
   const issue = await deps.github.createIssue({ title, body, labels });
 
   if (assignToAgent) {
