@@ -231,6 +231,18 @@
   to   { filter: drop-shadow(0 0 10px #f59e0b); }
 }
 
+/* Thinking overlay */
+.thinking-character {
+  font-size: 5rem;
+  line-height: 1;
+  animation: thinking-bob 1.4s ease-in-out infinite;
+}
+
+@keyframes thinking-bob {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50%       { transform: translateY(-14px) rotate(5deg); }
+}
+
 /* BottomBar — fixed navigation strip at the bottom */
 .bottombar {
   position: fixed;

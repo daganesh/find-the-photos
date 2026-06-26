@@ -23,6 +23,7 @@ import {
   ScorePill,
   Spinner,
   TeamChat,
+  ThinkingOverlay,
   Timer,
 } from '../ui/index.js';
 import { mediaUrl } from '../services/media.js';
@@ -275,6 +276,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   /** Wraps an active hunt screen with the guess toast overlay and team chat. */
   const withToast = (el: React.ReactElement, showChat = false) => (
     <>
+      <ThinkingOverlay visible={hunt.busy} />
       {currentToast && (
         <GuessToastOverlay
           toast={currentToast}
@@ -576,12 +578,12 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
               )}
               <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                 {jigsawDisplayDifficulty > 1 ? (
-                  <Button variant="ghost" disabled={hunt.busy}
+                  <Button variant="ghost" disabled={hunt.busy} aria-label="Make easier"
                     onClick={() => {
                       setJigsawDisplayDifficulty((d) => Math.max(1, d - 1) as 1 | 2 | 3);
                       hunt.useHelp(focusedItemId);
                     }}>
-                    🔽 Easier (−{SCORING.perHelpLevel}pts)
+                    🔽
                   </Button>
                 ) : (
                   <span className="muted" style={{ fontSize: '0.8rem' }}>Lowest difficulty</span>
@@ -736,8 +738,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
                       <span className="muted" style={{ fontSize: '0.8rem' }}>{step.cluesUsed} clue{step.cluesUsed > 1 ? 's' : ''} used</span>
                     )}
                   </div>
-                  <Button block variant="happy" onClick={() => setFocusedItemId(step.itemId)}>
-                    🔍 Hunt this one →
+                  <Button block variant="happy" onClick={() => setFocusedItemId(step.itemId)} aria-label="Hunt this one">
+                    🔍
                   </Button>
                 </div>
               </Card>

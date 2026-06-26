@@ -159,3 +159,44 @@ describe('HuntPlayer – riddle items', () => {
     expect(container.querySelectorAll('input[type="file"]').length).toBe(0);
   });
 });
+
+// ── Thinking overlay ─────────────────────────────────────────────────────────
+
+describe('HuntPlayer – thinking overlay', () => {
+  it('shows thinking overlay when busy and hides it when not', async () => {
+    mockHunt.mockReturnValue({
+      ...HUNT_BASE,
+      session: SESSION,
+      notStarted: false,
+      wasResumed: true,
+      activeStep: SESSION.steps[0],
+      busy: true,
+    });
+
+    const { getByRole, rerender } = renderPlayer();
+
+    await waitFor(() => expect(getByRole('status', { name: 'Thinking' })).toBeTruthy());
+
+    // Simulate end of API call
+    mockHunt.mockReturnValue({
+      ...HUNT_BASE,
+      session: SESSION,
+      notStarted: false,
+      wasResumed: true,
+      activeStep: SESSION.steps[0],
+      busy: false,
+    });
+
+    rerender(
+      <MemoryRouter initialEntries={['/play/r1']}>
+        <Routes>
+          <Route path="/play/:routeId" element={<HuntPlayer />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(document.querySelector('[role="status"][aria-label="Thinking"]')).toBeNull(),
+    );
+  });
+});

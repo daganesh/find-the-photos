@@ -20,6 +20,7 @@ import {
   PhotoCapture,
   ScorePill,
   Spinner,
+  ThinkingOverlay,
   Timer,
 } from '../ui/index.js';
 import { mediaUrl } from '../services/media.js';
@@ -397,6 +398,8 @@ export function HuntPlayer() {
   }
 
   return (
+    <>
+      <ThinkingOverlay visible={hunt.busy} />
     <Page
       onBack={() => setConfirmLeave(true)}
       title={`Clue ${stepNumber} / ${items.length}`}
@@ -531,12 +534,12 @@ export function HuntPlayer() {
             )}
             <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               {jigsawDisplayDifficulty > 1 ? (
-                <Button variant="ghost" disabled={hunt.busy}
+                <Button variant="ghost" disabled={hunt.busy} aria-label="Make easier"
                   onClick={() => {
                     setJigsawDisplayDifficulty((d) => Math.max(1, d - 1) as 1 | 2 | 3);
                     hunt.useHelp();
                   }}>
-                  🔽 Easier (−{SCORING.perHelpLevel}pts)
+                  🔽
                 </Button>
               ) : (
                 <span className="muted" style={{ fontSize: '0.8rem' }}>Lowest difficulty</span>
@@ -562,11 +565,11 @@ export function HuntPlayer() {
         {item.kind === 'task' && (
           <>
             <PhotoCapture onCapture={(f) => hunt.submitPhoto(f)} variant="happy" disabled={hunt.busy}>
-              {hunt.busy ? '🔎 Checking…' : '📸 Take a photo'}
+              📸
             </PhotoCapture>
             {canSkip(step) && (
-              <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy}>
-                ⏭ Skip
+              <Button variant="ghost" onClick={hunt.skip} disabled={hunt.busy} aria-label="Skip">
+                ⏭
               </Button>
             )}
           </>
@@ -683,6 +686,7 @@ export function HuntPlayer() {
       </div>
       </div>
     </Page>
+    </>
   );
 }
 
