@@ -63,6 +63,11 @@ export function loadGoogleMaps(): Promise<typeof google.maps> {
   return loaderPromise;
 }
 
+/** True when Maps is known to be unavailable — no key configured or auth already failed. */
+export function isMapsFailed(): boolean {
+  return !hasMaps() || authFailed;
+}
+
 /** A plain Google Maps deep link, used when the JS API isn't available. */
 export function googleMapsLink(lat: number, lng: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
