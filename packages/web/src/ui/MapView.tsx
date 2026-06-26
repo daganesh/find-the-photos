@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GeoPoint } from '@ftp/shared';
-import { googleMapsLink, loadGoogleMaps, subscribeAuthFailure } from '../services/maps.js';
+import { googleMapsLink, isMapsFailed, loadGoogleMaps, subscribeAuthFailure } from '../services/maps.js';
 
 interface MapViewProps {
   /** The target (item) location — always shown when present. */
@@ -17,7 +17,7 @@ interface MapViewProps {
  */
 export function MapView({ target, hunter, showRoute }: MapViewProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState(isMapsFailed);
 
   useEffect(() => {
     let cancelled = false;
