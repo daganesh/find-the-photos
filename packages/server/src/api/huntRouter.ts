@@ -14,10 +14,11 @@ import {
   submitPhoto,
   useHelp,
 } from '../hunt/huntService.js';
+import { sanitizeUserText, detectPromptInjection } from '../utils/textSanitizer.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 },
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB — gameplay photos are downscaled to ≤1440px JPEG
 });
 
 const lastStep = (steps: StepProgress[], itemId: string): StepProgress =>
@@ -168,13 +169,16 @@ export function huntRouter(ctx: AppContext): Router {
   // Hunter insists the AI was wrong — override to found.
   router.post('/:sessionId/steps/:itemId/dispute', requireAuth, async (req, res, next) => {
     try {
-      const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
-      if ('error' in found) return void res.status(found.status).json({ error: found.error });
       const { description } = req.body as DisputeRequest;
       if (!description?.trim()) {
         return void res.status(400).json({ error: 'A description is required to dispute' });
       }
-      const result = await dispute(ctx, found, description);
+      if (description.length > 500) return void res.status(400).json({ error: 'Input too long' });
+      const clean = sanitizeUserText(description, 500);
+      if (detectPromptInjection(clean)) return void res.status(400).json({ error: 'Invalid input' });
+      const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
+      if ('error' in found) return void res.status(found.status).json({ error: found.error });
+      const result = await dispute(ctx, found, clean);
       if ('error' in result) return void res.status(result.status).json({ error: result.error });
       res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });
     } catch (err) {
@@ -185,13 +189,16 @@ export function huntRouter(ctx: AppContext): Router {
   // Submit a text answer to a riddle item.
   router.post('/:sessionId/steps/:itemId/solve', requireAuth, async (req, res, next) => {
     try {
-      const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
-      if ('error' in found) return void res.status(found.status).json({ error: found.error });
       const { answer } = req.body as SolveRiddleRequest;
       if (!answer?.trim()) {
         return void res.status(400).json({ error: 'An answer is required' });
       }
-      const result = await solveRiddle(ctx, found, answer.trim());
+      if (answer.length > 200) return void res.status(400).json({ error: 'Input too long' });
+      const clean = sanitizeUserText(answer, 200);
+      if (detectPromptInjection(clean)) return void res.status(400).json({ error: 'Invalid input' });
+      const found = await findActiveStep(ctx, req.params.sessionId, req.params.itemId);
+      if ('error' in found) return void res.status(found.status).json({ error: found.error });
+      const result = await solveRiddle(ctx, found, clean);
       if ('error' in result) return void res.status(result.status).json({ error: result.error });
       res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });
     } catch (err) {
@@ -206,7 +213,10 @@ export function huntRouter(ctx: AppContext): Router {
       if (!answer?.trim()) {
         return void res.status(400).json({ error: 'An answer is required' });
       }
-      const result = await solveFinalItem(ctx, req.params.sessionId, answer.trim());
+      if (answer.length > 200) return void res.status(400).json({ error: 'Input too long' });
+      const clean = sanitizeUserText(answer, 200);
+      if (detectPromptInjection(clean)) return void res.status(400).json({ error: 'Invalid input' });
+      const result = await solveFinalItem(ctx, req.params.sessionId, clean);
       if ('error' in result) return void res.status(result.status).json({ error: result.error });
       res.json({ session: result });
     } catch (err) {

@@ -8,16 +8,27 @@ import { getPool } from '../storage/db.js';
 
 const MAX_DIM = 1440;
 
+// Raster formats the app accepts; SVG and other non-raster types are rejected.
+const ALLOWED_IMAGE_FORMATS = new Set(['jpeg', 'png', 'webp', 'heif', 'avif']);
+
 /**
  * Downscale any image buffer whose longest side exceeds MAX_DIM, re-encoding
  * as JPEG. Non-image buffers (audio) pass through unchanged.
- * Returns { buffer, mimeType } always.
+ * Throws if the buffer is not a valid raster image (magic-byte check via sharp).
  */
 export async function resizeIfNeeded(
   buffer: Buffer,
   mimeType: string,
 ): Promise<{ buffer: Buffer; mimeType: string }> {
   if (!mimeType.startsWith('image/')) return { buffer, mimeType };
+  // Validate bytes are a real parseable raster image (magic-byte check).
+  // Checks both parseability and format so SVGs claiming to be JPEG are rejected.
+  try {
+    const { format } = await sharp(buffer, { failOn: 'error' }).metadata();
+    if (!format || !ALLOWED_IMAGE_FORMATS.has(format)) throw new Error('unsupported format');
+  } catch {
+    throw new Error('File is not a valid image');
+  }
   try {
     const img = sharp(buffer, { failOn: 'none' });
     const meta = await img.metadata();
@@ -30,8 +41,7 @@ export async function resizeIfNeeded(
       .toBuffer();
     return { buffer: resized, mimeType: 'image/jpeg' };
   } catch {
-    // If sharp can't parse the image (e.g. unknown format), store as-is.
-    return { buffer, mimeType };
+    throw new Error('File is not a valid image');
   }
 }
 

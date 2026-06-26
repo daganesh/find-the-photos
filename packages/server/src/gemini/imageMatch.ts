@@ -82,7 +82,7 @@ export class GeminiImageMatchService implements ImageMatchService {
   }
 
   async verifyDispute(description: string, itemName: string): Promise<MatchVerdict> {
-    const prompt = `You are verifying a treasure hunt answer. The player answered: "${description}". The correct answer is: "${itemName}". Do they mean the same thing? Be generous — synonyms, partial descriptions, and different languages count if clearly the same. CRITICAL RULES FOR THE REASON FIELD: Do NOT mention, reveal, or hint at the correct answer under any circumstances. If wrong, give only a short directional hint (e.g. "think bigger", "that's a different kind of thing", "look more carefully"). Reply with STRICT JSON: {"match": boolean, "confidence": number (0..1), "reason": "one short kid-friendly sentence"}`;
+    const prompt = `You are verifying a treasure hunt answer. The player answered: <input>${description}</input>. The correct answer is: "${itemName}". Do they mean the same thing? Be generous — synonyms, partial descriptions, and different languages count if clearly the same. CRITICAL RULES FOR THE REASON FIELD: Do NOT mention, reveal, or hint at the correct answer under any circumstances. If wrong, give only a short directional hint (e.g. "think bigger", "that's a different kind of thing", "look more carefully"). Reply with STRICT JSON: {"match": boolean, "confidence": number (0..1), "reason": "one short kid-friendly sentence"}`;
 
     const response = await withRetry(() => this.ai.models.generateContent({
       model: config.gemini.model,
