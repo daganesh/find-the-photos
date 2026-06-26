@@ -43,7 +43,7 @@ describe('loadGoogleMaps', () => {
     expect(src).toContain('key=test-key-123');
     expect(src).toContain('callback=__googleMapsInit__');
     expect(src).toContain('loading=async');
-    expect(src).toContain('libraries=marker');
+    expect(src).not.toContain('libraries=');
     expect(createdScript!.async).toBe(true);
 
     // Resolve the pending promise via the registered callback
