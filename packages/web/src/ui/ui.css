@@ -168,7 +168,7 @@
   background: #bcd8f0;
   box-shadow: 0 1px 0 rgba(80, 140, 190, 0.25);
 }
-.appbar__logo { height: 36px; width: 36px; object-fit: contain; border-radius: 8px; }
+.appbar__logo { height: 48px; width: 48px; object-fit: contain; border-radius: 8px; }
 .appbar__title { font-weight: 800; font-size: 1.05rem; color: var(--color-ink); letter-spacing: -0.01em; }
 
 /* Push page content below the fixed appbar and above the bottom bar */

@@ -104,8 +104,6 @@ export function Home() {
   return (
     <Page>
       <div className="stack">
-        <h1>Hi {user?.name?.split(' ')[0]} 👋</h1>
-
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
         {(activeSessions.length > 0 || activeTeams.length > 0) && (
