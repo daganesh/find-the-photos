@@ -31,7 +31,7 @@ export function BottomBar({
         onClick={onMyHunts}
         aria-label="My hunts"
       >
-        <img src="/icon-scroll.png" alt="" aria-hidden="true" />
+        <img src="/icon-my-hunts.svg" alt="" aria-hidden="true" />
       </button>
 
       <button
@@ -41,7 +41,7 @@ export function BottomBar({
         disabled={creating}
         aria-label={creating ? 'Creating hunt…' : 'Create new hunt'}
       >
-        <img src="/icon-map-shovel.png" alt="" aria-hidden="true" />
+        <img src="/icon-create-hunt.svg" alt="" aria-hidden="true" />
       </button>
 
       <button

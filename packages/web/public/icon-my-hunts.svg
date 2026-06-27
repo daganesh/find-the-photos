@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Rolled map scroll: left roll -->
+  <ellipse cx="12" cy="32" rx="6" ry="16" fill="#c8a44a" stroke="#6b4a1a" stroke-width="2"/>
+  <!-- Rolled map scroll: right roll -->
+  <ellipse cx="52" cy="32" rx="6" ry="16" fill="#c8a44a" stroke="#6b4a1a" stroke-width="2"/>
+  <!-- Parchment body -->
+  <rect x="11" y="16" width="42" height="32" rx="1" fill="#f4e4b0" stroke="#6b4a1a" stroke-width="2"/>
+  <!-- Map route path -->
+  <path d="M20 38 Q24 30 28 33 Q33 36 36 28 L43 28" stroke="#6b4a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Route start dot -->
+  <circle cx="20" cy="38" r="2.5" fill="#e05c00" stroke="#6b4a1a" stroke-width="1"/>
+  <!-- Route end flag / destination -->
+  <circle cx="43" cy="28" r="2.5" fill="#e05c00" stroke="#6b4a1a" stroke-width="1"/>
+  <!-- Horizontal guide lines on parchment -->
+  <line x1="17" y1="22" x2="47" y2="22" stroke="#6b4a1a" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+  <line x1="17" y1="42" x2="47" y2="42" stroke="#6b4a1a" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+</svg>
