@@ -31,7 +31,7 @@ export function BottomBar({
         onClick={onMyHunts}
         aria-label="My hunts"
       >
-        <img src="/icon-my-hunts.svg" alt="" aria-hidden="true" />
+        <img src="/icon-my-hunts.png" alt="" aria-hidden="true" />
       </button>
 
       <button
@@ -41,7 +41,7 @@ export function BottomBar({
         disabled={creating}
         aria-label={creating ? 'Creating hunt…' : 'Create new hunt'}
       >
-        <img src="/icon-create-hunt.svg" alt="" aria-hidden="true" />
+        <img src="/icon-create-hunt.png" alt="" aria-hidden="true" />
       </button>
 
       <button
@@ -59,7 +59,7 @@ export function BottomBar({
         onClick={onJoin}
         aria-label="Join a hunt"
       >
-        <img src="/icon-ladder.png" alt="" aria-hidden="true" />
+        <img src="/icon-join-hunt.png" alt="" aria-hidden="true" />
       </button>
     </nav>
   );
