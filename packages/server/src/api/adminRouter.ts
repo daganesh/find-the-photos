@@ -37,7 +37,7 @@ export function adminRouter(ctx: AppContext): Router {
         );
         const tables: Record<string, TableStats> = {};
         for (const t of tableRows) {
-          const { rows: [cnt] } = await pool.query<{ n: string }>(`SELECT COUNT(*) AS n FROM ${t.name}`);
+          const { rows: [cnt] } = await pool.query<{ n: string }>(`SELECT COUNT(*) AS n FROM ${pgIdent(t.name)}`);
           tables[t.name] = { rows: Number(cnt.n), sizeMb: Number(t.bytes) / (1024 * 1024) };
         }
         stats.db = { totalMb, tables };
@@ -140,6 +140,12 @@ export function adminRouter(ctx: AppContext): Router {
 
   void ctx; // ctx reserved for future use (e.g., photos store integration)
   return router;
+}
+
+/** Safely quote a PostgreSQL identifier from a trusted source (pg_tables). */
+function pgIdent(name: string): string {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) throw new Error(`Unsafe identifier: ${name}`);
+  return `"${name}"`;
 }
 
 /** Extract filename key from a /uploads/key or https://cdn.../key URL. */

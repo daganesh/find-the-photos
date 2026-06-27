@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { createAppContext, type AppContext } from './context.js';
 import { authRouter } from './api/authRouter.js';
@@ -13,14 +15,40 @@ import { adminRouter } from './api/adminRouter.js';
 import { reportsRouter } from './api/reportsRouter.js';
 import { chatRouter } from './api/chatRouter.js';
 
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many sign-in attempts. Please try again later.' },
+});
+
 /**
  * Build the Express app. Takes an optional context so tests can inject fakes.
  */
 export function createApp(ctx: AppContext = createAppContext()): express.Express {
   const app = express();
 
+  // Trust the first proxy hop so req.ip reflects the real client IP (Railway / cloud).
+  if (config.production) app.set('trust proxy', 1);
+
+  // Security headers — disable CSP and COEP to avoid breaking the SPA served in production.
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+
   app.use(cors({ origin: config.webOrigin }));
   app.use(express.json({ limit: '1mb' }));
+
+  // Rate limiting: tighter on auth, global cap on all API routes.
+  app.use('/api/auth/google', authLimiter);
+  app.use('/api', globalLimiter);
 
   // Log every API request so Railway logs show the full request/response picture.
   app.use('/api', (req, res, next) => {
@@ -55,7 +83,7 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
   app.use('/api/hunt', huntRouter(ctx));
   app.use('/api/teams', teamsRouter(ctx));
   app.use('/api/reports', reportsRouter(ctx));
-  app.use('/api/teams/:teamId/chat', chatRouter());
+  app.use('/api/teams/:teamId/chat', chatRouter(ctx));
   app.use('/api/admin', adminRouter(ctx));
 
   // In production, serve the pre-built React app and handle client-side routing.
@@ -69,7 +97,10 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
   // Central error handler — log the full error so Railway logs capture it.
   const onError: ErrorRequestHandler = (err, req, res, _next) => {
     console.error(`[api error] ${req.method} ${req.path}`, err);
-    const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+    // Never expose internal error details (DB errors, stack traces) to the client in production.
+    const message = config.production
+      ? 'An unexpected error occurred'
+      : (err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     res.status(500).json({ error: message });
   };
   app.use(onError);

@@ -22,6 +22,7 @@ export interface SessionResponse {
 export interface CreateRouteRequest {
   title: string;
   description?: string;
+  visibility?: RouteVisibility;
 }
 
 export interface ItemInput {
@@ -37,12 +38,12 @@ export interface UpdateRouteRequest {
   title?: string;
   description?: string;
   coverPhotoUrl?: string;
+  /** Who can discover this route in the browse list. */
+  visibility?: RouteVisibility;
   /** Replace the full ordered item list (handles add/edit/reorder/remove). */
   items?: Item[];
   /** Set or clear the optional final item. Pass null to remove. */
   finalItem?: FinalItem | null;
-  /** Who can discover this route in the browse list. */
-  visibility?: RouteVisibility;
 }
 
 export interface RouteSummary {

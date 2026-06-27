@@ -15,7 +15,7 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/routes` | Optional | List all `ready` public routes + caller's own routes (drafts + private) |
-| POST | `/api/routes` | Required | Create a draft route; body: `{ title, description? }` |
+| POST | `/api/routes` | Required | Create a draft route; body: `{ title, description?, visibility?: 'public'\|'private' }` |
 | GET | `/api/routes/:id` | Optional | Get full route (drafts visible to owner only; private ready routes accessible via direct link) |
 | PATCH | `/api/routes/:id` | Owner | Update title/description/coverPhotoUrl/items/visibility |
 | DELETE | `/api/routes/:id` | Owner | Delete route |
@@ -67,11 +67,12 @@ Auth is session-token based (`Authorization: Bearer <token>`).
 ## Team Chat (`/api/teams/:teamId/chat`)
 
 In-memory only — messages are lost when the server restarts. Buffer capped at 100 messages per team.
+**Access requires team membership** — both GET and POST return 403 for non-members.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/teams/:teamId/chat?since=<iso>` | Required | Get messages, optionally only those after `since` |
-| POST | `/api/teams/:teamId/chat` | Required | Send a message; body: `{ text: string }` |
+| GET | `/api/teams/:teamId/chat?since=<iso>` | Team member | Get messages, optionally only those after `since` |
+| POST | `/api/teams/:teamId/chat` | Team member | Send a message; body: `{ text: string }` |
 
 ## Admin (`/api/admin`) — `ADMIN_EMAILS` gate
 
