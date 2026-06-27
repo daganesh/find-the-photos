@@ -234,10 +234,6 @@ export function huntRouter(ctx: AppContext): Router {
   // Submit an answer for the optional final item.
   router.post('/:sessionId/solve-final', requireAuth, async (req: AuthedRequest, res, next) => {
     try {
-      const session = await ctx.hunts.get(req.params.sessionId);
-      if (!session) return void res.status(404).json({ error: 'Hunt not found' });
-      if (!await canAccessSession(ctx, session, req.user!.id))
-        return void res.status(403).json({ error: 'Not your session' });
       const { answer } = req.body as SolveFinalItemRequest;
       if (!answer?.trim()) {
         return void res.status(400).json({ error: 'An answer is required' });
@@ -245,6 +241,10 @@ export function huntRouter(ctx: AppContext): Router {
       if (answer.length > 200) return void res.status(400).json({ error: 'Input too long' });
       const clean = sanitizeUserText(answer, 200);
       if (detectPromptInjection(clean)) return void res.status(400).json({ error: 'Invalid input' });
+      const session = await ctx.hunts.get(req.params.sessionId);
+      if (!session) return void res.status(404).json({ error: 'Hunt not found' });
+      if (!await canAccessSession(ctx, session, req.user!.id))
+        return void res.status(403).json({ error: 'Not your session' });
       const result = await solveFinalItem(ctx, req.params.sessionId, clean);
       if ('error' in result) return void res.status(result.status).json({ error: result.error });
       res.json({ session: result });
