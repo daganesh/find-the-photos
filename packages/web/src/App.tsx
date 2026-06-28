@@ -15,7 +15,7 @@ import { Report } from './screens/Report.js';
 import { MyHunts } from './screens/MyHunts.js';
 import { History } from './screens/History.js';
 import { MyScores } from './screens/MyScores.js';
-import { AppBar } from './ui/index.js';
+import { AppBar, PageHeaderProvider } from './ui/index.js';
 
 /** Routes are gated by sign-in. The URL is preserved, so shared /play links
  *  resolve right after the visitor signs in. */
@@ -54,7 +54,9 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <PageHeaderProvider>
+          <AppRoutes />
+        </PageHeaderProvider>
       </AuthProvider>
     </BrowserRouter>
   );
