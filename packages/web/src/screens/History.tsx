@@ -69,6 +69,7 @@ export function History() {
         onMyHunts={() => navigate('/my-hunts')}
         onMyScores={() => navigate('/scores')}
         onMyHistory={() => {}}
+        activePage="history"
       />
     </Page>
   );

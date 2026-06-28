@@ -222,6 +222,7 @@ export function MyScores() {
         onMyHunts={() => navigate('/my-hunts')}
         onMyScores={() => {}}
         onMyHistory={() => navigate('/history')}
+        activePage="my-scores"
       />
     </Page>
   );

@@ -45,6 +45,7 @@ function JoinEntry() {
         onMyHunts={() => navigate('/my-hunts')}
         onMyScores={() => navigate('/scores')}
         onMyHistory={() => navigate('/history')}
+        activePage="join"
       />
     </Page>
   );

@@ -67,4 +67,26 @@ describe('BottomBar', () => {
     render(<BottomBar {...defaultProps} />);
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
   });
+
+  it('marks the active page button with aria-current="page"', () => {
+    render(<BottomBar {...defaultProps} activePage="my-hunts" />);
+    expect(screen.getByRole('button', { name: 'My hunts' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'My scores' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('applies active class only to the active page button', () => {
+    render(<BottomBar {...defaultProps} activePage="join" />);
+    const joinBtn = screen.getByRole('button', { name: 'Join a hunt' });
+    const myHuntsBtn = screen.getByRole('button', { name: 'My hunts' });
+    expect(joinBtn.className).toContain('bottombar__btn--active');
+    expect(myHuntsBtn.className).not.toContain('bottombar__btn--active');
+  });
+
+  it('applies no active class when activePage is not set', () => {
+    render(<BottomBar {...defaultProps} />);
+    const buttons = screen.getAllByRole('button');
+    for (const btn of buttons) {
+      expect(btn.className).not.toContain('bottombar__btn--active');
+    }
+  });
 });
