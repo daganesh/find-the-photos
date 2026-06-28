@@ -17,6 +17,7 @@ import {
   Fireworks,
   HintView,
   HuntTrail,
+  ImageLightbox,
   ItemHistoryPanel,
   JigsawView,
   Page,
@@ -49,6 +50,7 @@ export function HuntPlayer() {
   const [riddleError, setRiddleError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [jigsawDisplayDifficulty, setJigsawDisplayDifficulty] = useState<1 | 2 | 3>(3);
+  const [jigsawEnlarged, setJigsawEnlarged] = useState(false);
 
   // Guard the browser back button while a hunt is in progress.
   // useBlocker requires a data router (createBrowserRouter); this app uses
@@ -113,6 +115,7 @@ export function HuntPlayer() {
   useEffect(() => {
     setRiddleAnswer('');
     setRiddleError('');
+    setJigsawEnlarged(false);
     // Initialize display difficulty from server state so resumes restore correctly.
     const cluesUsed = hunt.activeStep?.cluesUsed ?? 0;
     setJigsawDisplayDifficulty(Math.max(1, 3 - cluesUsed) as 1 | 2 | 3);
@@ -408,6 +411,17 @@ export function HuntPlayer() {
   return (
     <>
       <ThinkingOverlay visible={hunt.busy} />
+      {jigsawEnlarged && item.photos[0] && (
+        <ImageLightbox onClose={() => setJigsawEnlarged(false)}>
+          <JigsawView
+            imageUrl={mediaUrl(item.photos[0].url)}
+            gridSize={getJigsawGridSize(jigsawDisplayDifficulty)}
+            mode="scrambled"
+            difficulty={jigsawDisplayDifficulty}
+            seed={item.id}
+          />
+        </ImageLightbox>
+      )}
     <Page
       onBack={() => setConfirmLeave(true)}
       title={`Clue ${stepNumber} / ${items.length}`}
@@ -441,13 +455,22 @@ export function HuntPlayer() {
         ) : item.kind === 'jigsaw' ? (
           <div className="stack">
             {item.photos[0] && (
-              <JigsawView
-                imageUrl={mediaUrl(item.photos[0].url)}
-                gridSize={getJigsawGridSize(jigsawDisplayDifficulty)}
-                mode="scrambled"
-                difficulty={jigsawDisplayDifficulty}
-                seed={item.id}
-              />
+              <div
+                role="button"
+                tabIndex={0}
+                className="jigsaw-tap"
+                aria-label="Enlarge puzzle"
+                onClick={() => setJigsawEnlarged(true)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setJigsawEnlarged(true); }}
+              >
+                <JigsawView
+                  imageUrl={mediaUrl(item.photos[0].url)}
+                  gridSize={getJigsawGridSize(jigsawDisplayDifficulty)}
+                  mode="scrambled"
+                  difficulty={jigsawDisplayDifficulty}
+                  seed={item.id}
+                />
+              </div>
             )}
             <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} collapsible hideIfEmpty />
           </div>

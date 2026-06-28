@@ -19,6 +19,7 @@ import {
   GuessToastOverlay,
   HintView,
   HuntTrail,
+  ImageLightbox,
   ItemHistoryPanel,
   JigsawView,
   Page,
@@ -93,6 +94,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const [riddleError, setRiddleError] = useState('');
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [jigsawDisplayDifficulty, setJigsawDisplayDifficulty] = useState<1 | 2 | 3>(3);
+  const [jigsawEnlarged, setJigsawEnlarged] = useState(false);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
   const [prizeAcknowledged, setPrizeAcknowledged] = useState(false);
 
@@ -222,6 +224,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   useEffect(() => {
     setRiddleAnswer('');
     setRiddleError('');
+    setJigsawEnlarged(false);
     const step = hunt.session?.steps.find((s) => s.itemId === focusedItemId);
     setJigsawDisplayDifficulty(Math.max(1, 3 - (step?.cluesUsed ?? 0)) as 1 | 2 | 3);
   }, [focusedItemId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -457,7 +460,19 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
     const stepNum = session.steps.findIndex((s) => s.itemId === focusedItemId) + 1;
     const verdict = hunt.lastVerdict?.itemId === focusedItemId ? hunt.lastVerdict.verdict : undefined;
 
-    return withToast(<Page
+    return withToast(<>
+      {jigsawEnlarged && item.photos[0] && (
+        <ImageLightbox onClose={() => setJigsawEnlarged(false)}>
+          <JigsawView
+            imageUrl={mediaUrl(item.photos[0].url)}
+            gridSize={getJigsawGridSize(jigsawDisplayDifficulty)}
+            mode="scrambled"
+            difficulty={jigsawDisplayDifficulty}
+            seed={item.id}
+          />
+        </ImageLightbox>
+      )}
+      <Page
         onBack={() => setFocusedItemId(null)}
         title={`Clue ${stepNum}`}
         right={
@@ -490,13 +505,22 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           ) : item.kind === 'jigsaw' ? (
             <div className="stack">
               {item.photos[0] && (
-                <JigsawView
-                  imageUrl={mediaUrl(item.photos[0].url)}
-                  gridSize={getJigsawGridSize(jigsawDisplayDifficulty)}
-                  mode="scrambled"
-                  difficulty={jigsawDisplayDifficulty}
-                  seed={item.id}
-                />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="jigsaw-tap"
+                  aria-label="Enlarge puzzle"
+                  onClick={() => setJigsawEnlarged(true)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setJigsawEnlarged(true); }}
+                >
+                  <JigsawView
+                    imageUrl={mediaUrl(item.photos[0].url)}
+                    gridSize={getJigsawGridSize(jigsawDisplayDifficulty)}
+                    mode="scrambled"
+                    difficulty={jigsawDisplayDifficulty}
+                    seed={item.id}
+                  />
+                </div>
               )}
               <HintView hint={item.hint} extraHints={item.extraHints} revealedCount={step.cluesUsed} collapsible hideIfEmpty />
             </div>
@@ -681,7 +705,8 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           />
         </div>
         </div>
-      </Page>, true);
+      </Page>
+    </>, true);
   }
 
   // ── Active items grid ─────────────────────────────────────────────────────

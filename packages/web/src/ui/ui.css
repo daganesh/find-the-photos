@@ -231,6 +231,49 @@
   to   { filter: drop-shadow(0 0 10px #f59e0b); }
 }
 
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  cursor: pointer;
+}
+.lightbox__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1;
+}
+.lightbox__close:hover { background: rgba(255, 255, 255, 0.35); }
+.lightbox__content {
+  width: 100%;
+  max-width: 640px;
+  cursor: default;
+}
+
+/* Jigsaw tap-to-enlarge wrapper */
+.jigsaw-tap {
+  cursor: zoom-in;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
 /* Thinking overlay */
 .thinking-character {
   font-size: 5rem;
