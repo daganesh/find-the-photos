@@ -22,7 +22,7 @@ export function authRouter(): Router {
         return;
       }
       const userBase = await verifyGoogleCredential(credential);
-      const user: User = { ...userBase, isAdmin: config.adminEmails.includes(userBase.email) };
+      const user: User = { ...userBase, isAdmin: config.adminEmails.includes(userBase.email.toLowerCase()) };
       const body: SessionResponse = { token: issueSession(user), user };
       res.json(body);
     } catch (err) {
