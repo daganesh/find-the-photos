@@ -40,8 +40,14 @@ export function createApp(ctx: AppContext = createAppContext()): express.Express
   // Trust the first proxy hop so req.ip reflects the real client IP (Railway / cloud).
   if (config.production) app.set('trust proxy', 1);
 
-  // Security headers — disable CSP and COEP to avoid breaking the SPA served in production.
-  app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+  // Security headers — disable CSP, COEP, and COOP.
+  // COOP same-origin breaks Google Sign-In by preventing the OAuth popup from
+  // posting its credential back to the opener window.
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+  }));
 
   app.use(cors({ origin: config.webOrigin }));
   app.use(express.json({ limit: '1mb' }));
