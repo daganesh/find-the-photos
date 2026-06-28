@@ -5,7 +5,7 @@ import { scoreStep, stepStars } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { renderScoreCard, shareScore } from '../services/scoreCard.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { Button, Card, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
+import { Button, Card, MemoryLane, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
 
 /** End-of-hunt: per-item scores, total time, share, and rate-the-route. */
 export function Results() {
@@ -32,6 +32,7 @@ export function Results() {
   const [sharing, setSharing] = useState(false);
   const [summaryUrl, setSummaryUrl] = useState<string | null>(null);
   const [renderingCard, setRenderingCard] = useState(false);
+  const [showMemoryLane, setShowMemoryLane] = useState(false);
 
   const route = useAsync(() => api.getRoute(routeId), [routeId]);
 
@@ -116,6 +117,16 @@ export function Results() {
     }
   }
 
+  if (showMemoryLane) {
+    return (
+      <MemoryLane
+        route={route.data}
+        session={session}
+        onClose={() => setShowMemoryLane(false)}
+      />
+    );
+  }
+
   return (
     <Page title="Your results">
       <div className="stack">
@@ -149,6 +160,10 @@ export function Results() {
             )}
           </div>
         </Card>
+
+        <Button variant="ghost" block onClick={() => setShowMemoryLane(true)}>
+          🎞️ Memory Lane
+        </Button>
 
         <h2>How you did</h2>
         {session.steps.map((step, i) => (
