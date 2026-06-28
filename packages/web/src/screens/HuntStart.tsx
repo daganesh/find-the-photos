@@ -41,8 +41,8 @@ export function HuntStart() {
     }
   }
 
-  if (loading) return <Page onBack title="Hunt"><Spinner label="Loading…" /></Page>;
-  if (error || !route) return <Page onBack title="Hunt"><Banner tone="no">{error ?? 'Not found'}</Banner></Page>;
+  if (loading) return <Page onBack title="Start Hunt"><Spinner label="Loading…" /></Page>;
+  if (error || !route) return <Page onBack title="Start Hunt"><Banner tone="no">{error ?? 'Not found'}</Banner></Page>;
 
   const hasCover = Boolean(route.coverPhotoUrl);
   const isMine = route.authorId === user?.id;
@@ -52,7 +52,7 @@ export function HuntStart() {
   const endLoc = lastItem?.location && lastItem.id !== firstItem?.id ? lastItem.location : undefined;
 
   return (
-    <Page onBack title="">
+    <Page onBack title="Start Hunt">
       <div className="stack">
         {hasCover && (
           <div
@@ -79,7 +79,7 @@ export function HuntStart() {
 
         {!hasCover && (
           <div>
-            <h2 style={{ margin: 0 }}>{route.title}</h2>
+            <h3 style={{ margin: 0 }}>{route.title}</h3>
             <p className="muted" style={{ margin: '4px 0 0' }}>
               {route.items.length} item{route.items.length !== 1 ? 's' : ''}
             </p>
