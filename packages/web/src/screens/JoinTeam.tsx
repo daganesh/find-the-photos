@@ -2,35 +2,42 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
-import { Banner, BottomBar, Button, Page, Spinner } from '../ui/index.js';
+import { Banner, BottomBar, Button, Page, Spinner, useSetPageHeader } from '../ui/index.js';
+import { AvailableHuntsSection } from './Home.js';
 
 /** Code entry form — shown at /join with no code yet. */
 function JoinEntry() {
   const navigate = useNavigate();
   const [code, setCode] = useState('');
 
+  useSetPageHeader('Join a Hunt', () => navigate('/'));
+
   return (
-    <Page title="Join a Team" onBack>
-      <div className="stack" style={{ marginTop: 'var(--space-4)' }}>
-        <p className="muted">Enter the join code shared by your hunt organiser.</p>
-        <input
-          autoFocus
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="Enter join code…"
-          maxLength={8}
-          style={{ textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '1.4rem', textAlign: 'center' }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && code.trim()) navigate(`/join/${code.trim()}`);
-          }}
-        />
-        <Button
-          variant="happy"
-          disabled={!code.trim()}
-          onClick={() => navigate(`/join/${code.trim()}`)}
-        >
-          Join →
-        </Button>
+    <Page>
+      <div className="stack">
+        <div className="stack" style={{ marginTop: 'var(--space-4)' }}>
+          <p className="muted">Enter the join code shared by your hunt organiser.</p>
+          <input
+            autoFocus
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="Enter join code…"
+            maxLength={8}
+            style={{ textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '1.4rem', textAlign: 'center' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && code.trim()) navigate(`/join/${code.trim()}`);
+            }}
+          />
+          <Button
+            variant="happy"
+            disabled={!code.trim()}
+            onClick={() => navigate(`/join/${code.trim()}`)}
+          >
+            Join →
+          </Button>
+        </div>
+
+        <AvailableHuntsSection onHuntClick={(id) => navigate(`/hunt/${id}`)} />
       </div>
       <BottomBar
         onCreate={() => navigate('/build/new')}
@@ -49,6 +56,8 @@ function JoinAuto({ code }: { code: string }) {
   const { user } = useAuth();
   const [error, setError] = useState<string>();
 
+  useSetPageHeader('Joining…', () => navigate('/'));
+
   useEffect(() => {
     const avatarEmoji = user?.id ? (localStorage.getItem(`ftp.avatar.${user.id}`) ?? undefined) : undefined;
     api
@@ -61,14 +70,14 @@ function JoinAuto({ code }: { code: string }) {
 
   if (error) {
     return (
-      <Page onBack title="Join Team">
+      <Page>
         <Banner tone="no">{error}</Banner>
       </Page>
     );
   }
 
   return (
-    <Page title="Joining…">
+    <Page>
       <Spinner label="Joining the team…" />
     </Page>
   );

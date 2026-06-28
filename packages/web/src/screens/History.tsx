@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { BottomBar, Card, Page, Spinner } from '../ui/index.js';
+import { BottomBar, Card, Page, Spinner, useSetPageHeader } from '../ui/index.js';
 import { PastHuntCard } from './Home.js';
 
 export function History() {
@@ -15,6 +15,8 @@ export function History() {
     [user?.id],
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useSetPageHeader('My History', () => navigate('/'));
 
   const pastSessions = (myHunts?.sessions ?? []).filter((s) => !!s.finishedAt);
 
@@ -33,7 +35,7 @@ export function History() {
   }
 
   return (
-    <Page title="My History" onBack={() => navigate('/')}>
+    <Page>
       <div className="stack">
         {loading && <Spinner label="Loading…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}

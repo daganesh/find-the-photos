@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { BottomBar, Card, Page, Spinner } from '../ui/index.js';
+import { BottomBar, Card, Page, Spinner, useSetPageHeader } from '../ui/index.js';
 import { DraftCard, PublishedRouteCard } from './Home.js';
 
 export function MyHunts() {
@@ -11,6 +11,8 @@ export function MyHunts() {
   const navigate = useNavigate();
   const { data: routes, loading, error, reload } = useAsync(() => api.listRoutes(), []);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useSetPageHeader('My Hunts', () => navigate('/'));
 
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'draft') ?? []) : [];
   const myRoutes = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'ready') ?? []) : [];
@@ -30,7 +32,7 @@ export function MyHunts() {
   }
 
   return (
-    <Page title="My Hunts" onBack={() => navigate('/')}>
+    <Page>
       <div className="stack">
         {loading && <Spinner label="Loading…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}

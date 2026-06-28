@@ -28,13 +28,6 @@ export function Home() {
   const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Filter state — draft is the in-popup edit, applied is what's actually filtering
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [draft, setDraft] = useState<FilterDraft>(EMPTY_FILTERS);
-  const [applied, setApplied] = useState<FilterDraft>(EMPTY_FILTERS);
-  const [myLocation, setMyLocation] = useState<GeoPoint | undefined>();
-  const [locating, setLocating] = useState(false);
-
   function createRoute() {
     navigate('/build/new');
   }
@@ -59,47 +52,10 @@ export function Home() {
     }
   }
 
-  /** Called when distance filter changes inside the popup — triggers geolocation if needed. */
-  async function handleDraftDistanceGeo(km: number | null) {
-    if (km !== null && !myLocation) {
-      setLocating(true);
-      const loc = await getCurrentLocation();
-      setMyLocation(loc);
-      setLocating(false);
-    }
-  }
-
-  function openFilterPopup() {
-    setDraft(applied);
-    setFilterOpen(true);
-  }
-
-  function applyFilters() {
-    setApplied(draft);
-    setFilterOpen(false);
-  }
-
-  function clearFilters() {
-    setDraft(EMPTY_FILTERS);
-    setApplied(EMPTY_FILTERS);
-    setFilterOpen(false);
-  }
-
-  const ready = routes?.filter((r) => r.status === 'ready') ?? [];
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'draft') ?? []) : [];
   const allSessions = myHunts?.sessions ?? [];
   const activeSessions = allSessions.filter((s) => !s.finishedAt);
   const activeTeams = myTeams?.teams ?? [];
-
-  const filterOpts = { ...applied, myLocation };
-  const filteredReady = filterHunts(ready, filterOpts);
-  const filtersActive = hasActiveFilters(applied);
-  const activeFilterCount = [
-    applied.name.trim(),
-    applied.creator.trim(),
-    applied.distanceKm !== null ? '1' : '',
-    applied.dateFilter ?? '',
-  ].filter(Boolean).length;
 
   return (
     <Page>
@@ -148,43 +104,7 @@ export function Home() {
           </CollapsibleSection>
         )}
 
-        <section className="stack">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ margin: 0 }}>Available Hunts</h2>
-            <FilterButton active={filtersActive} count={activeFilterCount} onClick={openFilterPopup} />
-          </div>
-          {filterOpen && (
-            <FilterPopup
-              draft={draft}
-              onChange={setDraft}
-              onDistanceChange={handleDraftDistanceGeo}
-              onApply={applyFilters}
-              onClear={clearFilters}
-              onClose={() => setFilterOpen(false)}
-              locating={locating}
-            />
-          )}
-          {filteredReady.length === 0 && !loading && (
-            <Card>
-              <p className="center muted">
-                {filtersActive ? 'No hunts match your filters.' : 'No hunts yet — be the first to make one! 🎈'}
-              </p>
-            </Card>
-          )}
-          {filteredReady.map((r) => (
-            <RouteCard
-              key={r.id}
-              route={r}
-              onClick={() => navigate(`/hunt/${r.id}`)}
-            />
-          ))}
-        </section>
-
-        {!loading && (
-          <Button variant="ghost" onClick={reload}>
-            ↻ Refresh
-          </Button>
-        )}
+        <AvailableHuntsSection onHuntClick={(id) => navigate(`/hunt/${id}`)} />
       </div>
       <BottomBar
         onCreate={createRoute}
@@ -194,6 +114,72 @@ export function Home() {
         onMyHistory={() => navigate('/history')}
       />
     </Page>
+  );
+}
+
+/** Self-contained available-hunts section: fetches routes, manages filter state,
+ *  and renders the heading, FilterButton, FilterPopup, and RouteCards. */
+export function AvailableHuntsSection({ onHuntClick }: { onHuntClick?: (routeId: string) => void }) {
+  const navigate = useNavigate();
+  const { data: routes, loading } = useAsync(() => api.listRoutes(), []);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draft, setDraft] = useState<FilterDraft>(EMPTY_FILTERS);
+  const [applied, setApplied] = useState<FilterDraft>(EMPTY_FILTERS);
+  const [myLocation, setMyLocation] = useState<GeoPoint | undefined>();
+  const [locating, setLocating] = useState(false);
+
+  async function handleDraftDistanceGeo(km: number | null) {
+    if (km !== null && !myLocation) {
+      setLocating(true);
+      const loc = await getCurrentLocation();
+      setMyLocation(loc);
+      setLocating(false);
+    }
+  }
+
+  const ready = routes?.filter((r) => r.status === 'ready') ?? [];
+  const filterOpts = { ...applied, myLocation };
+  const filteredReady = filterHunts(ready, filterOpts);
+  const filtersActive = hasActiveFilters(applied);
+  const activeFilterCount = [
+    applied.name.trim(),
+    applied.creator.trim(),
+    applied.distanceKm !== null ? '1' : '',
+    applied.dateFilter ?? '',
+  ].filter(Boolean).length;
+
+  return (
+    <section className="stack">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h2 style={{ margin: 0 }}>Available Hunts</h2>
+        <FilterButton active={filtersActive} count={activeFilterCount} onClick={() => { setDraft(applied); setFilterOpen(true); }} />
+      </div>
+      {filterOpen && (
+        <FilterPopup
+          draft={draft}
+          onChange={setDraft}
+          onDistanceChange={handleDraftDistanceGeo}
+          onApply={() => { setApplied(draft); setFilterOpen(false); }}
+          onClear={() => { setDraft(EMPTY_FILTERS); setApplied(EMPTY_FILTERS); setFilterOpen(false); }}
+          onClose={() => setFilterOpen(false)}
+          locating={locating}
+        />
+      )}
+      {filteredReady.length === 0 && !loading && (
+        <Card>
+          <p className="center muted">
+            {filtersActive ? 'No hunts match your filters.' : 'No hunts yet — be the first to make one! 🎈'}
+          </p>
+        </Card>
+      )}
+      {filteredReady.map((r) => (
+        <RouteCard
+          key={r.id}
+          route={r}
+          onClick={() => (onHuntClick ? onHuntClick(r.id) : navigate(`/hunt/${r.id}`))}
+        />
+      ))}
+    </section>
   );
 }
 
@@ -408,7 +394,7 @@ function formatRouteDate(isoString: string): string {
   return new Date(isoString).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function RouteCard({ route, onClick }: { route: RouteSummary; onClick: () => void }) {
+export function RouteCard({ route, onClick }: { route: RouteSummary; onClick: () => void }) {
   const [showMap, setShowMap] = useState(false);
   const hasCover = Boolean(route.coverPhotoUrl);
   const hasLocation = Boolean(route.startLocation);
