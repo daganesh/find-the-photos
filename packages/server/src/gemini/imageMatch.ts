@@ -2,6 +2,9 @@ import { GoogleGenAI } from '@google/genai';
 import type { MatchVerdict } from '@ftp/shared';
 import { config, isGeminiConfigured } from '../config.js';
 
+/** Shared Gemini client for all services. v1alpha is required for image generation. */
+export const geminiClient = new GoogleGenAI({ apiKey: config.gemini.apiKey, apiVersion: 'v1alpha' });
+
 /** One image as base64 bytes plus its mime type, ready for the model. */
 export interface InlineImage {
   base64: string;
@@ -99,7 +102,7 @@ function annotateRetries(verdict: MatchVerdict, attempts: number): MatchVerdict 
 
 /** Real Gemini-backed matcher. */
 export class GeminiImageMatchService implements ImageMatchService {
-  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey, apiVersion: 'v1alpha' });
+  private ai = geminiClient;
 
   async compare(
     candidate: InlineImage,

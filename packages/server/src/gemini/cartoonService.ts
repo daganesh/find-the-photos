@@ -1,6 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 import { config, isGeminiConfigured } from '../config.js';
+import { geminiClient } from './imageMatch.js';
 import type { InlineImage } from './imageMatch.js';
 
 /** Model that can output images — separate from the analysis model in config. */
@@ -66,7 +66,7 @@ function parseFaceCheck(text: string): { hasFace: boolean; reason: string } {
 }
 
 export class GeminiCartoonService implements CartoonService {
-  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey, apiVersion: 'v1alpha' });
+  private ai = geminiClient;
 
   async cartoonify(image: InlineImage): Promise<CartoonResult> {
     const smallBase64 = await shrinkToJpeg(image.base64, INPUT_MAX_DIM);

@@ -1,7 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
 import type { ModerationIssue } from '@ftp/shared';
 import type { InlineImage } from './imageMatch.js';
-import { withRetry } from './imageMatch.js';
+import { geminiClient, withRetry } from './imageMatch.js';
 import { config, isGeminiConfigured } from '../config.js';
 
 export interface ModerationService {
@@ -10,7 +9,7 @@ export interface ModerationService {
 }
 
 class GeminiModerationService implements ModerationService {
-  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey, apiVersion: 'v1alpha' });
+  private ai = geminiClient;
 
   async checkTexts(checks: Array<{ field: string; text: string }>): Promise<ModerationIssue[]> {
     if (checks.length === 0) return [];
