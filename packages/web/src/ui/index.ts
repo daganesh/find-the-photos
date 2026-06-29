@@ -31,3 +31,5 @@ export type { HuntTrailItem } from './HuntTrail.js';
 export { ItemHistoryPanel } from './ItemHistoryPanel.js';
 export { TeamChat } from './TeamChat.js';
 export { ThinkingOverlay } from './ThinkingOverlay.js';
+export { MemoryLane } from './MemoryLane.js';
+export type { MemoryLaneMember } from './MemoryLane.js';

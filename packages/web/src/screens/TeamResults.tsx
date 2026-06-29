@@ -5,7 +5,7 @@ import { computeTeamResult } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { renderScoreCard, shareScore } from '../services/scoreCard.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { Banner, Button, Card, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
+import { Banner, Button, Card, MemoryLane, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
 
 /** Team results screen: per-member leaderboard, MVP badge, total score + time. */
 export function TeamResults() {
@@ -27,6 +27,7 @@ export function TeamResults() {
   const [comment, setComment] = useState('');
   const [rated, setRated] = useState(false);
   const [rating, setRating] = useState(false);
+  const [showMemoryLane, setShowMemoryLane] = useState(false);
 
   const route = useAsync(() => routeId ? api.getRoute(routeId) : Promise.resolve(undefined), [routeId]);
 
@@ -104,6 +105,17 @@ export function TeamResults() {
 
   const isMvp = (userId: string) => userId === result.mvpUserId;
 
+  if (showMemoryLane && route.data && session) {
+    return (
+      <MemoryLane
+        route={route.data}
+        session={session}
+        members={team?.members}
+        onClose={() => setShowMemoryLane(false)}
+      />
+    );
+  }
+
   return (
     <Page title="Team Results">
       <div className="stack">
@@ -143,6 +155,10 @@ export function TeamResults() {
             )}
           </div>
         </Card>
+
+        <Button variant="ghost" block onClick={() => setShowMemoryLane(true)}>
+          🎞️ Memory Lane
+        </Button>
 
         {/* Member leaderboard */}
         <h2>Team leaderboard</h2>
