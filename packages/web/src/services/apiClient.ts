@@ -191,6 +191,9 @@ export class ApiClient {
   startTeamHunt(teamId: string, location?: GeoPoint, reversed?: boolean, openItemLimit?: number): Promise<{ team: Team; session: HuntSession }> {
     return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location, reversed, openItemLimit }) });
   }
+  updateTeam(teamId: string, body: { name?: string; photoUrl?: string }): Promise<Team> {
+    return this.request(`/api/teams/${teamId}`, { method: 'PATCH', body: JSON.stringify(body) });
+  }
   pauseOrResumeTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}/pause`, { method: 'POST' });
   }
