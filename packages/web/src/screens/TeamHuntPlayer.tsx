@@ -97,6 +97,11 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const [jigsawEnlarged, setJigsawEnlarged] = useState(false);
   const [finalItemSkipped, setFinalItemSkipped] = useState(false);
   const [prizeAcknowledged, setPrizeAcknowledged] = useState(false);
+  // team photo warm-up: 'needed' until taken or skipped; 'done' once resolved
+  const [teamPhotoStep, setTeamPhotoStep] = useState<'needed' | 'done'>('needed');
+  const [teamPhotoUploading, setTeamPhotoUploading] = useState(false);
+  const [teamPhotoUrl, setTeamPhotoUrl] = useState<string | undefined>(undefined);
+  const [teamPhotoLightbox, setTeamPhotoLightbox] = useState(false);
 
   // Guard the browser back button while the team hunt is active.
   const isHuntActive = Boolean(
@@ -216,6 +221,14 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
     return () => clearInterval(tick);
   }, [hunt.team?.startedAt]);
 
+  // Seed the team photo URL from the existing team record (e.g. on rejoin).
+  useEffect(() => {
+    if (hunt.team?.photoUrl) {
+      setTeamPhotoUrl(hunt.team.photoUrl);
+      setTeamPhotoStep('done');
+    }
+  }, [hunt.team?.photoUrl]);
+
   // Reset dispute confirm when verdict or focused item changes.
   useEffect(() => { setDisputeConfirm(false); setDisputeDesc(''); setDisputeError(''); }, [hunt.lastVerdict, focusedItemId]);
 
@@ -227,6 +240,20 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
     const step = hunt.session?.steps.find((s) => s.itemId === focusedItemId);
     setJigsawDisplayDifficulty(Math.max(1, 3 - (step?.cluesUsed ?? 0)) as 1 | 2 | 3);
   }, [focusedItemId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleTeamPhoto(photo: Blob) {
+    setTeamPhotoUploading(true);
+    try {
+      const { url } = await api.uploadFile(photo, 'team-photo.jpg');
+      await api.updateTeam(teamId, { photoUrl: url });
+      setTeamPhotoUrl(url);
+    } catch {
+      // Upload failure is non-fatal — just skip to the hunt.
+    } finally {
+      setTeamPhotoUploading(false);
+      setTeamPhotoStep('done');
+    }
+  }
 
   async function handleRiddleSubmit() {
     if (!focusedItemId) return;
@@ -333,6 +360,35 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           />
           <p className="muted" style={{ margin: 0 }}>Hunt starts in…</p>
         </div>
+      </Page>,
+      true,
+    );
+  }
+
+  // Team photo warm-up — shown once after the countdown, before the hunt items.
+  // Guard: only show when team is loaded and doesn't already have a photo.
+  if (teamPhotoStep === 'needed' && !complete && team && !team.photoUrl) {
+    return withToast(
+      <Page title="📸 Team Photo!">
+        <Card>
+          <div className="stack center">
+            <div style={{ fontSize: '3rem' }}>📸</div>
+            <h2 style={{ margin: 0 }}>Strike a pose!</h2>
+            <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
+              Take a winning team photo before the hunt begins. It'll appear in your summary!
+            </p>
+            <PhotoCapture
+              onCapture={handleTeamPhoto}
+              variant="happy"
+              disabled={teamPhotoUploading}
+            >
+              {teamPhotoUploading ? 'Uploading…' : '📷 Take photo'}
+            </PhotoCapture>
+            <Button variant="ghost" block disabled={teamPhotoUploading} onClick={() => setTeamPhotoStep('done')}>
+              Skip for now
+            </Button>
+          </div>
+        </Card>
       </Page>,
       true,
     );
@@ -730,8 +786,50 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
       <div className="stack" style={{ flex: 1, minWidth: 0 }}>
         {/* Team progress summary */}
         <Card>
-          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <span>🎯 {foundSteps.length} / {totalItems} found</span>
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' }}>
+            {/* Team photo thumbnail — tap to enlarge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {teamPhotoUrl ? (
+                <button
+                  onClick={() => setTeamPhotoLightbox(true)}
+                  aria-label="View team photo"
+                  style={{
+                    background: 'none',
+                    border: '2px solid var(--color-line)',
+                    borderRadius: 8,
+                    padding: 0,
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    width: 44,
+                    height: 44,
+                    flexShrink: 0,
+                  }}
+                >
+                  <img src={teamPhotoUrl} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setTeamPhotoStep('needed')}
+                  aria-label="Take team photo"
+                  style={{
+                    background: 'var(--tint-happy)',
+                    border: '2px dashed var(--color-happy)',
+                    borderRadius: 8,
+                    width: 44,
+                    height: 44,
+                    cursor: 'pointer',
+                    fontSize: '1.3rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  📸
+                </button>
+              )}
+              <span>🎯 {foundSteps.length} / {totalItems} found</span>
+            </div>
             <ScorePill score={session.totalScore} />
           </div>
           {/* Member scores */}
@@ -749,6 +847,13 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             </div>
           )}
         </Card>
+
+        {/* Team photo lightbox */}
+        {teamPhotoLightbox && teamPhotoUrl && (
+          <ImageLightbox onClose={() => setTeamPhotoLightbox(false)}>
+            <img src={teamPhotoUrl} alt="Team photo" style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 8, display: 'block' }} />
+          </ImageLightbox>
+        )}
 
         {hunt.error && <Banner tone="no">{hunt.error}</Banner>}
 

@@ -214,8 +214,10 @@ export async function renderScoreCard(
 ): Promise<Blob> {
   await document.fonts.ready;
 
+  const teamPhotoUrl = team?.photoUrl ?? undefined;
   const steps = session.steps;
-  const N = steps.length;
+  // Total polaroid count: optional team photo at index 0, then one per step.
+  const N = steps.length + (teamPhotoUrl ? 1 : 0);
   if (N === 0) throw new Error('No steps to render');
 
   const COLS = Math.min(3, Math.max(1, N));
@@ -232,7 +234,8 @@ export async function renderScoreCard(
 
   // Load images
   const logoImg = await loadImg('/logo.jpg');
-  const photoImgs = await Promise.all(
+  const teamPhotoImg = teamPhotoUrl ? await loadImg(mediaUrl(teamPhotoUrl)) : null;
+  const stepPhotoImgs = await Promise.all(
     steps.map((s) => {
       const refUrl = itemPhotos?.get(s.itemId);
       if (refUrl) return loadImg(mediaUrl(refUrl));
@@ -240,6 +243,10 @@ export async function renderScoreCard(
       return url ? loadImg(mediaUrl(url)) : Promise.resolve(null);
     }),
   );
+  // Combine team photo (if any) + step photos into a single indexed array.
+  const photoImgs: (HTMLImageElement | null)[] = teamPhotoUrl
+    ? [teamPhotoImg, ...stepPhotoImgs]
+    : stepPhotoImgs;
 
   // Canvas
   const canvas = document.createElement('canvas');
@@ -286,8 +293,21 @@ export async function renderScoreCard(
     ctx.fillText(`⏱ ${formatDuration(totalSec)}`, CANVAS_W - CANVAS_MARGIN, 40);
   }
 
-  // Polaroid grid
-  const specs: PolaroidSpec[] = steps.map((step, i) => {
+  // Polaroid grid — team photo first (if present), then one per step.
+  const allSpecs: Array<{ name: string; status: 'found' | 'skipped'; img: HTMLImageElement | null }> = [];
+  if (teamPhotoUrl) {
+    allSpecs.push({ name: team?.name ?? 'Team Photo', status: 'found', img: photoImgs[0] ?? null });
+  }
+  for (let s = 0; s < steps.length; s++) {
+    const step = steps[s]!;
+    allSpecs.push({
+      name: itemNames.get(step.itemId) ?? 'Item',
+      status: step.status === 'found' ? 'found' : 'skipped',
+      img: photoImgs[teamPhotoUrl ? s + 1 : s] ?? null,
+    });
+  }
+
+  const specs: PolaroidSpec[] = allSpecs.map(({ name, status, img }, i) => {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
     const cx = CANVAS_MARGIN + col * cellW + cellW / 2;
@@ -300,10 +320,10 @@ export async function renderScoreCard(
       ty: (sr(i * 5 + 2) - 0.5) * 22,
       photoOX: (sr(i * 5 + 3) - 0.5) * 6,
       photoOY: (sr(i * 5 + 4) - 0.5) * 5,
-      photoImg: photoImgs[i] ?? null,
+      photoImg: img,
       logoImg,
-      name: itemNames.get(step.itemId) ?? 'Item',
-      status: step.status === 'found' ? 'found' : 'skipped',
+      name,
+      status,
       seed: sr(i * 7 + 11) * 1000,
       polaroidW, polaroidH, photoW, photoH,
     };

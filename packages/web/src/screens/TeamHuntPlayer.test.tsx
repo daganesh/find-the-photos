@@ -22,6 +22,8 @@ vi.mock('../services/apiClient', () => ({
       joinCode: 'ABC123',
       members: [{ userId: 'u1', name: 'Test User', avatarEmoji: '🧑' }],
       startedAt: new Date(Date.now() - 6000).toISOString(),
+      // photoUrl present so existing tests skip the team photo warm-up step
+      photoUrl: 'https://example.com/team.jpg',
     }),
     // TeamHuntInner loads the route via useAsync → api.getRoute
     getRoute: vi.fn().mockResolvedValue({
@@ -34,6 +36,8 @@ vi.mock('../services/apiClient', () => ({
       ],
       finalItem: undefined,
     }),
+    uploadFile: vi.fn().mockResolvedValue({ url: 'https://example.com/uploaded.jpg' }),
+    updateTeam: vi.fn().mockResolvedValue({}),
   },
 }));
 
@@ -55,6 +59,7 @@ const SESSION: any = {
 };
 
 // Team that has been going for 6+ seconds — countdown is already 0
+// photoUrl is set so the team photo warm-up step is skipped in these tests.
 const TEAM_PAST: any = {
   id: 'team1',
   sessionId: 'sess1',
@@ -63,6 +68,7 @@ const TEAM_PAST: any = {
   joinCode: 'ABC123',
   members: [{ userId: 'u1', name: 'Test User', avatarEmoji: '🧑' }],
   startedAt: new Date(Date.now() - 6000).toISOString(),
+  photoUrl: 'https://example.com/team.jpg',
 };
 
 // Team that started half a second ago — countdown is still running
@@ -188,5 +194,41 @@ describe('TeamHuntPlayer – riddle items', () => {
 
     // Must NOT show photo-capture file inputs
     expect(container.querySelectorAll('input[type="file"]').length).toBe(0);
+  });
+});
+
+// ── Team photo warm-up ────────────────────────────────────────────────────────
+
+describe('TeamHuntPlayer – team photo warm-up', () => {
+  it('shows the team photo screen when team has no photoUrl', async () => {
+    const teamWithoutPhoto = { ...TEAM_PAST, photoUrl: undefined };
+    mockTeamHunt.mockReturnValue({ ...HUNT_BASE, session: SESSION, team: teamWithoutPhoto });
+
+    const { container } = renderTeamPlayer();
+
+    await waitFor(() => expect(container.textContent).toContain('Strike a pose'));
+    expect(screen.getByRole('button', { name: /Skip for now/ })).toBeTruthy();
+  });
+
+  it('skips team photo screen when team already has a photoUrl', async () => {
+    mockTeamHunt.mockReturnValue({ ...HUNT_BASE, session: SESSION, team: TEAM_PAST });
+
+    const { container } = renderTeamPlayer();
+
+    await waitFor(() => expect(container.textContent).toContain('Dream Team'));
+    expect(container.textContent).not.toContain('Strike a pose');
+  });
+
+  it('proceeds to the hunt after skipping the team photo', async () => {
+    const teamWithoutPhoto = { ...TEAM_PAST, photoUrl: undefined };
+    mockTeamHunt.mockReturnValue({ ...HUNT_BASE, session: SESSION, team: teamWithoutPhoto });
+
+    const user = userEvent.setup();
+    const { container } = renderTeamPlayer();
+
+    await waitFor(() => screen.getByRole('button', { name: /Skip for now/ }));
+    await user.click(screen.getByRole('button', { name: /Skip for now/ }));
+
+    await waitFor(() => expect(container.textContent).toContain('Dream Team'));
   });
 });
