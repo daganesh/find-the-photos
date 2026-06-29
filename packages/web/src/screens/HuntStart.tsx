@@ -111,24 +111,37 @@ export function HuntStart() {
 
         {teamError && <Banner tone="no">{teamError}</Banner>}
 
-        <Card>
-          <div className="stack">
-            <Button size="lg" block variant="happy" onClick={() => navigate(`/play/${routeId}`)}>
-              ▶ Start Solo
-            </Button>
-            <Button size="lg" block variant="accent" disabled={teaming} onClick={startTeam}>
-              {teaming ? '⏳ Creating…' : '👥 Team'}
-            </Button>
-            <Button size="lg" block variant="ghost" onClick={share}>
-              {copied ? '✅ Link copied!' : '🔗 Share link'}
-            </Button>
-            {isMine && (
-              <Button block variant="ghost" onClick={() => navigate(`/build/${routeId}`)}>
-                ✏️ Edit
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
+          <Card style={{ flex: 1, minWidth: 0 }}>
+            <div className="stack">
+              <Button size="lg" block variant="happy" onClick={() => navigate(`/play/${routeId}`)}>
+                ▶ Start Solo
               </Button>
-            )}
-          </div>
-        </Card>
+              <Button size="lg" block variant="accent" disabled={teaming} onClick={startTeam}>
+                {teaming ? '⏳ Creating…' : '👥 Team'}
+              </Button>
+              <Button size="lg" block variant="ghost" onClick={share}>
+                {copied ? '✅ Link copied!' : '🔗 Share link'}
+              </Button>
+              {isMine && (
+                <Button block variant="ghost" onClick={() => navigate(`/build/${routeId}`)}>
+                  ✏️ Edit
+                </Button>
+              )}
+            </div>
+          </Card>
+          <img
+            src="/fox-camera.png"
+            alt=""
+            aria-hidden="true"
+            style={{
+              width: 110,
+              height: 'auto',
+              flexShrink: 0,
+              filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.18))',
+            }}
+          />
+        </div>
       </div>
     </Page>
   );

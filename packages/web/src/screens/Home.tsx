@@ -60,6 +60,39 @@ export function Home() {
   return (
     <Page>
       <div className="stack">
+        {/* Fox banner */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            background: 'linear-gradient(135deg, #fff8f0 0%, #ffecd6 100%)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-3) var(--space-4) 0',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{ flex: 1, paddingBottom: 'var(--space-3)' }}>
+            <div style={{ fontWeight: 900, fontSize: '1.3rem', color: 'var(--color-ink)', lineHeight: 1.2 }}>
+              Find the Photos
+            </div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--color-ink-soft)', marginTop: 4 }}>
+              Your photo treasure hunt
+            </div>
+          </div>
+          <img
+            src="/fox-lens.png"
+            alt=""
+            aria-hidden="true"
+            style={{
+              width: 130,
+              height: 'auto',
+              flexShrink: 0,
+              marginBottom: -4,
+              filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.14))',
+            }}
+          />
+        </div>
+
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
         {(activeSessions.length > 0 || activeTeams.length > 0) && (
