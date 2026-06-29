@@ -19,6 +19,39 @@ type FilterDraft = {
 
 const EMPTY_FILTERS: FilterDraft = { name: '', creator: '', distanceKm: null, dateFilter: null };
 
+const TAGLINES = [
+  'What are you up to?',
+  'Ready to hunt today?',
+  'Got a trail to follow?',
+  'Sniffing out clues?',
+  'On the trail of something?',
+  'Time for an adventure?',
+  'Where are you sneaking off to?',
+];
+
+function FoxBanner({ name }: { name?: string }) {
+  const firstName = name?.split(' ')[0] ?? 'there';
+  const tagline = TAGLINES[new Date().getHours() % TAGLINES.length];
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', padding: '0 var(--space-2)' }}>
+      <div style={{ flex: 1, paddingBottom: 'var(--space-3)' }}>
+        <div style={{ fontWeight: 900, fontSize: '1.5rem', color: 'var(--color-ink)', lineHeight: 1.2 }}>
+          Hi {firstName},
+        </div>
+        <div style={{ fontSize: '0.9rem', color: 'var(--color-ink-soft)', marginTop: 4 }}>
+          {tagline}
+        </div>
+      </div>
+      <img
+        src="/fox-lens.png"
+        alt=""
+        aria-hidden="true"
+        style={{ width: 130, height: 'auto', flexShrink: 0, filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.14))' }}
+      />
+    </div>
+  );
+}
+
 /** The hub: greet the player, list playable routes, and start building. */
 export function Home() {
   const { user } = useAuth();
@@ -61,37 +94,7 @@ export function Home() {
     <Page>
       <div className="stack">
         {/* Fox banner */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            background: 'linear-gradient(135deg, #fff8f0 0%, #ffecd6 100%)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 'var(--space-3) var(--space-4) 0',
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{ flex: 1, paddingBottom: 'var(--space-3)' }}>
-            <div style={{ fontWeight: 900, fontSize: '1.3rem', color: 'var(--color-ink)', lineHeight: 1.2 }}>
-              Find the Photos
-            </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--color-ink-soft)', marginTop: 4 }}>
-              Your photo treasure hunt
-            </div>
-          </div>
-          <img
-            src="/fox-lens.png"
-            alt=""
-            aria-hidden="true"
-            style={{
-              width: 130,
-              height: 'auto',
-              flexShrink: 0,
-              marginBottom: -4,
-              filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.14))',
-            }}
-          />
-        </div>
+        <FoxBanner name={user?.name} />
 
         {loading && <Spinner label="Loading hunts…" />}
         {error && <p style={{ color: 'var(--color-danger)' }}>{error}</p>}
