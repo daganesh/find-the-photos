@@ -22,6 +22,7 @@ export { PageHeaderProvider, useSetPageHeader } from './PageHeaderContext.js';
 export { BottomBar } from './BottomBar.js';
 export { UserMenu } from './UserMenu.js';
 export { JigsawView } from './JigsawView.js';
+export { ImageLightbox } from './ImageLightbox.js';
 export { FinalItemPanel } from './FinalItemPanel.js';
 export { GuessToastOverlay } from './GuessToast.js';
 export type { GuessToastData } from './GuessToast.js';
