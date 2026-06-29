@@ -58,16 +58,15 @@ describe('HuntStart – page title', () => {
     vi.mocked(api.getRoute).mockResolvedValue(ROUTE_NO_COVER as any);
   });
 
-  it('shows "Start Hunt" in the page bar title', async () => {
+  it('shows "Start hunt" in the page bar title', async () => {
     renderHuntStart();
-    // Present during loading and remains after data loads
-    expect(screen.getAllByText('Start Hunt').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Start hunt').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows "Start Hunt" after the route finishes loading', async () => {
+  it('shows "Start hunt" after the route finishes loading', async () => {
     renderHuntStart();
-    await screen.findByText('Downtown Photo Walk');
-    expect(screen.getByText('Start Hunt')).toBeDefined();
+    await screen.findByText('2 items');
+    expect(screen.getByText('Start hunt')).toBeDefined();
   });
 });
 
@@ -76,10 +75,10 @@ describe('HuntStart – no cover photo', () => {
     vi.mocked(api.getRoute).mockResolvedValue(ROUTE_NO_COVER as any);
   });
 
-  it('renders the route title as h3 (not h2) to avoid a second title line', async () => {
+  it('does not render the route title as a heading (no double title)', async () => {
     renderHuntStart();
-    const heading = await screen.findByText('Downtown Photo Walk');
-    expect(heading.tagName).toBe('H3');
+    await screen.findByText('2 items');
+    expect(screen.queryByRole('heading', { name: 'Downtown Photo Walk' })).toBeNull();
   });
 
   it('shows the item count', async () => {
@@ -99,16 +98,16 @@ describe('HuntStart – with cover photo', () => {
     vi.mocked(api.getRoute).mockResolvedValue(ROUTE_WITH_COVER as any);
   });
 
-  it('renders the route title as h2 inside the cover image overlay', async () => {
+  it('does not render the route title as a heading over the cover (no double title)', async () => {
     renderHuntStart();
-    const heading = await screen.findByText('Downtown Photo Walk');
-    expect(heading.tagName).toBe('H2');
+    await screen.findByText('2 items');
+    expect(screen.queryByRole('heading', { name: 'Downtown Photo Walk' })).toBeNull();
   });
 
-  it('still shows "Start Hunt" in the page bar', async () => {
+  it('still shows "Start hunt" in the page bar', async () => {
     renderHuntStart();
-    await screen.findByText('Downtown Photo Walk');
-    expect(screen.getByText('Start Hunt')).toBeDefined();
+    await screen.findByText('2 items');
+    expect(screen.getByText('Start hunt')).toBeDefined();
   });
 });
 
@@ -117,9 +116,9 @@ describe('HuntStart – error state', () => {
     vi.mocked(api.getRoute).mockRejectedValue(new Error('Not found'));
   });
 
-  it('shows "Start Hunt" even when the route fetch fails', async () => {
+  it('shows "Start hunt" even when the route fetch fails', async () => {
     renderHuntStart();
     await screen.findByText('Not found');
-    expect(screen.getByText('Start Hunt')).toBeDefined();
+    expect(screen.getByText('Start hunt')).toBeDefined();
   });
 });
