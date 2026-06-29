@@ -3,8 +3,8 @@ import { config, isGeminiConfigured } from '../config.js';
 import { geminiClient } from './imageMatch.js';
 import type { InlineImage } from './imageMatch.js';
 
-/** Model that can output images — separate from the analysis model in config. */
-const CARTOON_MODEL = 'gemini-2.0-flash-preview-image-generation';
+/** Resolved at startup from GEMINI_IMAGE_MODEL env var (default: gemini-2.0-flash-exp). */
+const CARTOON_MODEL = config.gemini.imageModel;
 const INPUT_MAX_DIM = 512;
 const OUTPUT_MAX_DIM = 128;
 

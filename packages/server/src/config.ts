@@ -42,6 +42,7 @@ export const config = {
   gemini: {
     apiKey: optional('GEMINI_API_KEY'),
     model: optional('GEMINI_MODEL', 'gemini-2.0-flash'),
+    imageModel: optional('GEMINI_IMAGE_MODEL', 'gemini-2.0-flash-exp'),
     maxRetries: Number(optional('GEMINI_MAX_RETRIES', '3')),
   },
 
