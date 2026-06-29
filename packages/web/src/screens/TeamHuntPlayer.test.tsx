@@ -97,6 +97,9 @@ function renderTeamPlayer() {
 }
 
 beforeEach(() => {
+  // Restore real timers first — a previous fake-timer test may have timed out
+  // before calling vi.useRealTimers(), leaving fake timers active for this test.
+  vi.useRealTimers();
   mockTeamHunt.mockReturnValue({ ...HUNT_BASE });
   // Explicitly unmount any previous render so lingering intervals don't leak
   // across tests and confuse screen queries.
@@ -137,8 +140,13 @@ describe('TeamHuntPlayer – countdown', () => {
 
     const { container } = renderTeamPlayer();
 
+    // Flush the api.getTeam promise so TeamHuntInner mounts and the countdown
+    // effect fires. waitFor cannot be used here because its internal polling
+    // interval is intercepted by vi.useFakeTimers().
+    await act(async () => { await Promise.resolve(); });
+
     // Initial render: countdown must show "3"
-    await waitFor(() => expect(container.querySelector('.countdown-digit')).not.toBeNull());
+    expect(container.querySelector('.countdown-digit')).not.toBeNull();
     expect(container.querySelector('.countdown-digit')!.getAttribute('alt')).toBe('3');
 
     // After 1 s: "2"
