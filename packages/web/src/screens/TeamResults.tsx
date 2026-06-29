@@ -117,7 +117,7 @@ export function TeamResults() {
   }
 
   return (
-    <Page title="Team Results">
+    <Page title={result.teamName}>
       <div className="stack">
         {/* Team summary */}
         <Card>
@@ -128,7 +128,6 @@ export function TeamResults() {
             ) : (
               <div style={{ fontSize: '3rem' }}>🏆</div>
             )}
-            <h2>{result.teamName}</h2>
             <ScorePill score={result.totalScore} />
             {result.totalSeconds !== undefined && (
               <p className="muted">Total time: {formatDuration(result.totalSeconds)}</p>

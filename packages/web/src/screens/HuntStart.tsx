@@ -41,8 +41,8 @@ export function HuntStart() {
     }
   }
 
-  if (loading) return <Page onBack title="Start Hunt"><Spinner label="Loading…" /></Page>;
-  if (error || !route) return <Page onBack title="Start Hunt"><Banner tone="no">{error ?? 'Not found'}</Banner></Page>;
+  if (loading) return <Page onBack title="Start hunt"><Spinner label="Loading…" /></Page>;
+  if (error || !route) return <Page onBack title="Start hunt"><Banner tone="no">{error ?? 'Not found'}</Banner></Page>;
 
   const hasCover = Boolean(route.coverPhotoUrl);
   const isMine = route.authorId === user?.id;
@@ -52,7 +52,7 @@ export function HuntStart() {
   const endLoc = lastItem?.location && lastItem.id !== firstItem?.id ? lastItem.location : undefined;
 
   return (
-    <Page onBack title="Start Hunt">
+    <Page onBack title="Start hunt">
       <div className="stack">
         {hasCover && (
           <div
@@ -60,31 +60,16 @@ export function HuntStart() {
               width: '100%',
               height: 200,
               borderRadius: 'var(--radius-lg)',
-              backgroundImage: `linear-gradient(rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%), url(${mediaUrl(route.coverPhotoUrl!)})`,
+              backgroundImage: `url(${mediaUrl(route.coverPhotoUrl!)})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
-              display: 'flex',
-              alignItems: 'flex-end',
-              padding: 'var(--space-4)',
             }}
-          >
-            <div>
-              <h2 style={{ margin: 0, color: '#fff' }}>{route.title}</h2>
-              <p className="muted" style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.78)', fontSize: '0.9rem' }}>
-                {route.items.length} item{route.items.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
+          />
         )}
 
-        {!hasCover && (
-          <div>
-            <h3 style={{ margin: 0 }}>{route.title}</h3>
-            <p className="muted" style={{ margin: '4px 0 0' }}>
-              {route.items.length} item{route.items.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-        )}
+        <p className="muted" style={{ margin: 0 }}>
+          {route.items.length} item{route.items.length !== 1 ? 's' : ''}
+        </p>
 
         {route.avgRating !== undefined && (
           <StarRating value={Math.round(route.avgRating)} />
