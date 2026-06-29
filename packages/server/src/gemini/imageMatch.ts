@@ -99,7 +99,7 @@ function annotateRetries(verdict: MatchVerdict, attempts: number): MatchVerdict 
 
 /** Real Gemini-backed matcher. */
 export class GeminiImageMatchService implements ImageMatchService {
-  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
+  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey, apiVersion: 'v1alpha' });
 
   async compare(
     candidate: InlineImage,

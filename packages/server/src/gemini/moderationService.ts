@@ -10,7 +10,7 @@ export interface ModerationService {
 }
 
 class GeminiModerationService implements ModerationService {
-  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
+  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey, apiVersion: 'v1alpha' });
 
   async checkTexts(checks: Array<{ field: string; text: string }>): Promise<ModerationIssue[]> {
     if (checks.length === 0) return [];

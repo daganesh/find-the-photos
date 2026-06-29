@@ -66,9 +66,7 @@ function parseFaceCheck(text: string): { hasFace: boolean; reason: string } {
 }
 
 export class GeminiCartoonService implements CartoonService {
-  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
-  // Image generation requires v1alpha; the default client uses v1beta
-  private imgAi = new GoogleGenAI({ apiKey: config.gemini.apiKey, apiVersion: 'v1alpha' });
+  private ai = new GoogleGenAI({ apiKey: config.gemini.apiKey, apiVersion: 'v1alpha' });
 
   async cartoonify(image: InlineImage): Promise<CartoonResult> {
     const smallBase64 = await shrinkToJpeg(image.base64, INPUT_MAX_DIM);
@@ -98,7 +96,7 @@ export class GeminiCartoonService implements CartoonService {
 
     // Step 2: generate cartoon — style is random so each retry looks different
     const style = randomStyle();
-    const genResp = await this.imgAi.models.generateContent({
+    const genResp = await this.ai.models.generateContent({
       model: CARTOON_MODEL,
       contents: [{
         role: 'user',
