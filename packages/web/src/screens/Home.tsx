@@ -33,8 +33,8 @@ function FoxBanner({ name }: { name?: string }) {
   const firstName = name?.split(' ')[0] ?? 'there';
   const tagline = TAGLINES[new Date().getHours() % TAGLINES.length];
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', padding: '0 var(--space-2)' }}>
-      <div style={{ flex: 1, paddingBottom: 'var(--space-3)' }}>
+    <div style={{ display: 'flex', alignItems: 'stretch', padding: '0 var(--space-2)' }}>
+      <div style={{ flex: 1, paddingTop: 'var(--space-2)', paddingBottom: 'var(--space-3)' }}>
         <div style={{ fontWeight: 900, fontSize: '1.5rem', color: 'var(--color-ink)', lineHeight: 1.2 }}>
           Hi {firstName},
         </div>
@@ -46,7 +46,7 @@ function FoxBanner({ name }: { name?: string }) {
         src="/fox-lens.png"
         alt=""
         aria-hidden="true"
-        style={{ width: 130, height: 'auto', flexShrink: 0, filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.14))' }}
+        style={{ width: 130, height: 'auto', flexShrink: 0, alignSelf: 'flex-end', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.14))' }}
       />
     </div>
   );
