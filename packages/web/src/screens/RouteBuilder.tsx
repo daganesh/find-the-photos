@@ -22,7 +22,7 @@ import { api } from '../services/apiClient.js';
 import { mediaUrl } from '../services/media.js';
 import { googleMapsLink } from '../services/maps.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { Banner, Button, Card, Page, PhotoCapture, Spinner } from '../ui/index.js';
+import { Banner, BottomBar, Button, Card, Page, PhotoCapture, Spinner, useSetPageHeader } from '../ui/index.js';
 import { ItemEditor } from './ItemEditor.js';
 
 type EditingState = Item | 'new' | 'new-task' | 'new-riddle' | 'new-jigsaw' | null;
@@ -192,8 +192,10 @@ export function RouteBuilder() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  if ((loading && !isNewMode) || !route) return <Page onBack title="Build"><Spinner label="Loading…" /></Page>;
-  if (!isNewMode && error) return <Page onBack title="Build"><p style={{ color: 'var(--color-danger)' }}>{error}</p></Page>;
+  useSetPageHeader(editing ? 'Item' : 'Create Hunt', editing ? () => setEditing(null) : () => navigate('/'));
+
+  if ((loading && !isNewMode) || !route) return <Page><Spinner label="Loading…" /></Page>;
+  if (!isNewMode && error) return <Page><p style={{ color: 'var(--color-danger)' }}>{error}</p></Page>;
 
   async function persist(next: Route) {
     setRoute(next);
@@ -388,7 +390,7 @@ export function RouteBuilder() {
       editing === 'new-riddle' ? 'riddle' :
       editing === 'new-jigsaw' ? 'jigsaw' : 'photo';
     return (
-      <Page onBack={() => setEditing(null)} title="Item">
+      <Page>
         <ItemEditor
           initial={isNew ? undefined : (editing as Item)}
           defaultKind={defaultKind}
@@ -412,7 +414,7 @@ export function RouteBuilder() {
   const isHeaderExpanded = route.items.length === 0 || headerExpanded;
 
   return (
-    <Page onBack title="Build your hunt">
+    <Page>
       <div className="stack">
         {/* Header card — collapses to a summary row once items are added */}
         {isHeaderExpanded ? (
@@ -787,6 +789,13 @@ export function RouteBuilder() {
           </Button>
         )}
       </div>
+      <BottomBar
+        onCreate={() => navigate('/build/new')}
+        onJoin={() => navigate('/join')}
+        onMyHunts={() => navigate('/my-hunts')}
+        onMyScores={() => navigate('/scores')}
+        onMyHistory={() => navigate('/history')}
+      />
     </Page>
   );
 }
