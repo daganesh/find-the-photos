@@ -434,7 +434,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
             <div style={{ fontSize: '3.5rem' }}>🏆</div>
             <h2>Hunt complete!</h2>
             {session.finalItemSolved && (
-              <strong>Final item solved! +100 bonus points!</strong>
+              <strong>Final item solved! +100 bonus crumbs!</strong>
             )}
             <ScorePill score={session.totalScore} />
             <Button size="lg" block variant="happy"
