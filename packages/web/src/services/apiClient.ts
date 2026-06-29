@@ -109,6 +109,13 @@ export class ApiClient {
     return this.request('/api/photos', { method: 'POST', body: form });
   }
 
+  // --- Avatar ---
+  async cartoonifyAvatar(file: Blob): Promise<{ imageDataUrl: string; retriesLeft: number }> {
+    const form = new FormData();
+    form.append('file', file, 'avatar.jpg');
+    return this.request('/api/avatar/cartoon', { method: 'POST', body: form });
+  }
+
   // --- Hunt ---
   startHunt(routeId: string, location?: GeoPoint, reversed?: boolean): Promise<{ session: HuntSession }> {
     return this.request('/api/hunt/start', { method: 'POST', body: JSON.stringify({ routeId, location, reversed }) });
