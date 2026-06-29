@@ -291,7 +291,7 @@ export function HuntPlayer() {
             <Card>
               <div className="stack center">
                 <div style={{ fontSize: '2.5rem' }}>🏆</div>
-                <strong>Final item solved! +100 bonus points!</strong>
+                <strong>Final item solved! +100 bonus crumbs!</strong>
               </div>
             </Card>
           )}
@@ -682,7 +682,7 @@ export function HuntPlayer() {
             <div className="stack">
               <span className="field-label">⏭ Skipped items</span>
               <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-                Returning to a skipped item scores fewer points.
+                Returning to a skipped item scores fewer crumbs.
               </p>
               {skippedSteps.map((s) => {
                 const skippedItem = items.find((i) => i.id === s.itemId);

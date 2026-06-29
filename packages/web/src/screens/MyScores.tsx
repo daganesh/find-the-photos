@@ -30,7 +30,7 @@ function getRank(points: number): Rank {
   return { label: 'Explorer', emoji: '🌱', color: '#10b981', next: 100 };
 }
 
-function StatCard({
+function MiniStatCard({
   label,
   value,
   icon,
@@ -46,17 +46,17 @@ function StatCard({
       style={{
         background: bg,
         borderRadius: 'var(--radius)',
-        padding: 'var(--space-3)',
-        textAlign: 'center',
+        padding: '10px 12px',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        gap: 4,
+        gap: 10,
       }}
     >
-      <div style={{ fontSize: '1.8rem' }}>{icon}</div>
-      <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-ink)', lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: '1.5rem', lineHeight: 1 }}>{icon}</div>
+      <div>
+        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-ink)', lineHeight: 1 }}>{value}</div>
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{label}</div>
+      </div>
     </div>
   );
 }
@@ -103,7 +103,7 @@ export function MyScores() {
 
         {!loading && (
           <>
-            {/* Hero: rank + points */}
+            {/* Hero: rank + crumbs */}
             <div
               style={{
                 background: 'linear-gradient(135deg, var(--color-primary) 0%, #f59e0b 100%)',
@@ -126,12 +126,12 @@ export function MyScores() {
               <div style={{ fontSize: '3.2rem', fontWeight: 900, lineHeight: 1 }}>
                 {totalPoints.toLocaleString()}
               </div>
-              <div style={{ fontSize: '0.9rem', opacity: 0.85, marginTop: 4 }}>points</div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.85, marginTop: 4 }}>crumbs</div>
 
               {rank.next && (
                 <div style={{ marginTop: 'var(--space-3)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', opacity: 0.85, marginBottom: 5 }}>
-                    <span>{totalPoints.toLocaleString()} pts</span>
+                    <span>{totalPoints.toLocaleString()} crumbs</span>
                     <span>{rank.next.toLocaleString()} to next rank</span>
                   </div>
                   <div style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 999, height: 8 }}>
@@ -149,12 +149,24 @@ export function MyScores() {
               )}
             </div>
 
-            {/* Stats grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
-              <StatCard label="Hunts played" value={finishedSessions.length} icon="🗺️" bg="var(--tint-accent)" />
-              <StatCard label="Best score" value={bestScore} icon="🏅" bg="var(--tint-coral)" />
-              <StatCard label="Solo" value={soloSessions.length} icon="🚶" bg="#f3eeff" />
-              <StatCard label="Team" value={teamSessions.length} icon="👥" bg="#e0f2fe" />
+            {/* Stats + Fox mascot */}
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
+              {/* Left: stat cards */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                <MiniStatCard label="Hunts played" value={finishedSessions.length} icon="🗺️" bg="var(--tint-accent)" />
+                <MiniStatCard label="Best score" value={bestScore} icon="🏅" bg="var(--tint-coral)" />
+                <MiniStatCard label="Solo" value={soloSessions.length} icon="🚶" bg="#f3eeff" />
+                <MiniStatCard label="Team" value={teamSessions.length} icon="👥" bg="#e0f2fe" />
+              </div>
+
+              {/* Right: fox mascot */}
+              <div style={{ flexShrink: 0, width: 130, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                <img
+                  src="/fox-mascot.png"
+                  alt="Fox mascot"
+                  style={{ width: '100%', height: 'auto', display: 'block', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.18))' }}
+                />
+              </div>
             </div>
 
             {/* Trophies */}

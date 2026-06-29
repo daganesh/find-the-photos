@@ -285,7 +285,7 @@ export async function renderScoreCard(
   ctx.textAlign = 'right';
   ctx.font = `800 18px "Baloo 2", sans-serif`;
   ctx.fillStyle = '#ffd23f';
-  ctx.fillText(`${session.totalScore} pts`, CANVAS_W - CANVAS_MARGIN, 16);
+  ctx.fillText(`${session.totalScore} crumbs`, CANVAS_W - CANVAS_MARGIN, 16);
 
   if (totalSec !== undefined) {
     ctx.font = `500 14px "Baloo 2", sans-serif`;
