@@ -128,12 +128,11 @@ export function Results() {
   }
 
   return (
-    <Page title="Your results">
+    <Page title={route.data.title}>
       <div className="stack">
         <Card>
           <div className="stack center">
             <div style={{ fontSize: '3rem' }}>🏆</div>
-            <h2>{route.data.title}</h2>
             <ScorePill score={session.totalScore} />
             {totalSeconds !== undefined && <p className="muted">Total time: {formatDuration(totalSeconds)}</p>}
             {summaryUrl ? (
