@@ -202,18 +202,17 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
   useEffect(() => {
     if (!hunt.team?.startedAt) return;
-    function calc() {
-      const elapsed = Date.now() - new Date(hunt.team!.startedAt!).getTime();
-      return Math.max(0, Math.ceil((5000 - elapsed) / 1000));
-    }
-    const initial = calc();
-    if (initial <= 0) return;
-    setCountdown(initial);
+    const elapsed = Date.now() - new Date(hunt.team.startedAt).getTime();
+    // Skip countdown entirely if this is a rejoin (game has been running > 5 s)
+    if (elapsed >= 5000) return;
+    // Always show exactly 3 → 2 → 1 so every player sees the same three images
+    setCountdown(3);
+    let remaining = 3;
     const tick = setInterval(() => {
-      const rem = calc();
-      setCountdown(rem);
-      if (rem <= 0) clearInterval(tick);
-    }, 200);
+      remaining -= 1;
+      setCountdown(remaining);
+      if (remaining <= 0) clearInterval(tick);
+    }, 1000);
     return () => clearInterval(tick);
   }, [hunt.team?.startedAt]);
 

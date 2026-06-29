@@ -97,6 +97,9 @@ function renderTeamPlayer() {
 }
 
 beforeEach(() => {
+  // Restore real timers first — a previous fake-timer test may have timed out
+  // before calling vi.useRealTimers(), leaving fake timers active for this test.
+  vi.useRealTimers();
   mockTeamHunt.mockReturnValue({ ...HUNT_BASE });
   // Explicitly unmount any previous render so lingering intervals don't leak
   // across tests and confuse screen queries.
@@ -123,6 +126,42 @@ describe('TeamHuntPlayer – countdown', () => {
     // Hunt grid should be visible (not countdown)
     await waitFor(() => expect(container.textContent).toContain('Dream Team'));
     expect(container.querySelector('.countdown-digit')).toBeNull();
+  });
+
+  it('always starts countdown at 3 regardless of elapsed time, and counts exactly 3→2→1', async () => {
+    vi.useFakeTimers();
+    // Team started 2 seconds ago — old code would show "3" (ceil((5-2)*1000/1000)), but
+    // we want to verify that the fixed code still starts at 3 and steps through all three values.
+    const TEAM_2S_AGO: any = {
+      ...TEAM_PAST,
+      startedAt: new Date(Date.now() - 2000).toISOString(),
+    };
+    mockTeamHunt.mockReturnValue({ ...HUNT_BASE, session: SESSION, team: TEAM_2S_AGO });
+
+    const { container } = renderTeamPlayer();
+
+    // Flush the api.getTeam promise so TeamHuntInner mounts and the countdown
+    // effect fires. waitFor cannot be used here because its internal polling
+    // interval is intercepted by vi.useFakeTimers().
+    await act(async () => { await Promise.resolve(); });
+
+    // Initial render: countdown must show "3"
+    expect(container.querySelector('.countdown-digit')).not.toBeNull();
+    expect(container.querySelector('.countdown-digit')!.getAttribute('alt')).toBe('3');
+
+    // After 1 s: "2"
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(container.querySelector('.countdown-digit')!.getAttribute('alt')).toBe('2');
+
+    // After another 1 s: "1"
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(container.querySelector('.countdown-digit')!.getAttribute('alt')).toBe('1');
+
+    // After another 1 s: countdown is gone
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(container.querySelector('.countdown-digit')).toBeNull();
+
+    vi.useRealTimers();
   });
 });
 
