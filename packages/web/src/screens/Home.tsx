@@ -87,7 +87,10 @@ export function Home() {
 
   const myDrafts = user ? (routes?.filter((r) => r.authorId === user.id && r.status === 'draft') ?? []) : [];
   const allSessions = myHunts?.sessions ?? [];
-  const activeSessions = allSessions.filter((s) => !s.finishedAt);
+  // Team sessions (session.teamId set) are surfaced via activeTeams/ActiveTeamHuntCard
+  // instead — listing them here too would let the team owner "resume" straight into
+  // the single-player screen, which has no team polling, chat, or member avatars.
+  const activeSessions = allSessions.filter((s) => !s.finishedAt && !s.teamId);
   const activeTeams = myTeams?.teams ?? [];
 
   return (

@@ -26,6 +26,8 @@ interface FinalItemPanelProps {
   onRetry?: (itemId: string) => void;
   /** Called when the player taps "Continue to results" on the prize screen. */
   onPrizeContinue?: () => void;
+  /** While true (and not yet solved), show only the closed chest — no progress, breakdown, or entry. */
+  hideDetails?: boolean;
 }
 
 /** Reveals final-item clues progressively as hunt items are solved. */
@@ -41,6 +43,7 @@ export function FinalItemPanel({
   skippedItemIds,
   onRetry,
   onPrizeContinue,
+  hideDetails,
 }: FinalItemPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [answer, setAnswer] = useState('');
@@ -71,6 +74,28 @@ export function FinalItemPanel({
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Not quite — try again!');
     }
+  }
+
+  // ── Locked teaser: no progress or breakdown until the last item is reached ─
+  if (hideDetails && !solved) {
+    return (
+      <Card>
+        <div className="stack center" style={{ alignItems: 'center' }}>
+          {finalItem.kind === 'code' ? (
+            <img
+              src="/chest-locked.png"
+              alt="Locked treasure chest"
+              style={{ width: 140, maxWidth: '50vw', display: 'block' }}
+            />
+          ) : (
+            <div style={{ fontSize: '2.5rem' }}>🏆</div>
+          )}
+          <p className="muted" style={{ margin: 0, fontSize: '0.85rem', textAlign: 'center' }}>
+            🔒 Find every item to unlock the final challenge
+          </p>
+        </div>
+      </Card>
+    );
   }
 
   // ── Code kind: solved — open chest with prize ──────────────────────────────

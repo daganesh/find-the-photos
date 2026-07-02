@@ -53,6 +53,15 @@ export function HuntPlayer() {
   const [jigsawDisplayDifficulty, setJigsawDisplayDifficulty] = useState<1 | 2 | 3>(3);
   const [jigsawEnlarged, setJigsawEnlarged] = useState(false);
 
+  // A team session has no business rendering here — it has its own screen with
+  // live team polling, chat, and member avatars. Redirect defensively in case a
+  // stale link/bookmark still points at /play/:routeId/resume/:sessionId.
+  useEffect(() => {
+    if (hunt.session?.teamId) {
+      navigate(`/team/${hunt.session.teamId}/play`, { replace: true });
+    }
+  }, [hunt.session?.teamId, navigate]);
+
   // Guard the browser back button while a hunt is in progress.
   // useBlocker requires a data router (createBrowserRouter); this app uses
   // <BrowserRouter>, so we use the pushState+popstate trick instead.
@@ -212,6 +221,10 @@ export function HuntPlayer() {
         </div>
       </Page>
     );
+  }
+
+  if (hunt.session.teamId) {
+    return <Page title="Redirecting…"><Spinner label="Taking you to the team hunt…" /></Page>;
   }
 
   // ── Countdown before hunt begins ────────────────────────────────────────
@@ -663,7 +676,7 @@ export function HuntPlayer() {
           </>
         )}
 
-        {/* Final item progress — shown during the hunt, expanded immediately */}
+        {/* Final item teaser — locked chest only until every item is solved */}
         {routeData.finalItem && (
           <FinalItemPanel
             finalItem={routeData.finalItem}
@@ -672,7 +685,7 @@ export function HuntPlayer() {
             onSolve={hunt.solveFinalItem}
             solved={!!session.finalItemSolved}
             busy={hunt.busy}
-            defaultExpanded
+            hideDetails
             skippedItemIds={new Set(skippedSteps.map((s) => s.itemId))}
             onRetry={(itemId) => hunt.returnToSkipped(itemId)}
           />
