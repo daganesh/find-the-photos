@@ -4,7 +4,7 @@ import countdown1 from '../assets/countdown-1.png';
 import countdown2 from '../assets/countdown-2.png';
 import countdown3 from '../assets/countdown-3.png';
 import type { HuntSession } from '@ftp/shared';
-import { SCORING, canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
+import { SCORING, canSkip, getItemClueLetters, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { playSuccessSound } from '../services/sounds.js';
@@ -18,6 +18,7 @@ import {
   Card,
   FinalItemPanel,
   Fireworks,
+  GiveUpFinalItem,
   GuessToastOverlay,
   HintView,
   HuntTrail,
@@ -294,9 +295,11 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
 
   // Trail map data — follows session.steps order.
   const trailItems = session.steps.map((st) => {
-    const it = items.find((i) => i.id === st.itemId);
+    const itemIndex = items.findIndex((i) => i.id === st.itemId);
+    const it = items[itemIndex];
     const foundPhoto = st.photoAttempts.filter((a) => a.verdict.match).at(-1)?.photoUrl;
-    return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto };
+    const clueLetters = st.status === 'found' ? getItemClueLetters(itemIndex, items.length, route.data!.finalItem) : undefined;
+    return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto, clueLetters };
   });
   const firstActiveIdx = session.steps.findIndex((s) => s.status === 'active');
   const trailCurrentIndex = firstActiveIdx >= 0 ? firstActiveIdx : session.steps.length - 1;
@@ -413,12 +416,12 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
               solved={!!session.finalItemSolved}
               busy={hunt.busy}
               defaultExpanded
+              skippedItemIds={new Set(session.steps.filter((s) => s.status === 'skipped').map((s) => s.itemId))}
+              onRetry={(itemId) => hunt.returnToSkipped(itemId)}
               onPrizeContinue={() => setPrizeAcknowledged(true)}
             />
             {!session.finalItemSolved && (
-              <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
-                Skip final challenge
-              </Button>
+              <GiveUpFinalItem onGiveUp={() => setFinalItemSkipped(true)} label="Give up on the final challenge" />
             )}
           </div>
         </Page>,
@@ -783,7 +786,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
           {team && team.members.length > 0 && (
             <AvatarStack
               people={team.members.map((m) => ({ name: m.name, emoji: m.avatarEmoji, imageUrl: m.avatarImageUrl }))}
-              size={24}
+              size={28}
               max={4}
             />
           )}
@@ -856,7 +859,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
                 const myFound = foundSteps.filter((s) => s.foundBy === m.userId).length;
                 return (
                   <div key={m.userId} className="row" style={{ gap: 6, alignItems: 'center' }}>
-                    <Avatar name={m.name} emoji={m.avatarEmoji} imageUrl={m.avatarImageUrl} size={22} />
+                    <Avatar name={m.name} emoji={m.avatarEmoji} imageUrl={m.avatarImageUrl} size={26} />
                     <span className="muted" style={{ fontSize: '0.85rem' }}>{m.name.split(' ')[0]}: {myFound}</span>
                   </div>
                 );
@@ -933,7 +936,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
                   <span className="row muted" style={{ fontSize: '0.85rem', gap: 4, alignItems: 'center' }}>
                     {finder && (
                       <>
-                        <Avatar name={finder.name} emoji={finder.avatarEmoji} imageUrl={finder.avatarImageUrl} size={18} />
+                        <Avatar name={finder.name} emoji={finder.avatarEmoji} imageUrl={finder.avatarImageUrl} size={22} />
                         {finder.name.split(' ')[0]} ·
                       </>
                     )}

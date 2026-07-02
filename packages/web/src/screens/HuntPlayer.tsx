@@ -4,7 +4,7 @@ import countdown1 from '../assets/countdown-1.png';
 import countdown2 from '../assets/countdown-2.png';
 import countdown3 from '../assets/countdown-3.png';
 import type { Item } from '@ftp/shared';
-import { SCORING, canSkip, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
+import { SCORING, canSkip, getItemClueLetters, getJigsawGridSize, isHuntComplete, scoreStep } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { playSuccessSound } from '../services/sounds.js';
 import { useAsync } from '../hooks/useAsync.js';
@@ -15,6 +15,7 @@ import {
   Card,
   FinalItemPanel,
   Fireworks,
+  GiveUpFinalItem,
   HintView,
   HuntTrail,
   ImageLightbox,
@@ -273,9 +274,7 @@ export function HuntPlayer() {
               onPrizeContinue={() => setPrizeAcknowledged(true)}
             />
             {!session.finalItemSolved && (
-              <Button variant="ghost" block onClick={() => setFinalItemSkipped(true)}>
-                ⏭ Give up on the final item
-              </Button>
+              <GiveUpFinalItem onGiveUp={() => setFinalItemSkipped(true)} />
             )}
           </div>
         </Page>
@@ -395,9 +394,11 @@ export function HuntPlayer() {
 
   // Trail map data — follows session.steps order (respects reversed hunts).
   const trailItems = session.steps.map((st) => {
-    const it = items.find((i) => i.id === st.itemId);
+    const itemIndex = items.findIndex((i) => i.id === st.itemId);
+    const it = items[itemIndex];
     const foundPhoto = st.photoAttempts.filter((a) => a.verdict.match).at(-1)?.photoUrl;
-    return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto };
+    const clueLetters = st.status === 'found' ? getItemClueLetters(itemIndex, items.length, routeData.finalItem) : undefined;
+    return { id: st.itemId, name: it?.name ?? 'Item', completed: st.status === 'found', thumbnail: foundPhoto, clueLetters };
   });
   const trailCurrentIndex = Math.max(0, session.steps.findIndex((s) => s.status === 'active'));
 
@@ -662,7 +663,7 @@ export function HuntPlayer() {
           </>
         )}
 
-        {/* Final item progress — shown during the hunt */}
+        {/* Final item progress — shown during the hunt, expanded immediately */}
         {routeData.finalItem && (
           <FinalItemPanel
             finalItem={routeData.finalItem}
@@ -671,6 +672,7 @@ export function HuntPlayer() {
             onSolve={hunt.solveFinalItem}
             solved={!!session.finalItemSolved}
             busy={hunt.busy}
+            defaultExpanded
             skippedItemIds={new Set(skippedSteps.map((s) => s.itemId))}
             onRetry={(itemId) => hunt.returnToSkipped(itemId)}
           />

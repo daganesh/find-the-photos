@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { HuntSession, Item, Route } from '@ftp/shared';
-import { scoreStep } from '@ftp/shared';
+import { getItemClueLetters, scoreStep } from '@ftp/shared';
 import { mediaUrl } from '../services/media.js';
 import { Button } from './Button.js';
 import { Card } from './Card.js';
@@ -154,7 +154,7 @@ export function MemoryLane({ route, session, members, onClose }: MemoryLaneProps
   const items = route.items;
   const stepByItemId = new Map(session.steps.map((s) => [s.itemId, s]));
 
-  const trailItems: HuntTrailItem[] = items.map((item) => {
+  const trailItems: HuntTrailItem[] = items.map((item, i) => {
     const step = stepByItemId.get(item.id);
     const winningPhoto = step?.photoAttempts.find((a) => a.verdict.match);
     return {
@@ -162,6 +162,7 @@ export function MemoryLane({ route, session, members, onClose }: MemoryLaneProps
       name: item.name,
       completed: step?.status === 'found' || step?.status === 'skipped',
       thumbnail: winningPhoto ? mediaUrl(winningPhoto.photoUrl) : undefined,
+      clueLetters: step?.status === 'found' ? getItemClueLetters(i, items.length, route.finalItem) : undefined,
     };
   });
 

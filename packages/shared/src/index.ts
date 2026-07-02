@@ -60,7 +60,7 @@ export {
   isHuntComplete,
 } from './logic/huntMachine.js';
 export { isRoutePlayable, averageRating } from './logic/route.js';
-export { getJigsawGridSize, getFinalItemPositions } from './logic/finalItem.js';
+export { getJigsawGridSize, getFinalItemPositions, getItemClueLetters } from './logic/finalItem.js';
 export { computeTeamResult, findBestBlooper } from './logic/teamScoring.js';
 
 export type { BugReport, GithubIssueRef, Reporter, ReportType, ReportSeverity, ReportStatus } from './models/report.js';

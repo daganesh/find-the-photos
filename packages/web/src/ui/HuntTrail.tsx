@@ -42,6 +42,8 @@ export interface HuntTrailItem {
   name: string;
   completed?: boolean;
   thumbnail?: string;
+  /** Final-item clue letters this step revealed (e.g. "AT") — shown once completed. */
+  clueLetters?: string;
 }
 
 interface HuntTrailProps {
@@ -179,6 +181,11 @@ export function HuntTrail({
                       : <span className="ftp-trail__q" aria-hidden="true">?</span>}
                   {done && <span className="ftp-trail__check" aria-hidden="true">✓</span>}
                 </span>
+                {done && item.clueLetters && (
+                  <span className="ftp-trail__clue" style={{ left: `${xi}%` }} aria-hidden="true">
+                    {item.clueLetters}
+                  </span>
+                )}
               </div>
 
               <div className="ftp-trail__body">
