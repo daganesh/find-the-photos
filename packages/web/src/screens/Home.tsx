@@ -120,7 +120,7 @@ export function Home() {
                   key={team.id}
                   team={team}
                   routeTitle={route?.title}
-                  onRejoin={() => navigate(`/team/${team.id}/play`)}
+                  onRejoin={() => navigate(team.status === 'lobby' ? `/team/${team.id}` : `/team/${team.id}/play`)}
                 />
               );
             })}
@@ -675,7 +675,14 @@ export function PastHuntCard({
   );
 }
 
-function ActiveTeamHuntCard({
+const TEAM_STATUS_LABELS: Record<Team['status'], string> = {
+  lobby: '⏳ Waiting to start',
+  playing: '▶ Playing now',
+  paused: '⏸ Paused',
+  finished: 'Finished',
+};
+
+export function ActiveTeamHuntCard({
   team,
   routeTitle,
   onRejoin,
@@ -685,6 +692,7 @@ function ActiveTeamHuntCard({
   onRejoin: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const buttonLabel = team.status === 'lobby' ? '👥 Go to team lobby' : '👥 Rejoin team hunt';
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <button
@@ -694,12 +702,12 @@ function ActiveTeamHuntCard({
       >
         <h3 style={{ margin: '0 0 2px' }}>{routeTitle ?? 'Hunt'}</h3>
         <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-          👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
+          👥 {team.name} · {team.members.length} member{team.members.length !== 1 ? 's' : ''} · {TEAM_STATUS_LABELS[team.status]}
         </p>
       </button>
       {expanded && (
         <div style={{ padding: 'var(--space-2) var(--space-4) var(--space-3)', borderTop: '1px solid var(--color-line)' }}>
-          <Button variant="happy" onClick={onRejoin}>👥 Rejoin team hunt</Button>
+          <Button variant="happy" onClick={onRejoin}>{buttonLabel}</Button>
         </div>
       )}
     </Card>

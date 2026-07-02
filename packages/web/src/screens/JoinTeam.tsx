@@ -2,20 +2,45 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
+import { useAsync } from '../hooks/useAsync.js';
 import { Banner, BottomBar, Button, Page, Spinner, useSetPageHeader } from '../ui/index.js';
-import { AvailableHuntsSection } from './Home.js';
+import { ActiveTeamHuntCard, AvailableHuntsSection } from './Home.js';
 import { getStoredAvatarEmoji, getStoredAvatarImage } from '../services/avatarStorage.js';
 
 /** Code entry form — shown at /join with no code yet. */
 function JoinEntry() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [code, setCode] = useState('');
+  const { data: myTeams } = useAsync(() => (user ? api.listMyTeams() : Promise.resolve({ teams: [] })), [user?.id]);
+  const { data: routes } = useAsync(() => api.listRoutes(), []);
+  const activeTeams = myTeams?.teams ?? [];
 
   useSetPageHeader('Join a Hunt', () => navigate('/'));
 
   return (
     <Page>
       <div className="stack">
+        {/* Already in a team? Jump straight back in — no code needed. */}
+        {activeTeams.length > 0 && (
+          <div className="stack">
+            <p className="muted" style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>
+              Your active team hunts
+            </p>
+            {activeTeams.map((team) => {
+              const route = routes?.find((r) => r.id === team.routeId);
+              return (
+                <ActiveTeamHuntCard
+                  key={team.id}
+                  team={team}
+                  routeTitle={route?.title}
+                  onRejoin={() => navigate(team.status === 'lobby' ? `/team/${team.id}` : `/team/${team.id}/play`)}
+                />
+              );
+            })}
+          </div>
+        )}
+
         <div className="stack" style={{ marginTop: 'var(--space-4)' }}>
           <p className="muted">Enter the join code shared by your hunt organiser.</p>
           <input

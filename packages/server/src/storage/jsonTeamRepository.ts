@@ -18,7 +18,7 @@ export class JsonTeamRepository {
 
   async listByMember(userId: string): Promise<Team[]> {
     return (await store.all()).filter(
-      (t) => (t.status === 'playing' || t.status === 'paused') && t.members.some((m) => m.userId === userId),
+      (t) => t.status !== 'finished' && t.members.some((m) => m.userId === userId),
     );
   }
 

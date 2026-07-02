@@ -33,7 +33,7 @@ export class PgTeamRepository {
          SELECT 1 FROM jsonb_array_elements(data->'members') elem
          WHERE elem->>'userId' = $1
        )
-       AND data->>'status' = ANY(ARRAY['playing', 'paused'])
+       AND data->>'status' != 'finished'
        ORDER BY (data->>'createdAt') DESC`,
       [userId],
     );
