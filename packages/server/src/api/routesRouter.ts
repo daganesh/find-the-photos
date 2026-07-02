@@ -77,7 +77,7 @@ export function routesRouter(ctx: AppContext): Router {
         authorName: req.user!.name,
         items: [],
         status: 'draft',
-        visibility: visibility === 'private' ? 'private' : 'public',
+        visibility: visibility === 'public' ? 'public' : 'private',
         createdAt: new Date().toISOString(),
         ratings: [],
       };

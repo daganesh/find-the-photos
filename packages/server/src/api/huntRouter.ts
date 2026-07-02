@@ -201,7 +201,7 @@ export function huntRouter(ctx: AppContext): Router {
       if ('error' in found) return void res.status(found.status).json({ error: found.error });
       if (!await canAccessSession(ctx, found.session, req.user!.id))
         return void res.status(403).json({ error: 'Not your session' });
-      const result = await dispute(ctx, found, clean);
+      const result = await dispute(ctx, found, clean, req.user!.id);
       if ('error' in result) return void res.status(result.status).json({ error: result.error });
       res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });
     } catch (err) {
@@ -223,7 +223,7 @@ export function huntRouter(ctx: AppContext): Router {
       if ('error' in found) return void res.status(found.status).json({ error: found.error });
       if (!await canAccessSession(ctx, found.session, req.user!.id))
         return void res.status(403).json({ error: 'Not your session' });
-      const result = await solveRiddle(ctx, found, clean);
+      const result = await solveRiddle(ctx, found, clean, req.user!.id);
       if ('error' in result) return void res.status(result.status).json({ error: result.error });
       res.json({ session: result, step: lastStep(result.steps, req.params.itemId) });
     } catch (err) {

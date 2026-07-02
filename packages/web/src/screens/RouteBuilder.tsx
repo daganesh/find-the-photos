@@ -151,7 +151,7 @@ export function RouteBuilder() {
   const [blockedIssues, setBlockedIssues] = useState<ModerationIssue[]>([]);
   const [flaggedIssues, setFlaggedIssues] = useState<ModerationIssue[]>([]);
   const [flagOverride, setFlagOverride] = useState('');
-  const [visibility, setVisibility] = useState<RouteVisibility>('public');
+  const [visibility, setVisibility] = useState<RouteVisibility>('private');
   const [publishError, setPublishError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [headerExpanded, setHeaderExpanded] = useState(true);

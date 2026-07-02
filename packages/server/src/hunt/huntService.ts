@@ -217,12 +217,13 @@ export async function dispute(
   ctx: AppContext,
   found: StepLookup,
   description: string,
+  submittedBy?: string,
 ): Promise<HuntSession | { error: string; status: number }> {
   const verification = await ctx.imageMatch.verifyDispute(description, found.item.name);
   if (!verification.match) {
     return { error: verification.reason, status: 409 };
   }
-  const nextStep = disputeStep(found.step, now());
+  const nextStep = disputeStep(found.step, now(), submittedBy);
   const session = withStep(found.session, found.item.id, nextStep);
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
 }
@@ -263,12 +264,13 @@ export async function solveRiddle(
   ctx: AppContext,
   found: StepLookup,
   answer: string,
+  submittedBy?: string,
 ): Promise<HuntSession | { error: string; status: number }> {
   const verification = await ctx.imageMatch.verifyDispute(answer, found.item.name);
   if (!verification.match) {
     return { error: verification.reason, status: 409 };
   }
-  const nextStep = solveStep(found.step, now());
+  const nextStep = solveStep(found.step, now(), submittedBy);
   const session = withStep(found.session, found.item.id, nextStep);
   return ctx.hunts.update(session.id, session) as Promise<HuntSession>;
 }

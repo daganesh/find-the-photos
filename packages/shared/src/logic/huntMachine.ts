@@ -111,18 +111,18 @@ export function skipStep(step: StepProgress, now: string): StepProgress {
  * Hunter insists they found it after a "no match" verdict. Override to found
  * and flag as disputed so we can review/tune the AI later.
  */
-export function disputeStep(step: StepProgress, now: string): StepProgress {
+export function disputeStep(step: StepProgress, now: string, submittedBy?: string): StepProgress {
   if (step.status !== 'active') return step;
-  return { ...step, status: 'found', disputed: true, finishedAt: now };
+  return { ...step, status: 'found', disputed: true, finishedAt: now, foundBy: submittedBy };
 }
 
 /**
  * Mark a step as cleanly solved without a disputed flag.
  * Used for riddle answers that verified correctly against the expected answer.
  */
-export function solveStep(step: StepProgress, now: string): StepProgress {
+export function solveStep(step: StepProgress, now: string, submittedBy?: string): StepProgress {
   if (step.status !== 'active') return step;
-  return { ...step, status: 'found', disputed: false, finishedAt: now };
+  return { ...step, status: 'found', disputed: false, finishedAt: now, foundBy: submittedBy };
 }
 
 /** True when every step has been finished (found or skipped). */
