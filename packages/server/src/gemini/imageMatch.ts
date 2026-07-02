@@ -45,8 +45,8 @@ CRITICAL RULES FOR THE REASON FIELD:
 
 const GEMINI_TIMEOUT_MS = 30_000;
 
-/** True for transient Gemini errors worth retrying (503, 429, 500). */
-function isTransientGeminiError(err: unknown): boolean {
+/** True for transient Gemini errors worth retrying (503, 429, 500) — i.e. "high demand". */
+export function isTransientGeminiError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
   const e = err as Record<string, unknown>;
   const status = typeof e.status === 'number' ? e.status
@@ -92,6 +92,29 @@ export async function withRetry<T>(
   ]);
 }
 
+/**
+ * Call `fn(model)` against `primary` with the usual retries. If every retry
+ * still hits a "high demand" (transient) error, fail over once to `fallback`
+ * — a different model, so a busy/overloaded primary doesn't fully block the
+ * feature. No-ops back to a normal throw for non-transient errors, or when
+ * no distinct fallback is configured.
+ */
+export async function withModelFallback<T>(
+  primary: string,
+  fallback: string,
+  fn: (model: string) => Promise<T>,
+): Promise<{ result: T; attempts: number; modelUsed: string }> {
+  try {
+    const { result, attempts } = await withRetry(() => fn(primary));
+    return { result, attempts, modelUsed: primary };
+  } catch (err) {
+    if (!fallback || fallback === primary || !isTransientGeminiError(err)) throw err;
+    console.warn(`[gemini] ${primary} under high demand — failing over to ${fallback}`);
+    const { result, attempts } = await withRetry(() => fn(fallback), 2);
+    return { result, attempts, modelUsed: fallback };
+  }
+}
+
 /** Append retry annotation to a verdict's reason when the call needed retries. */
 function annotateRetries(verdict: MatchVerdict, attempts: number): MatchVerdict {
   if (attempts <= 1) return verdict;
@@ -120,11 +143,15 @@ export class GeminiImageMatchService implements ImageMatchService {
       { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
     ];
 
-    const { result, attempts } = await withRetry(() => this.ai.models.generateContent({
-      model: config.gemini.model,
-      contents: [{ role: 'user', parts }],
-      config: { responseMimeType: 'application/json' },
-    }));
+    const { result, attempts } = await withModelFallback(
+      config.gemini.model,
+      config.gemini.modelFallback,
+      (model) => this.ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts }],
+        config: { responseMimeType: 'application/json' },
+      }),
+    );
 
     return annotateRetries(parseVerdict(result.text ?? ''), attempts);
   }
@@ -132,11 +159,15 @@ export class GeminiImageMatchService implements ImageMatchService {
   async verifyDispute(description: string, itemName: string): Promise<MatchVerdict> {
     const prompt = `You are verifying a treasure hunt answer. The player answered: <input>${description}</input>. The correct answer is: "${itemName}". Do they mean the same thing? Be generous — synonyms, partial descriptions, and different languages count if clearly the same. CRITICAL RULES FOR THE REASON FIELD: Do NOT mention, reveal, or hint at the correct answer under any circumstances. If wrong, give only a short directional hint (e.g. "think bigger", "that's a different kind of thing", "look more carefully"). Reply with STRICT JSON: {"match": boolean, "confidence": number (0..1), "reason": "one short kid-friendly sentence"}`;
 
-    const { result, attempts } = await withRetry(() => this.ai.models.generateContent({
-      model: config.gemini.model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { responseMimeType: 'application/json' },
-    }));
+    const { result, attempts } = await withModelFallback(
+      config.gemini.model,
+      config.gemini.modelFallback,
+      (model) => this.ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json' },
+      }),
+    );
 
     return annotateRetries(parseVerdict(result.text ?? ''), attempts);
   }
@@ -148,11 +179,15 @@ export class GeminiImageMatchService implements ImageMatchService {
       { inlineData: { data: candidate.base64, mimeType: candidate.mimeType } },
     ];
 
-    const { result, attempts } = await withRetry(() => this.ai.models.generateContent({
-      model: config.gemini.model,
-      contents: [{ role: 'user', parts }],
-      config: { responseMimeType: 'application/json' },
-    }));
+    const { result, attempts } = await withModelFallback(
+      config.gemini.model,
+      config.gemini.modelFallback,
+      (model) => this.ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts }],
+        config: { responseMimeType: 'application/json' },
+      }),
+    );
 
     return annotateRetries(parseVerdict(result.text ?? ''), attempts);
   }

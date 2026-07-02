@@ -1,6 +1,6 @@
 import type { ModerationIssue } from '@ftp/shared';
 import type { InlineImage } from './imageMatch.js';
-import { geminiClient, withRetry } from './imageMatch.js';
+import { geminiClient, withModelFallback } from './imageMatch.js';
 import { config, isGeminiConfigured } from '../config.js';
 
 export interface ModerationService {
@@ -16,11 +16,15 @@ class GeminiModerationService implements ModerationService {
     const list = checks.map((c, i) => `[${i}] field="${c.field}": "${c.text}"`).join('\n');
     const prompt = `You are a content moderator for a family photo treasure-hunt app used by children and parents.\nReview these texts and flag anything inappropriate, offensive, sexual, violent, or unsuitable for families with young children.\nTexts to review:\n${list}\n\nReply with STRICT JSON only:\n{"issues": [{"field": "...", "text": "...", "reason": "short explanation", "severity": "blocked|flagged"}]}\nClassify each issue severity: use "blocked" for violence, sexual content, illegal activity, or abuse; use "flagged" for adult themes, political topics, debatable subjects, or content that is not-for-kids but not harmful.\nReturn an empty issues array if all texts are appropriate.`;
 
-    const { result } = await withRetry(() => this.ai.models.generateContent({
-      model: config.gemini.model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { responseMimeType: 'application/json' },
-    }));
+    const { result } = await withModelFallback(
+      config.gemini.model,
+      config.gemini.modelFallback,
+      (model) => this.ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json' },
+      }),
+    );
 
     return parseIssues(result.text ?? '', checks);
   }
@@ -28,14 +32,18 @@ class GeminiModerationService implements ModerationService {
   async checkImage(image: InlineImage): Promise<ModerationIssue[]> {
     const prompt = `You are a content moderator for a family photo treasure-hunt app used by children and parents. Look at this image and determine if it contains anything inappropriate, offensive, sexual, violent, or unsuitable for families with young children.\n\nReply with STRICT JSON only:\n{"flagged": boolean, "severity": "blocked|flagged", "reason": "short explanation or empty string if clean"}\nUse severity "blocked" for violence, sexual content, illegal activity, or abuse. Use severity "flagged" for adult themes, political topics, debatable subjects, or content that is not-for-kids but not harmful.`;
 
-    const { result } = await withRetry(() => this.ai.models.generateContent({
-      model: config.gemini.model,
-      contents: [{ role: 'user', parts: [
-        { text: prompt },
-        { inlineData: { data: image.base64, mimeType: image.mimeType } },
-      ] }],
-      config: { responseMimeType: 'application/json' },
-    }));
+    const { result } = await withModelFallback(
+      config.gemini.model,
+      config.gemini.modelFallback,
+      (model) => this.ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [
+          { text: prompt },
+          { inlineData: { data: image.base64, mimeType: image.mimeType } },
+        ] }],
+        config: { responseMimeType: 'application/json' },
+      }),
+    );
 
     try {
       const text = result.text ?? '';

@@ -3,6 +3,7 @@ import multer from 'multer';
 import type { AppContext } from '../context.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { FaceNotDetectedError } from '../gemini/cartoonService.js';
+import { isTransientGeminiError } from '../gemini/imageMatch.js';
 
 const MAX_GENERATIONS = 5;
 /** How long a user's generation count is remembered before resetting to MAX_GENERATIONS. */
@@ -64,6 +65,13 @@ export function avatarRouter(ctx: AppContext): Router {
         if (err instanceof FaceNotDetectedError) {
           // Face detection failures don't count against the budget
           return void res.status(422).json({ error: err.message, retriesLeft });
+        }
+        if (isTransientGeminiError(err)) {
+          // Primary and fallback models were both under high demand — don't burn a retry.
+          return void res.status(503).json({
+            error: 'Gemini is very busy right now — please try again in a moment.',
+            retriesLeft,
+          });
         }
         throw err;
       }

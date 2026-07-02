@@ -42,7 +42,10 @@ export const config = {
   gemini: {
     apiKey: optional('GEMINI_API_KEY'),
     model: optional('GEMINI_MODEL', 'gemini-2.0-flash'),
+    /** Used when the primary model reports high demand after all retries. */
+    modelFallback: optional('GEMINI_MODEL_FALLBACK', 'gemini-2.5-flash'),
     imageModel: optional('GEMINI_IMAGE_MODEL', 'gemini-2.5-flash-image'),
+    imageModelFallback: optional('GEMINI_IMAGE_MODEL_FALLBACK', 'gemini-3.1-flash-lite-image'),
     maxRetries: Number(optional('GEMINI_MAX_RETRIES', '3')),
   },
 

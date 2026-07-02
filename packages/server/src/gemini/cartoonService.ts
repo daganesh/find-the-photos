@@ -1,23 +1,24 @@
 import sharp from 'sharp';
 import { config, isGeminiConfigured } from '../config.js';
-import { geminiClient } from './imageMatch.js';
+import { geminiClient, withModelFallback } from './imageMatch.js';
 import type { InlineImage } from './imageMatch.js';
 
-/** Resolved at startup from GEMINI_IMAGE_MODEL env var (default: gemini-2.0-flash-exp). */
+/** Resolved at startup from GEMINI_IMAGE_MODEL env var (default: gemini-2.5-flash-image). */
 const CARTOON_MODEL = config.gemini.imageModel;
+const CARTOON_MODEL_FALLBACK = config.gemini.imageModelFallback;
 const INPUT_MAX_DIM = 512;
 const OUTPUT_MAX_DIM = 128;
 
-/** Each call picks one at random so retries produce visibly different heroes. */
+/** Each call picks one at random so retries produce a visibly different hero. */
 const CARTOON_STYLES = [
-  'bold comic-book halftone dots, primary colours, strong black outlines',
-  'cute chibi anime style, big sparkly eyes, pastel palette',
-  'retro 1960s flat pop-art, limited two-tone palette, thick lines',
-  'watercolour storybook illustration, soft edges, warm earthy tones',
-  'pixel-art 16-bit RPG hero portrait, chunky pixels, vibrant palette',
-  'vector sticker art, bright gradient fills, thick white stroke outline',
-  'Scandinavian minimalist folk art, simple shapes, muted Nordic palette',
-  'neon cyberpunk portrait, glowing outlines, dark background, electric colours',
+  'bold comic-book superhero, halftone dots, primary colours, strong black outlines, dynamic cape',
+  'cute chibi superhero, oversized head, big sparkly eyes, tiny stylized costume, pastel palette',
+  'retro 1960s pop-art superhero, limited two-tone palette, thick lines, action-comic feel',
+  'pixel-art 16-bit RPG superhero portrait, chunky pixels, vibrant palette, glowing aura',
+  'vector sticker-style superhero, bright gradient fills, thick white stroke outline, bold mask',
+  'claymation-style superhero figure, chunky rounded shapes, playful lighting',
+  'neon cyberpunk superhero, glowing outlines, electric colours, futuristic visor',
+  'saturday-morning-cartoon superhero, exaggerated proportions, thick outlines, bright primary costume',
 ];
 
 function randomStyle(): string {
@@ -72,19 +73,23 @@ export class GeminiCartoonService implements CartoonService {
     const smallBase64 = await shrinkToJpeg(image.base64, INPUT_MAX_DIM);
 
     // Step 1: face check using the fast text model (cheap — rejects bad photos early)
-    const faceResp = await this.ai.models.generateContent({
-      model: config.gemini.model,
-      contents: [{
-        role: 'user',
-        parts: [
-          { inlineData: { data: smallBase64, mimeType: 'image/jpeg' } },
-          {
-            text: 'Does this image contain at least one clearly visible human face that occupies at least 25% of the image frame? Reply with STRICT JSON only, no prose: {"hasFace": boolean, "reason": "one short sentence"}',
-          },
-        ],
-      }],
-      config: { responseMimeType: 'application/json' },
-    });
+    const { result: faceResp } = await withModelFallback(
+      config.gemini.model,
+      config.gemini.modelFallback,
+      (model) => this.ai.models.generateContent({
+        model,
+        contents: [{
+          role: 'user',
+          parts: [
+            { inlineData: { data: smallBase64, mimeType: 'image/jpeg' } },
+            {
+              text: 'Does this image contain at least one clearly visible human face that occupies at least 25% of the image frame? Reply with STRICT JSON only, no prose: {"hasFace": boolean, "reason": "one short sentence"}',
+            },
+          ],
+        }],
+        config: { responseMimeType: 'application/json' },
+      }),
+    );
 
     const faceResult = parseFaceCheck(faceResp.text ?? '');
     if (!faceResult.hasFace) {
@@ -96,19 +101,23 @@ export class GeminiCartoonService implements CartoonService {
 
     // Step 2: generate cartoon — style is random so each retry looks different
     const style = randomStyle();
-    const genResp = await this.ai.models.generateContent({
-      model: CARTOON_MODEL,
-      contents: [{
-        role: 'user',
-        parts: [
-          { inlineData: { data: smallBase64, mimeType: 'image/jpeg' } },
-          {
-            text: `Transform this photo into a cartoon avatar in this specific style: ${style}. Keep the person recognisable — same hair colour, skin tone, and face shape. Square crop, friendly expression, simple background.`,
-          },
-        ],
-      }],
-      config: { responseModalities: ['IMAGE', 'TEXT'] },
-    });
+    const { result: genResp } = await withModelFallback(
+      CARTOON_MODEL,
+      CARTOON_MODEL_FALLBACK,
+      (model) => this.ai.models.generateContent({
+        model,
+        contents: [{
+          role: 'user',
+          parts: [
+            { inlineData: { data: smallBase64, mimeType: 'image/jpeg' } },
+            {
+              text: `Turn this person into a fun, exaggerated cartoon SUPERHERO avatar in this style: ${style}. This should NOT be a realistic or 1-to-1 likeness of the photo — stylize and exaggerate freely (bigger eyes, playful proportions, a fun superhero costume/mask/cape) while loosely keeping their hair colour and skin tone as a personal touch. Head-and-shoulders BUST portrait only, cropped at the chest/shoulders, facing forward, centered. Plain solid WHITE background — no scenery, no border, no frame, no text, no logos, no drop shadow.`,
+            },
+          ],
+        }],
+        config: { responseModalities: ['IMAGE', 'TEXT'] },
+      }),
+    );
 
     const parts = genResp.candidates?.[0]?.content?.parts ?? [];
     const imgPart = parts.find((p) => p.inlineData?.data);
