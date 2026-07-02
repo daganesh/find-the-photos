@@ -19,6 +19,7 @@ export { Banner } from './Banner.js';
 export { Fireworks } from './Fireworks.js';
 export { AppBar } from './AppBar.js';
 export { PageHeaderProvider, useSetPageHeader } from './PageHeaderContext.js';
+export { ExitGuardProvider, useExitGuard, useTryExitGuard } from './ExitGuardContext.js';
 export { BottomBar } from './BottomBar.js';
 export { UserMenu } from './UserMenu.js';
 export { JigsawView } from './JigsawView.js';

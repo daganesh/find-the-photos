@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import countdown1 from '../assets/countdown-1.png';
 import countdown2 from '../assets/countdown-2.png';
@@ -32,6 +32,7 @@ import {
   TeamChat,
   ThinkingOverlay,
   Timer,
+  useExitGuard,
 } from '../ui/index.js';
 import { mediaUrl } from '../services/media.js';
 import type { GuessToastData } from '../ui/index.js';
@@ -119,6 +120,18 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
+  }, [isHuntActive]);
+
+  // Same protection for in-app "leave" taps (e.g. the AppBar logo) — those
+  // don't go through popstate at all, so they need their own guard.
+  useExitGuard(isHuntActive, useCallback(() => setConfirmLeave(true), []));
+
+  // Warn on tab close / refresh too.
+  useEffect(() => {
+    if (!isHuntActive) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isHuntActive]);
 
   // ── Guess toast queue ──────────────────────────────────────────────────
