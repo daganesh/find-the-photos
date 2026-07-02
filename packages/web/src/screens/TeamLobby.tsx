@@ -170,7 +170,7 @@ export function TeamLobby() {
             <span className="field-label">Team members ({team.members.length})</span>
             {team.members.map((m) => (
               <div key={m.userId} className="row" style={{ alignItems: 'center', gap: 10 }}>
-                <Avatar name={m.name} emoji={m.avatarEmoji} imageUrl={m.avatarImageUrl} size={36} />
+                <Avatar name={m.name} emoji={m.avatarEmoji} imageUrl={m.avatarImageUrl} size={42} />
                 <span style={{ flex: 1 }}>{m.name}</span>
                 {m.userId === team.ownerId && (
                   <span className="muted" style={{ fontSize: '0.8rem' }}>captain</span>

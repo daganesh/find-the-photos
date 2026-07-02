@@ -3,7 +3,7 @@ const PALETTE = [
   'var(--avatar-4)', 'var(--avatar-5)', 'var(--avatar-6)',
 ];
 
-const SIZES: Record<string, number> = { sm: 36, md: 48, lg: 72, xl: 104 };
+const SIZES: Record<string, number> = { sm: 40, md: 56, lg: 82, xl: 120 };
 
 function hashIndex(str: string): number {
   let h = 0;

@@ -132,13 +132,14 @@ export function GuessToastOverlay({ toast, onDismiss }: GuessToastOverlayProps) 
           gap: 16,
         }}
       >
-        {/* Who guessed */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+        {/* Who guessed — big avatar front and centre */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <Avatar
             name={toast.playerName}
             emoji={toast.playerEmoji}
             imageUrl={toast.playerImageUrl}
-            size={32}
+            size={88}
+            ring
             reaction={toast.correct ? 'happy' : 'sad'}
           />
           <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', textAlign: 'center', color: 'rgba(0,0,0,0.65)' }}>

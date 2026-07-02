@@ -179,7 +179,7 @@ export function TeamChat({ teamId, members }: { teamId: string; members: TeamMem
             const member = findMember(m.userId);
             return (
               <div key={m.id} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                <Avatar name={member?.name ?? m.name} emoji={member?.avatarEmoji} imageUrl={member?.avatarImageUrl} size={20} />
+                <Avatar name={member?.name ?? m.name} emoji={member?.avatarEmoji} imageUrl={member?.avatarImageUrl} size={24} />
                 <div>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-ink, #111)' }}>
                     {shortName(m.name, members, m.userId)}

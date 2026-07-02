@@ -168,7 +168,7 @@ export function TeamResults() {
               <span style={{ fontSize: '1.3rem', minWidth: 32 }}>
                 {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}
               </span>
-              <Avatar name={ms.name} emoji={ms.avatarEmoji} imageUrl={ms.avatarImageUrl} size={40} />
+              <Avatar name={ms.name} emoji={ms.avatarEmoji} imageUrl={ms.avatarImageUrl} size={46} />
               <div style={{ flex: 1 }}>
                 <strong>{ms.name}</strong>
                 {isMvp(ms.userId) && ms.itemsFound > 0 && (
