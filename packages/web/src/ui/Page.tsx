@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface PageProps {
-  title?: string;
+  title?: ReactNode;
   /** Show a back chevron in the bar. */
   onBack?: boolean | (() => void);
   right?: ReactNode;

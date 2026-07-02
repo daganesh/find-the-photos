@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { Banner, BottomBar, Button, Page, Spinner, useSetPageHeader } from '../ui/index.js';
 import { AvailableHuntsSection } from './Home.js';
+import { getStoredAvatarEmoji, getStoredAvatarImage } from '../services/avatarStorage.js';
 
 /** Code entry form — shown at /join with no code yet. */
 function JoinEntry() {
@@ -60,9 +61,10 @@ function JoinAuto({ code }: { code: string }) {
   useSetPageHeader('Joining…', () => navigate('/'));
 
   useEffect(() => {
-    const avatarEmoji = user?.id ? (localStorage.getItem(`ftp.avatar.${user.id}`) ?? undefined) : undefined;
+    const avatarEmoji = user?.id ? (getStoredAvatarEmoji(user.id) || undefined) : undefined;
+    const avatarImageUrl = user?.id ? (getStoredAvatarImage(user.id) || undefined) : undefined;
     api
-      .joinTeamByCode(code, avatarEmoji)
+      .joinTeamByCode(code, avatarEmoji, avatarImageUrl)
       .then((team) => navigate(`/team/${team.id}`, { replace: true }))
       .catch((e) =>
         setError(e instanceof Error ? e.message : 'Could not join the team — check the code and try again.'),

@@ -20,32 +20,45 @@ function initials(name: string): string {
     .join('');
 }
 
+export type AvatarReaction = 'happy' | 'sad';
+
 interface AvatarProps {
   /** Display name — drives initials and deterministic colour. */
   name?: string;
   /** Override with a single emoji (e.g. 🦊). */
   emoji?: string;
+  /** Custom avatar image (e.g. a cartoon data URL) — takes priority over emoji/initials. */
+  imageUrl?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl' | number;
   /** Override the background colour. */
   color?: string;
   /** Adds a sunny halo ring. */
   ring?: boolean;
+  /** Momentary animation — heartbeat pulse on 'happy', fade on 'sad'. */
+  reaction?: AvatarReaction;
 }
 
-/** A cheerful round family avatar — emoji or auto-initials on a happy colour. */
-export function Avatar({ name = '', emoji, size = 'md', color, ring = false }: AvatarProps) {
+/** A cheerful round family avatar — custom image, emoji, or auto-initials on a happy colour. */
+export function Avatar({ name = '', emoji, imageUrl, size = 'md', color, ring = false, reaction }: AvatarProps) {
   const px = typeof size === 'number' ? size : (SIZES[size] ?? 48);
   const bg = color ?? PALETTE[hashIndex(name)] ?? 'var(--avatar-1)';
-  const cls = ['avatar', ring ? 'avatar--ring' : ''].filter(Boolean).join(' ');
+  const cls = [
+    'avatar',
+    ring ? 'avatar--ring' : '',
+    reaction === 'happy' ? 'avatar--pulse-happy' : '',
+    reaction === 'sad' ? 'avatar--fade-sad' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <span
       className={cls}
       title={name || undefined}
       aria-label={name || 'avatar'}
-      style={{ width: px, height: px, background: bg, fontSize: emoji ? px * 0.52 : px * 0.4 }}
+      style={{ width: px, height: px, background: imageUrl ? 'transparent' : bg, fontSize: emoji ? px * 0.52 : px * 0.4 }}
     >
-      {emoji ?? initials(name)}
+      {imageUrl
+        ? <img src={imageUrl} alt={name || 'avatar'} className="avatar__img" />
+        : (emoji ?? initials(name))}
     </span>
   );
 }
@@ -53,6 +66,7 @@ export function Avatar({ name = '', emoji, size = 'md', color, ring = false }: A
 export interface AvatarPerson {
   name: string;
   emoji?: string;
+  imageUrl?: string;
   color?: string;
 }
 
@@ -71,7 +85,7 @@ export function AvatarStack({ people, size = 'md', max = 4 }: AvatarStackProps) 
   return (
     <span className="avatar-stack">
       {shown.map((p, i) => (
-        <Avatar key={i} name={p.name} emoji={p.emoji} color={p.color} size={size} />
+        <Avatar key={i} name={p.name} emoji={p.emoji} imageUrl={p.imageUrl} color={p.color} size={size} />
       ))}
       {extra > 0 && (
         <span

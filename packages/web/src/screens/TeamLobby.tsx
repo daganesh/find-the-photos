@@ -7,7 +7,7 @@ import { useAsync } from '../hooks/useAsync.js';
 import { getCurrentLocation } from '../services/geolocation.js';
 import { mediaUrl } from '../services/media.js';
 import { googleMapsLink } from '../services/maps.js';
-import { Banner, Button, Card, Page, Spinner } from '../ui/index.js';
+import { Avatar, Banner, Button, Card, Page, Spinner } from '../ui/index.js';
 
 const POLL_MS = 2500;
 
@@ -170,22 +170,7 @@ export function TeamLobby() {
             <span className="field-label">Team members ({team.members.length})</span>
             {team.members.map((m) => (
               <div key={m.userId} className="row" style={{ alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    background: 'var(--tint-happy)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: m.avatarEmoji ? '1.3rem' : '1rem',
-                    fontWeight: 700,
-                    flexShrink: 0,
-                  }}
-                >
-                  {m.avatarEmoji ?? m.name[0]?.toUpperCase()}
-                </div>
+                <Avatar name={m.name} emoji={m.avatarEmoji} imageUrl={m.avatarImageUrl} size={36} />
                 <span style={{ flex: 1 }}>{m.name}</span>
                 {m.userId === team.ownerId && (
                   <span className="muted" style={{ fontSize: '0.8rem' }}>captain</span>

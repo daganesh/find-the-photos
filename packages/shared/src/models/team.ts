@@ -4,6 +4,8 @@ export interface TeamMember {
   userId: string;
   name: string;
   avatarEmoji?: string;
+  /** Custom cartoon avatar (data URL), takes priority over avatarEmoji when set. */
+  avatarImageUrl?: string;
   joinedAt: string;
 }
 
@@ -31,6 +33,7 @@ export interface MemberScore {
   userId: string;
   name: string;
   avatarEmoji?: string;
+  avatarImageUrl?: string;
   itemsFound: number;
   totalScore: number;
 }

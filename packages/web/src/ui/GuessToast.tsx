@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { mediaUrl } from '../services/media.js';
+import { Avatar } from './Avatar.js';
 
 export interface GuessToastData {
   id: string;
+  /** "You" when the current user made this guess. */
   playerName: string;
   playerEmoji: string;
+  /** Custom cartoon avatar, if the player has one. */
+  playerImageUrl?: string;
   /** Set for photo guesses — shows a Polaroid. */
   photoUrl?: string;
   /** Set for text guesses (riddle solved) — shows a speech bubble. */
@@ -129,9 +133,18 @@ export function GuessToastOverlay({ toast, onDismiss }: GuessToastOverlayProps) 
         }}
       >
         {/* Who guessed */}
-        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', textAlign: 'center', color: 'rgba(0,0,0,0.65)' }}>
-          {toast.playerEmoji} <strong style={{ color: '#000' }}>{toast.playerName}</strong> just guessed:
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+          <Avatar
+            name={toast.playerName}
+            emoji={toast.playerEmoji}
+            imageUrl={toast.playerImageUrl}
+            size={32}
+            reaction={toast.correct ? 'happy' : 'sad'}
+          />
+          <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', textAlign: 'center', color: 'rgba(0,0,0,0.65)' }}>
+            <strong style={{ color: '#000' }}>{toast.playerName}</strong> just guessed:
+          </p>
+        </div>
 
         {/* Media — Polaroid for photo, comic bubble for text */}
         {toast.photoUrl ? (

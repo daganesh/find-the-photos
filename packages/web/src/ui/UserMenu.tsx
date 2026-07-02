@@ -2,10 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.js';
 import { api, ApiError } from '../services/apiClient.js';
-
-const AVATAR_KEY = (id: string) => `ftp.avatar.${id}`;
-const AVATAR_COLOR_KEY = (id: string) => `ftp.avatar.color.${id}`;
-const AVATAR_CARTOON_KEY = (id: string) => `ftp.avatar.cartoon.${id}`;
+import {
+  getStoredAvatarColor as getStoredColor,
+  getStoredAvatarEmoji as getStoredAvatar,
+  getStoredAvatarImage as getStoredCartoon,
+  saveAvatarColor as saveColor,
+  saveAvatarEmoji as saveAvatar,
+  saveAvatarImage as saveCartoon,
+} from '../services/avatarStorage.js';
 
 const EMOJI_OPTIONS = ['😀', '🦁', '🐻', '🦊', '🐼', '🐨', '🐯', '🦝', '🐸', '🐙', '🦋', '🌟', '🚀', '🎩', '🌈'];
 
@@ -17,32 +21,8 @@ const COLOR_SWATCHES = [
 
 const MAX_INPUT_DIM = 600;
 const INPUT_QUALITY = 0.85;
-
-function getStoredAvatar(userId: string): string {
-  return localStorage.getItem(AVATAR_KEY(userId)) ?? '';
-}
-
-function getStoredColor(userId: string): string {
-  return localStorage.getItem(AVATAR_COLOR_KEY(userId)) ?? '';
-}
-
-function getStoredCartoon(userId: string): string {
-  return localStorage.getItem(AVATAR_CARTOON_KEY(userId)) ?? '';
-}
-
-function saveAvatar(userId: string, emoji: string) {
-  localStorage.setItem(AVATAR_KEY(userId), emoji);
-}
-
-function saveColor(userId: string, color: string) {
-  if (color) localStorage.setItem(AVATAR_COLOR_KEY(userId), color);
-  else localStorage.removeItem(AVATAR_COLOR_KEY(userId));
-}
-
-function saveCartoon(userId: string, dataUrl: string) {
-  if (dataUrl) localStorage.setItem(AVATAR_CARTOON_KEY(userId), dataUrl);
-  else localStorage.removeItem(AVATAR_CARTOON_KEY(userId));
-}
+/** Must match MAX_GENERATIONS in packages/server/src/api/avatarRouter.ts. */
+const MAX_RETRIES = 5;
 
 /** Downscale file to MAX_INPUT_DIM on the client before upload. */
 function resizeForAvatar(file: File): Promise<Blob> {
@@ -79,12 +59,14 @@ export function UserMenu() {
   const [avatarColor, setAvatarColor] = useState(() => (user ? getStoredColor(user.id) : ''));
   const [cartoonUrl, setCartoonUrl] = useState(() => (user ? getStoredCartoon(user.id) : ''));
   const [pickingAvatar, setPickingAvatar] = useState(false);
+  /** Which small popover is open under "Choose avatar" — only one at a time. */
+  const [subPanel, setSubPanel] = useState<'emoji' | 'color' | null>(null);
 
   // Cartoon avatar flow state
   const [cartoonPreview, setCartoonPreview] = useState('');
   const [cartoonLoading, setCartoonLoading] = useState(false);
   const [cartoonError, setCartoonError] = useState('');
-  const [retriesLeft, setRetriesLeft] = useState(3);
+  const [retriesLeft, setRetriesLeft] = useState(MAX_RETRIES);
 
   const ref = useRef<HTMLDivElement>(null);
 
@@ -109,11 +91,13 @@ export function UserMenu() {
     // Switching to emoji clears cartoon
     saveCartoon(user!.id, '');
     setCartoonUrl('');
+    setSubPanel(null);
   }
 
   function chooseColor(color: string) {
     saveColor(user!.id, color);
     setAvatarColor(color);
+    setSubPanel(null);
   }
 
   async function handleCartoonFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -162,7 +146,7 @@ export function UserMenu() {
     <div className="usermenu" ref={ref}>
       <button
         className="usermenu__btn"
-        onClick={() => { setOpen((o) => !o); setPickingAvatar(false); }}
+        onClick={() => { setOpen((o) => !o); setPickingAvatar(false); setSubPanel(null); }}
         aria-label="Account menu"
         aria-expanded={open}
         style={cartoonUrl ? {} : avatarStyle}
@@ -193,45 +177,66 @@ export function UserMenu() {
           {pickingAvatar ? (
             <div className="stack" style={{ padding: '8px 12px', gap: 10 }}>
 
-              {/* ── Emoji ── */}
-              <span className="usermenu__section-label">EMOJI</span>
-              <div className="usermenu__emojis">
-                {EMOJI_OPTIONS.map((e) => (
-                  <button key={e} className={`usermenu__emoji${avatar === e && !cartoonUrl ? ' usermenu__emoji--active' : ''}`} onClick={() => chooseEmoji(e)}>
-                    {e}
-                  </button>
-                ))}
-                <button className="usermenu__emoji usermenu__emoji--clear" onClick={() => chooseEmoji('')}>
-                  Aa
+              {/* ── Emoji / colour toggles ── */}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className={`btn btn--ghost usermenu__toggle${subPanel === 'emoji' ? ' usermenu__toggle--active' : ''}`}
+                  style={{ flex: 1, padding: '6px 0' }}
+                  onClick={() => setSubPanel((p) => (p === 'emoji' ? null : 'emoji'))}
+                >
+                  {avatar || '😀'} Emoji
+                </button>
+                <button
+                  className={`btn btn--ghost usermenu__toggle${subPanel === 'color' ? ' usermenu__toggle--active' : ''}`}
+                  style={{ flex: 1, padding: '6px 0' }}
+                  onClick={() => setSubPanel((p) => (p === 'color' ? null : 'color'))}
+                >
+                  <span style={{ width: 14, height: 14, borderRadius: '50%', background: avatarColor || 'var(--color-muted)', display: 'inline-block', marginRight: 4, verticalAlign: 'middle' }} />
+                  Colour
                 </button>
               </div>
 
-              {/* ── Background colour ── */}
-              <span className="usermenu__section-label">BACKGROUND</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {COLOR_SWATCHES.map((c) => (
+              {subPanel === 'emoji' && (
+                <div className="usermenu__popover">
+                  <div className="usermenu__emojis">
+                    {EMOJI_OPTIONS.map((e) => (
+                      <button key={e} className={`usermenu__emoji${avatar === e && !cartoonUrl ? ' usermenu__emoji--active' : ''}`} onClick={() => chooseEmoji(e)}>
+                        {e}
+                      </button>
+                    ))}
+                    <button className="usermenu__emoji usermenu__emoji--clear" onClick={() => chooseEmoji('')}>
+                      Aa
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {subPanel === 'color' && (
+                <div className="usermenu__popover" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {COLOR_SWATCHES.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => chooseColor(c)}
+                      aria-label={c}
+                      style={{
+                        width: 28, height: 28, borderRadius: '50%', background: c,
+                        border: avatarColor === c ? '3px solid var(--color-ink)' : '2px solid transparent',
+                        cursor: 'pointer', outline: 'none', padding: 0,
+                      }}
+                    />
+                  ))}
                   <button
-                    key={c}
-                    onClick={() => chooseColor(c)}
-                    aria-label={c}
+                    onClick={() => chooseColor('')}
+                    aria-label="Default colour"
                     style={{
-                      width: 28, height: 28, borderRadius: '50%', background: c,
-                      border: avatarColor === c ? '3px solid var(--color-ink)' : '2px solid transparent',
+                      width: 28, height: 28, borderRadius: '50%', background: 'var(--color-muted)',
+                      border: !avatarColor ? '3px solid var(--color-ink)' : '2px solid transparent',
                       cursor: 'pointer', outline: 'none', padding: 0,
+                      fontSize: '0.65rem', color: 'var(--color-ink)',
                     }}
-                  />
-                ))}
-                <button
-                  onClick={() => chooseColor('')}
-                  aria-label="Default colour"
-                  style={{
-                    width: 28, height: 28, borderRadius: '50%', background: 'var(--color-muted)',
-                    border: !avatarColor ? '3px solid var(--color-ink)' : '2px solid transparent',
-                    cursor: 'pointer', outline: 'none', padding: 0,
-                    fontSize: '0.65rem', color: 'var(--color-ink)',
-                  }}
-                >↺</button>
-              </div>
+                  >↺</button>
+                </div>
+              )}
 
               {/* ── Cartoon avatar ── */}
               <span className="usermenu__section-label">CARTOON AVATAR</span>
@@ -281,10 +286,10 @@ export function UserMenu() {
               )}
 
               {!cartoonLoading && retriesLeft === 0 && !cartoonPreview && (
-                <p className="usermenu__cartoon-error">No more tries left for this session.</p>
+                <p className="usermenu__cartoon-error">No more tries left — check back in a few minutes.</p>
               )}
 
-              <button className="usermenu__item" onClick={() => { setPickingAvatar(false); setCartoonPreview(''); setCartoonError(''); }}>✓ Done</button>
+              <button className="usermenu__item" onClick={() => { setPickingAvatar(false); setSubPanel(null); setCartoonPreview(''); setCartoonError(''); }}>✓ Done</button>
             </div>
           ) : (
             <button className="usermenu__item" onClick={() => setPickingAvatar(true)}>

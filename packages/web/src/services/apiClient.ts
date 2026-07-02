@@ -183,8 +183,8 @@ export class ApiClient {
   }
 
   // --- Teams ---
-  createTeam(routeId: string, name?: string, avatarEmoji?: string): Promise<Team> {
-    return this.request('/api/teams', { method: 'POST', body: JSON.stringify({ routeId, name, avatarEmoji }) });
+  createTeam(routeId: string, name?: string, avatarEmoji?: string, avatarImageUrl?: string): Promise<Team> {
+    return this.request('/api/teams', { method: 'POST', body: JSON.stringify({ routeId, name, avatarEmoji, avatarImageUrl }) });
   }
   getTeam(teamId: string): Promise<Team> {
     return this.request(`/api/teams/${teamId}`);
@@ -192,8 +192,8 @@ export class ApiClient {
   listMyTeams(): Promise<{ teams: Team[] }> {
     return this.request('/api/teams/my');
   }
-  joinTeamByCode(code: string, avatarEmoji?: string): Promise<Team> {
-    return this.request(`/api/teams/join/${code}`, { method: 'POST', body: JSON.stringify({ avatarEmoji }) });
+  joinTeamByCode(code: string, avatarEmoji?: string, avatarImageUrl?: string): Promise<Team> {
+    return this.request(`/api/teams/join/${code}`, { method: 'POST', body: JSON.stringify({ avatarEmoji, avatarImageUrl }) });
   }
   startTeamHunt(teamId: string, location?: GeoPoint, reversed?: boolean, openItemLimit?: number): Promise<{ team: Team; session: HuntSession }> {
     return this.request(`/api/teams/${teamId}/start`, { method: 'POST', body: JSON.stringify({ location, reversed, openItemLimit }) });

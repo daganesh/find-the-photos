@@ -26,6 +26,7 @@ export function computeTeamResult(team: Team, session: HuntSession): TeamResult 
     userId: m.userId,
     name: m.name,
     avatarEmoji: m.avatarEmoji,
+    avatarImageUrl: m.avatarImageUrl,
     itemsFound: foundByMember.get(m.userId) ?? 0,
     totalScore: scoreByMember.get(m.userId) ?? 0,
   }));

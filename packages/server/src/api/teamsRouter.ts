@@ -11,6 +11,15 @@ function makeJoinCode(): string {
   return nanoid(6).toUpperCase();
 }
 
+/** Cartoon avatars are capped at 128px JPEG (~20KB); reject anything wildly larger. */
+const MAX_AVATAR_IMAGE_LENGTH = 100_000;
+
+function readAvatarImageUrl(body: unknown): string | undefined {
+  const url = (body as { avatarImageUrl?: string }).avatarImageUrl;
+  if (!url || url.length > MAX_AVATAR_IMAGE_LENGTH || !url.startsWith('data:image/')) return undefined;
+  return url;
+}
+
 /** `/api/teams` — create, join, and control team lobbies. */
 export function teamsRouter(ctx: AppContext): Router {
   const router = Router();
@@ -28,6 +37,7 @@ export function teamsRouter(ctx: AppContext): Router {
         userId: req.user!.id,
         name: req.user!.name ?? 'Hunter',
         avatarEmoji: (req.body as { avatarEmoji?: string }).avatarEmoji || undefined,
+        avatarImageUrl: readAvatarImageUrl(req.body),
         joinedAt: new Date().toISOString(),
       };
       const team: Team = {
@@ -75,6 +85,7 @@ export function teamsRouter(ctx: AppContext): Router {
           userId: req.user!.id,
           name: req.user!.name ?? 'Hunter',
           avatarEmoji: (req.body as { avatarEmoji?: string }).avatarEmoji || undefined,
+          avatarImageUrl: readAvatarImageUrl(req.body),
           joinedAt: new Date().toISOString(),
         };
         await ctx.teams.update(team.id, { members: [...team.members, member] });

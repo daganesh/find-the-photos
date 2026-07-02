@@ -6,6 +6,7 @@ import { mediaUrl } from '../services/media.js';
 import { googleMapsLink } from '../services/maps.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { Banner, Button, Card, Page, Spinner, StarRating } from '../ui/index.js';
+import { getStoredAvatarEmoji, getStoredAvatarImage } from '../services/avatarStorage.js';
 
 export function HuntStart() {
   const { routeId = '' } = useParams();
@@ -20,8 +21,9 @@ export function HuntStart() {
     setTeaming(true);
     setTeamError('');
     try {
-      const avatarEmoji = user?.id ? (localStorage.getItem(`ftp.avatar.${user.id}`) ?? undefined) : undefined;
-      const team = await api.createTeam(routeId, user?.name ?? undefined, avatarEmoji);
+      const avatarEmoji = user?.id ? (getStoredAvatarEmoji(user.id) || undefined) : undefined;
+      const avatarImageUrl = user?.id ? (getStoredAvatarImage(user.id) || undefined) : undefined;
+      const team = await api.createTeam(routeId, user?.name ?? undefined, avatarEmoji, avatarImageUrl);
       navigate(`/team/${team.id}`);
     } catch (e) {
       setTeamError(e instanceof Error ? e.message : 'Could not create team');

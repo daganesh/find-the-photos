@@ -11,6 +11,8 @@ import { playSuccessSound } from '../services/sounds.js';
 import { useAsync } from '../hooks/useAsync.js';
 import { useTeamHunt } from '../hooks/useTeamHunt.js';
 import {
+  Avatar,
+  AvatarStack,
   Banner,
   Button,
   Card,
@@ -144,16 +146,16 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
       const prevStep = prev.steps.find((s) => s.itemId === step.itemId);
       const item = route.data!.items.find((i) => i.id === step.itemId);
 
-      // New photo attempts by teammates.
+      // New photo attempts, including our own — everyone sees every guess.
       const prevCount = prevStep?.photoAttempts.length ?? 0;
       const fresh = step.photoAttempts.slice(prevCount);
       for (const attempt of fresh) {
-        if (attempt.submittedBy === user?.id) continue; // own attempt shown inline
         const member = hunt.team!.members.find((m) => m.userId === attempt.submittedBy);
         newToasts.push({
           id: `${step.itemId}-${attempt.at}`,
-          playerName: member?.name.split(' ')[0] ?? 'Someone',
+          playerName: attempt.submittedBy === user?.id ? 'You' : (member?.name.split(' ')[0] ?? 'Someone'),
           playerEmoji: member?.avatarEmoji ?? '🧑',
+          playerImageUrl: member?.avatarImageUrl,
           photoUrl: attempt.photoUrl,
           correct: attempt.verdict.match,
           bgColor: pickRandom(TOAST_BG_COLORS),
@@ -163,16 +165,17 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
         });
       }
 
-      // Riddle/task solved by a teammate (no new photo attempt — text answer).
+      // Riddle/task solved (no new photo attempt — text answer).
       const wasPrevFound = prevStep?.status === 'found';
       const isNowFound = step.status === 'found';
       const hasPhotoMatch = fresh.some((a) => a.verdict.match);
-      if (isNowFound && !wasPrevFound && !hasPhotoMatch && step.foundBy !== user?.id) {
+      if (isNowFound && !wasPrevFound && !hasPhotoMatch) {
         const member = hunt.team!.members.find((m) => m.userId === step.foundBy);
         newToasts.push({
           id: `${step.itemId}-solved`,
-          playerName: member?.name.split(' ')[0] ?? 'Someone',
+          playerName: step.foundBy === user?.id ? 'You' : (member?.name.split(' ')[0] ?? 'Someone'),
           playerEmoji: member?.avatarEmoji ?? '🧑',
+          playerImageUrl: member?.avatarImageUrl,
           textContent: item?.name ?? 'the riddle',
           correct: true,
           bgColor: pickRandom(TOAST_BG_COLORS),
@@ -771,7 +774,21 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
   const totalItems = session.steps.length;
 
   return withToast(<Page
-      title={team?.name ?? 'Team Hunt'}
+      title={
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {teamPhotoUrl && (
+            <img src={teamPhotoUrl} alt="Team" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          )}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? 'Team Hunt'}</span>
+          {team && team.members.length > 0 && (
+            <AvatarStack
+              people={team.members.map((m) => ({ name: m.name, emoji: m.avatarEmoji, imageUrl: m.avatarImageUrl }))}
+              size={24}
+              max={4}
+            />
+          )}
+        </span>
+      }
       right={
         <div className="row" style={{ gap: 8 }}>
           {team?.startedAt && <Timer startedAt={team.startedAt} paused={paused} />}
@@ -839,7 +856,7 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
                 const myFound = foundSteps.filter((s) => s.foundBy === m.userId).length;
                 return (
                   <div key={m.userId} className="row" style={{ gap: 6, alignItems: 'center' }}>
-                    <span style={{ fontSize: '1.1rem' }}>{m.avatarEmoji ?? '🧑'}</span>
+                    <Avatar name={m.name} emoji={m.avatarEmoji} imageUrl={m.avatarImageUrl} size={22} />
                     <span className="muted" style={{ fontSize: '0.85rem' }}>{m.name.split(' ')[0]}: {myFound}</span>
                   </div>
                 );
@@ -913,8 +930,13 @@ function TeamHuntInner({ teamId, sessionId }: { teamId: string; sessionId: strin
               return (
                 <div key={step.itemId} className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{item?.name ?? step.itemId}</span>
-                  <span className="muted" style={{ fontSize: '0.85rem' }}>
-                    {finder ? `${finder.avatarEmoji ?? '🧑'} ${finder.name.split(' ')[0]} · ` : ''}
+                  <span className="row muted" style={{ fontSize: '0.85rem', gap: 4, alignItems: 'center' }}>
+                    {finder && (
+                      <>
+                        <Avatar name={finder.name} emoji={finder.avatarEmoji} imageUrl={finder.avatarImageUrl} size={18} />
+                        {finder.name.split(' ')[0]} ·
+                      </>
+                    )}
                     ⭐ {scoreStep(step)}
                   </span>
                 </div>

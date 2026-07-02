@@ -4,10 +4,31 @@ import type { AppContext } from '../context.js';
 import { requireAuth, type AuthedRequest } from '../auth/middleware.js';
 import { FaceNotDetectedError } from '../gemini/cartoonService.js';
 
-const MAX_GENERATIONS = 3;
+const MAX_GENERATIONS = 5;
+/** How long a user's generation count is remembered before resetting to MAX_GENERATIONS. */
+const RESET_WINDOW_MS = 10 * 60 * 1000;
 
-/** Per-user cartoon generation count; resets on server restart. */
-const generationCounts = new Map<string, number>();
+interface GenerationBudget {
+  used: number;
+  windowStart: number;
+}
+
+/** Per-user cartoon generation count; resets on server restart or after RESET_WINDOW_MS. */
+const generationBudgets = new Map<string, GenerationBudget>();
+
+/** Read the user's current used count, resetting the window if it has expired. */
+function getUsedCount(userId: string): number {
+  const budget = generationBudgets.get(userId);
+  if (!budget || Date.now() - budget.windowStart >= RESET_WINDOW_MS) {
+    return 0;
+  }
+  return budget.used;
+}
+
+function recordGeneration(userId: string, usedBeforeThisCall: number): void {
+  const windowStart = usedBeforeThisCall === 0 ? Date.now() : (generationBudgets.get(userId)?.windowStart ?? Date.now());
+  generationBudgets.set(userId, { used: usedBeforeThisCall + 1, windowStart });
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -23,12 +44,12 @@ export function avatarRouter(ctx: AppContext): Router {
       if (!req.file) return void res.status(400).json({ error: 'No file uploaded' });
 
       const userId = req.user!.id;
-      const used = generationCounts.get(userId) ?? 0;
+      const used = getUsedCount(userId);
       const retriesLeft = MAX_GENERATIONS - used;
 
       if (retriesLeft <= 0) {
         return void res.status(429).json({
-          error: 'You have used all 3 cartoon avatar generations for this session.',
+          error: `You have used all ${MAX_GENERATIONS} cartoon avatar generations. Try again in a few minutes.`,
           retriesLeft: 0,
         });
       }
@@ -48,7 +69,7 @@ export function avatarRouter(ctx: AppContext): Router {
       }
 
       // Only count attempts where generation was actually invoked
-      generationCounts.set(userId, used + 1);
+      recordGeneration(userId, used);
 
       res.json({
         imageDataUrl: `data:${result.mimeType};base64,${result.imageBase64}`,

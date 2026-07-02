@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage, TeamMember } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
+import { useAuth } from '../auth/AuthContext.js';
+import { Avatar } from './Avatar.js';
 
 const POLL_MS = 3000;
 const COMPACT_HEIGHT = 60;
 const EXPANDED_HEIGHT = 280;
 
 export function TeamChat({ teamId, members }: { teamId: string; members: TeamMember[] }) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState('');
@@ -73,11 +76,12 @@ export function TeamChat({ teamId, members }: { teamId: string; members: TeamMem
     ? `${shortName(lastMsg.name, members, lastMsg.userId)}: ${lastMsg.text}`
     : 'No messages yet';
 
-  function avatar(userId: string) {
-    return members.find((m) => m.userId === userId)?.avatarEmoji ?? '🧑';
+  function findMember(userId: string) {
+    return members.find((m) => m.userId === userId);
   }
 
   function shortName(name: string, mbrs: TeamMember[], userId: string) {
+    if (userId === user?.id) return 'You';
     const member = mbrs.find((m) => m.userId === userId);
     return (member?.name ?? name).split(' ')[0];
   }
@@ -171,17 +175,20 @@ export function TeamChat({ teamId, members }: { teamId: string; members: TeamMem
               No messages yet — say hi!
             </p>
           )}
-          {messages.map((m) => (
-            <div key={m.id} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '1rem', flexShrink: 0 }}>{avatar(m.userId)}</span>
-              <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-ink, #111)' }}>
-                  {shortName(m.name, members, m.userId)}
-                </span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-ink, #111)', marginLeft: 6 }}>{m.text}</span>
+          {messages.map((m) => {
+            const member = findMember(m.userId);
+            return (
+              <div key={m.id} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <Avatar name={member?.name ?? m.name} emoji={member?.avatarEmoji} imageUrl={member?.avatarImageUrl} size={20} />
+                <div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-ink, #111)' }}>
+                    {shortName(m.name, members, m.userId)}
+                  </span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-ink, #111)', marginLeft: 6 }}>{m.text}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

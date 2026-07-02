@@ -5,7 +5,7 @@ import { computeTeamResult } from '@ftp/shared';
 import { api } from '../services/apiClient.js';
 import { renderScoreCard, shareScore } from '../services/scoreCard.js';
 import { useAsync } from '../hooks/useAsync.js';
-import { Banner, Button, Card, MemoryLane, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
+import { Avatar, Banner, Button, Card, MemoryLane, Page, ScorePill, Spinner, StarRating, formatDuration } from '../ui/index.js';
 
 /** Team results screen: per-member leaderboard, MVP badge, total score + time. */
 export function TeamResults() {
@@ -168,7 +168,7 @@ export function TeamResults() {
               <span style={{ fontSize: '1.3rem', minWidth: 32 }}>
                 {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}
               </span>
-              <span style={{ fontSize: '1.4rem' }}>{ms.avatarEmoji ?? '🧑'}</span>
+              <Avatar name={ms.name} emoji={ms.avatarEmoji} imageUrl={ms.avatarImageUrl} size={40} />
               <div style={{ flex: 1 }}>
                 <strong>{ms.name}</strong>
                 {isMvp(ms.userId) && ms.itemsFound > 0 && (
