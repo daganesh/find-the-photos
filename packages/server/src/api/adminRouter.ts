@@ -4,6 +4,7 @@ import type { AppContext } from '../context.js';
 import { requireAdmin } from '../auth/middleware.js';
 import { config } from '../config.js';
 import { getPool } from '../storage/db.js';
+import { testGeminiModels } from '../gemini/modelTest.js';
 
 /** `/api/admin` — storage monitoring and cleanup. Admin-only. */
 export function adminRouter(ctx: AppContext): Router {
@@ -135,6 +136,13 @@ export function adminRouter(ctx: AppContext): Router {
       }
 
       res.json(result);
+    } catch (err) { next(err); }
+  });
+
+  /** Probe every configured Gemini model (primary + fallback, text + image) for reachability. */
+  router.get('/gemini/test-models', requireAdmin, async (_req, res, next) => {
+    try {
+      res.json(await testGeminiModels());
     } catch (err) { next(err); }
   });
 

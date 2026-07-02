@@ -124,6 +124,20 @@ export interface CleanupResult {
   freedMb: number;
 }
 
+/** Result of probing whether one configured Gemini model is reachable. */
+export interface GeminiModelTestResult {
+  role: 'text-primary' | 'text-fallback' | 'image-primary' | 'image-fallback';
+  model: string;
+  ok: boolean;
+  message: string;
+  ms: number;
+}
+
+export interface GeminiModelTestResponse {
+  configured: boolean;
+  results: GeminiModelTestResult[];
+}
+
 // --- Dispute ---
 export interface DisputeRequest {
   description: string;

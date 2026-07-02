@@ -4,6 +4,7 @@ import type {
   CleanupResult,
   CreateRouteRequest,
   EscalateHelpRequest,
+  GeminiModelTestResponse,
   GeoPoint,
   HuntSession,
   ModerationResult,
@@ -246,6 +247,9 @@ export class ApiClient {
   }
   cleanupOldSessions(days = 30): Promise<CleanupResult> {
     return this.request(`/api/admin/cleanup/old-sessions?days=${days}`, { method: 'DELETE' });
+  }
+  testGeminiModels(): Promise<GeminiModelTestResponse> {
+    return this.request('/api/admin/gemini/test-models');
   }
 }
 

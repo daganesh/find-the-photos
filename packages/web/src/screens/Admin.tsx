@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { BugReport, CleanupResult, ReportSeverity, ReportStatus, StorageStats } from '@ftp/shared';
+import type { BugReport, CleanupResult, GeminiModelTestResponse, ReportSeverity, ReportStatus, StorageStats } from '@ftp/shared';
 import { useAuth } from '../auth/AuthContext.js';
 import { api } from '../services/apiClient.js';
 import { useAsync } from '../hooks/useAsync.js';
@@ -43,6 +43,9 @@ export function Admin() {
         {stats.error && <Banner tone="no">{stats.error}</Banner>}
 
         {stats.data && <StatsCard stats={stats.data} />}
+
+        <h2>Gemini Models</h2>
+        <GeminiModelsPanel />
 
         <h2>Cleanup</h2>
         <Card>
@@ -128,6 +131,75 @@ function StatsCard({ stats }: { stats: StorageStats }) {
         ))}
         {stats.warnings.length === 0 && (
           <Banner tone="ok">✅ Storage looks healthy</Banner>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Gemini models panel ──────────────────────────────────────────────────────
+
+const ROLE_LABELS: Record<GeminiModelTestResponse['results'][number]['role'], string> = {
+  'text-primary': 'Text (primary)',
+  'text-fallback': 'Text (fallback)',
+  'image-primary': 'Image (primary)',
+  'image-fallback': 'Image (fallback)',
+};
+
+function GeminiModelsPanel() {
+  const [testing, setTesting] = useState(false);
+  const [response, setResponse] = useState<GeminiModelTestResponse | null>(null);
+  const [error, setError] = useState<string>();
+
+  async function runTest() {
+    setTesting(true);
+    setError(undefined);
+    setResponse(null);
+    try {
+      setResponse(await api.testGeminiModels());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to test models');
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <Card>
+      <div className="stack">
+        <div>
+          <strong>Model accessibility</strong>
+          <p className="muted" style={{ margin: '4px 0 0' }}>
+            Send a minimal request to every configured Gemini model (primary + fallback, text + image) and confirm each one resolves and is reachable with the current API key.
+          </p>
+        </div>
+        <Button variant="accent" disabled={testing} onClick={runTest}>
+          {testing ? '⏳ Testing…' : '🧪 Test model access'}
+        </Button>
+
+        {error && <Banner tone="no">{error}</Banner>}
+
+        {response && !response.configured && (
+          <Banner tone="no">⚠️ Gemini is not configured (no API key) — running on dev stubs.</Banner>
+        )}
+
+        {response?.configured && (
+          <div className="stack" style={{ gap: 6 }}>
+            {response.results.map((r) => (
+              <div key={r.role} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                    {r.ok ? '✅' : '❌'} {ROLE_LABELS[r.role]}
+                  </div>
+                  <div className="muted" style={{ fontSize: '0.78rem' }}>{r.model}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="muted" style={{ fontSize: '0.78rem' }}>{r.message}</div>
+                  <div className="muted" style={{ fontSize: '0.72rem' }}>{r.ms} ms</div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </Card>
